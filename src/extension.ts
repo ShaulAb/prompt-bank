@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { registerCommands } from './commands';
 import { promptService } from './services/promptService';
+import { PromptTreeProvider } from './views/promptTreeProvider';
+import { TreeCommands } from './commands/treeCommands';
+import { SearchCommands } from './commands/searchCommands';
+import { ContextMenuCommands } from './commands/contextMenuCommands';
 
 /**
  * Extension activation function
@@ -13,8 +17,30 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize the prompt service
     await promptService.initialize();
     
-    // Register all commands
+    // Create and register tree view
+    const treeProvider = new PromptTreeProvider(promptService);
+    const treeView = vscode.window.createTreeView('promptBank.promptsView', {
+      treeDataProvider: treeProvider,
+      showCollapseAll: true
+    });
+    
+    // Register tree commands
+    const treeCommands = new TreeCommands(treeProvider);
+    treeCommands.registerCommands(context);
+    
+    // Register search commands
+    const searchCommands = new SearchCommands(promptService);
+    searchCommands.registerCommands(context);
+    
+    // Register context menu commands
+    const contextMenuCommands = new ContextMenuCommands(promptService, treeProvider);
+    contextMenuCommands.registerCommands(context);
+    
+    // Register all other commands
     registerCommands(context);
+    
+    // Refresh tree when prompts change
+    context.subscriptions.push(treeView);
     
     // Show activation message
     vscode.window.showInformationMessage('Prompt Bank is ready! 🚀');

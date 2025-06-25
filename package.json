@@ -20,6 +20,15 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "promptBank.promptsView",
+          "name": "Prompt Bank",
+          "when": "true"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "promptBank.savePrompt",
@@ -40,8 +49,79 @@
         "command": "promptBank.deletePrompt",
         "title": "Delete Prompt",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.refreshTree",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "promptBank.insertPromptFromTree",
+        "title": "Insert Prompt",
+        "icon": "$(insert)"
+      },
+      {
+        "command": "promptBank.searchPrompts",
+        "title": "Search Prompts",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.editPromptFromTree",
+        "title": "Edit Prompt",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "promptBank.copyPromptContent",
+        "title": "Copy Content",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "promptBank.deletePromptFromTree",
+        "title": "Delete Prompt",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "promptBank.renameCategory",
+        "title": "Rename Category",
+        "icon": "$(edit)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "promptBank.refreshTree",
+          "when": "view == promptBank.promptsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptBank.insertPromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "inline"
+        },
+        {
+          "command": "promptBank.editPromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "1_modification@1"
+        },
+        {
+          "command": "promptBank.copyPromptContent",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "1_modification@2"
+        },
+        {
+          "command": "promptBank.deletePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "2_danger@1"
+        },
+        {
+          "command": "promptBank.renameCategory",
+          "when": "view == promptBank.promptsView && viewItem == category",
+          "group": "1_modification@1"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "promptBank.savePrompt",
@@ -57,6 +137,7 @@
     ]
   },
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:promptBank.savePrompt",
     "onCommand:promptBank.insertPrompt",
     "onCommand:promptBank.listPrompts",
