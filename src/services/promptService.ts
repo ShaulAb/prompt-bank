@@ -222,6 +222,22 @@ export class PromptService {
   }
 
   /**
+   * Update an existing prompt
+   */
+  async updatePromptById(prompt: Prompt): Promise<void> {
+    await this.ensureInitialized();
+    await this.storage.update(prompt);
+  }
+
+  /**
+   * Delete a prompt by ID
+   */
+  async deletePromptById(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    return this.storage.delete(id);
+  }
+
+  /**
    * Get storage statistics
    */
   async getStats() {
@@ -244,13 +260,9 @@ export class PromptService {
 
     const predefinedCategories = [
       'General',
-      'Code Review',
-      'Documentation',
-      'Debugging',
+      'Architecture',
+      'UI/UX',
       'Testing',
-      'Refactoring',
-      'Git Commit',
-      'AI Prompt'
     ];
 
     // Combine and deduplicate categories
