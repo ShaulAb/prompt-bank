@@ -1,17 +1,20 @@
 # Prompt Bank - VS Code Extension
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A powerful VS Code extension to save and manage your frequent prompts for AI assistants, code templates, and development workflows.
 
 ## 🚀 Features
 
-### Phase 1 (Current)
+### ✅ Phase 1 & 2 (Complete)
 - **Save Prompts**: Save any selected text as a prompt with title, description, and category
 - **Insert Prompts**: Quickly insert saved prompts at cursor position
-- **Organize by Categories**: Organize prompts with predefined or custom categories
-- **Usage Tracking**: Track how often prompts are used
+- **Sidebar Tree View**: Browse prompts hierarchically in VS Code Explorer sidebar
+- **Smart Search**: Intelligent search across all prompt fields via command palette
+- **Context Menus**: Right-click actions for editing, copying, and managing prompts
+- **Category Management**: Organize prompts with custom categories and rename functionality
+- **Usage Tracking**: Track how often prompts are used with smart sorting
 - **Smart Storage**: Stores prompts in `.vscode/prompt-bank/` for project-specific prompts
 
 ## 📦 Installation
@@ -24,7 +27,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 2. **Development Install**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ShaulAb/prompt-bank.git
    cd prompt-bank
    npm install
    npm run build
@@ -38,18 +41,31 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 2. Press `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac)
 3. Enter a title and description
 4. Choose a category
-5. Your prompt is saved!
+5. Your prompt is saved and appears in the sidebar!
 
 ### Insert a Prompt
+**Method 1: From Sidebar Tree**
+1. Open "Prompt Bank" section in Explorer sidebar
+2. Expand categories to see prompts
+3. Click any prompt to insert at cursor position
+
+**Method 2: Via Keyboard Shortcut**
 1. Place cursor where you want to insert text
 2. Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac)
 3. Select from your saved prompts
-4. The prompt content is inserted at cursor position
+
+### Search Prompts
+1. Open Command Palette (`Ctrl+Shift+P`)
+2. Run "Prompt Bank: Search Prompts"
+3. Type search terms (searches title, content, description, category)
+4. Select prompt to insert
 
 ### Manage Prompts
-- **List All Prompts**: `Ctrl+Shift+P` → "Prompt Bank: List All Prompts"
-- **Delete Prompts**: `Ctrl+Shift+P` → "Prompt Bank: Delete Prompt"
-- **View Stats**: `Ctrl+Shift+P` → "Prompt Bank: Show Stats"
+- **Edit Prompt**: Right-click any prompt → "Edit Prompt"
+- **Copy Content**: Right-click any prompt → "Copy Content"
+- **Delete Prompt**: Right-click any prompt → "Delete Prompt"
+- **Rename Category**: Right-click any category → "Rename Category"
+- **Refresh Tree**: Click refresh button (🔄) in tree header
 
 ## 🔧 Commands
 
@@ -57,9 +73,36 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 |---------|------------|-------------|
 | `promptBank.savePrompt` | `Ctrl+Shift+S` | Save current selection as prompt |
 | `promptBank.insertPrompt` | `Ctrl+Shift+I` | Insert a saved prompt |
+| `promptBank.searchPrompts` | - | Smart search across all prompts |
 | `promptBank.listPrompts` | - | List all saved prompts |
 | `promptBank.deletePrompt` | - | Delete a prompt |
 | `promptBank.showStats` | - | Show storage statistics |
+| `promptBank.refreshTree` | - | Refresh sidebar tree view |
+| `promptBank.insertPromptFromTree` | - | Insert prompt from tree click |
+| `promptBank.editPromptFromTree` | - | Edit prompt via context menu |
+| `promptBank.copyPromptContent` | - | Copy prompt content to clipboard |
+| `promptBank.deletePromptFromTree` | - | Delete prompt via context menu |
+| `promptBank.renameCategory` | - | Rename category (updates all prompts) |
+
+## 🌳 Sidebar Tree View
+
+The Prompt Bank integrates seamlessly into VS Code's Explorer sidebar:
+
+- **Categories**: Show as folders with prompt counts (e.g., "General (5)")
+- **Prompts**: Display with file-text icons and usage statistics
+- **Click to Insert**: Single-click any prompt to insert at cursor
+- **Context Menus**: Right-click for edit, copy, delete operations
+- **Auto-Refresh**: Tree updates automatically after any changes
+
+## 🔍 Smart Search
+
+Powerful search functionality accessible via Command Palette:
+
+- **Multi-Field Search**: Searches across title, description, content, and category
+- **Input Validation**: Requires minimum 2 characters for efficient searching
+- **Smart Sorting**: Results sorted by usage count (most used first)
+- **Context Previews**: Shows relevant content snippets around search terms
+- **Instant Results**: Fast in-memory search with immediate feedback
 
 ## 📁 Storage
 
@@ -77,30 +120,45 @@ Built with future-proofing in mind:
 
 ```
 src/
-├── extension.ts          # Main entry point
-├── commands/            # Command handlers
-├── services/            # Business logic
-├── models/              # Type definitions
-├── storage/             # Storage abstractions
-└── utils/               # Utilities
+├── extension.ts              # Main entry point
+├── commands/                 # Command handlers
+│   ├── index.ts             # Main commands (save, insert, etc.)
+│   ├── treeCommands.ts      # Tree view commands
+│   ├── searchCommands.ts    # Search functionality
+│   └── contextMenuCommands.ts # Context menu actions
+├── services/                 # Business logic
+│   └── promptService.ts     # Core prompt operations
+├── models/                   # Type definitions
+│   └── prompt.ts            # Prompt interface
+├── storage/                  # Storage abstractions
+│   ├── interfaces.ts        # Storage contracts
+│   └── fileStorage.ts       # File-based storage
+├── views/                    # Tree view components
+│   ├── promptTreeProvider.ts # Tree data provider
+│   └── promptTreeItem.ts     # Tree item implementations
+└── utils/                    # Utilities
 ```
 
 ## 🛣️ Roadmap
 
-### Phase 2 (Planned)
-- **Sidebar Tree View**: Browse prompts in VS Code sidebar
-- **Categories Management**: Better category organization
-- **Search & Filter**: Find prompts quickly
+### ✅ Phase 1 & 2 (Complete)
+- **Basic Prompt Management**: Save, insert, delete, list prompts
+- **Categories & Organization**: Custom categories with management
+- **Sidebar Tree View**: Visual browsing and organization
+- **Smart Search**: Intelligent filtering and discovery
+- **Context Menus**: Right-click operations for efficiency
+- **Usage Analytics**: Track and sort by usage patterns
 
-### Phase 3 (Planned)
-- **Template Variables**: Support `{{filename}}`, `{{selectedText}}`, etc.
-- **Import/Export**: Share prompt collections
-- **Backup & Sync**: Cloud synchronization
+### Phase 3 (Next)
+- **Template Variables**: Support `{{filename}}`, `{{selectedText}}`, `{{language}}`, etc.
+- **Import/Export**: Share prompt collections as JSON files
+- **Advanced Search**: Filters, saved searches, and bookmarks
 
 ### Phase 4 (Future)
+- **Cloud Sync**: Synchronize prompts across devices
 - **Smart Suggestions**: Context-aware prompt recommendations
 - **Team Sharing**: Collaborate on prompt libraries
-- **Analytics**: Usage insights and optimization
+- **Analytics Dashboard**: Usage insights and optimization
 
 ## 🧪 Development
 
@@ -111,7 +169,7 @@ src/
 ### Setup
 ```bash
 # Clone and install
-git clone <repository-url>
+git clone https://github.com/ShaulAb/prompt-bank.git
 cd prompt-bank
 npm install
 
@@ -132,7 +190,8 @@ npm run package       # Create .vsix file
 ### Testing the Extension
 1. Open the project in VS Code
 2. Press `F5` to launch Extension Development Host
-3. Test commands in the new VS Code window
+3. Use `PHASE1-CHECKLIST.md` and `PHASE2-CHECKLIST.md` for comprehensive testing
+4. Test all features: save/insert, tree view, search, context menus
 
 ## 📝 Data Format
 
@@ -163,7 +222,8 @@ interface Prompt {
 2. Create a feature branch
 3. Make your changes
 4. Add tests if needed
-5. Submit a pull request
+5. Follow the testing checklists
+6. Submit a pull request
 
 ## 📄 License
 
@@ -172,4 +232,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - Built with VS Code Extension API
-- Inspired by the need for better prompt management in AI-assisted development 
+- Inspired by the need for better prompt management in AI-assisted development
+- Developed with iterative feedback-driven methodology 
