@@ -25,6 +25,7 @@
         {
           "id": "promptBank.promptsView",
           "name": "Prompt Bank",
+          "icon": "logo.svg",
           "when": "true"
         }
       ]
@@ -37,12 +38,12 @@
       },
       {
         "command": "promptBank.insertPrompt",
-        "title": "Insert Prompt",
+        "title": "💬 Insert Prompt",
         "category": "Prompt Bank"
       },
       {
         "command": "promptBank.listPrompts",
-        "title": "List All Prompts",
+        "title": "💬 List All Prompts",
         "category": "Prompt Bank"
       },
       {
@@ -51,47 +52,61 @@
         "category": "Prompt Bank"
       },
       {
-        "command": "promptBank.refreshTree",
-        "title": "Refresh",
-        "icon": "$(refresh)"
+        "command": "promptBank.refreshTreeView",
+        "title": "Refresh Prompts",
+        "icon": "$(refresh)",
+        "commandPalette": true
       },
       {
         "command": "promptBank.insertPromptFromTree",
         "title": "Insert Prompt",
-        "icon": "$(insert)"
-      },
-      {
-        "command": "promptBank.searchPrompts",
-        "title": "Search Prompts",
-        "category": "Prompt Bank"
+        "icon": "$(insert)",
+        "commandPalette": false
       },
       {
         "command": "promptBank.editPromptFromTree",
         "title": "Edit Prompt",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "commandPalette": false
       },
       {
         "command": "promptBank.copyPromptContent",
         "title": "Copy Content",
-        "icon": "$(copy)"
+        "icon": "$(copy)",
+        "commandPalette": false
       },
       {
         "command": "promptBank.deletePromptFromTree",
         "title": "Delete Prompt",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "commandPalette": false
       },
       {
         "command": "promptBank.renameCategory",
         "title": "Rename Category",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "commandPalette": false
+      },
+      {
+        "command": "promptBank.deleteCategory",
+        "title": "Delete Category",
+        "icon": "$(trash)",
+        "commandPalette": false
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "promptBank.refreshTree",
+          "command": "promptBank.refreshTreeView",
           "when": "view == promptBank.promptsView",
-          "group": "navigation"
+          "group": "navigation@0"
+        }
+      ],
+      "view/title/context": [
+        {
+          "command": "promptBank.refreshTreeView",
+          "when": "view == promptBank.promptsView",
+          "group": "refresh"
         }
       ],
       "view/item/context": [
@@ -119,6 +134,11 @@
           "command": "promptBank.renameCategory",
           "when": "view == promptBank.promptsView && viewItem == category",
           "group": "1_modification@1"
+        },
+        {
+          "command": "promptBank.deleteCategory",
+          "when": "view == promptBank.promptsView && viewItem == category",
+          "group": "2_danger@1"
         }
       ]
     },
@@ -133,6 +153,16 @@
         "command": "promptBank.insertPrompt",
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i"
+      },
+      {
+        "command": "promptBank.insertPromptFromTree",
+        "key": "enter",
+        "when": "view == promptBank.promptsView && viewItem == prompt && focus"
+      },
+      {
+        "command": "promptBank.deletePromptFromTree",
+        "key": "delete",
+        "when": "view == promptBank.promptsView && viewItem == prompt && focus"
       }
     ]
   },
