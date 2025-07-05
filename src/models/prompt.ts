@@ -17,6 +17,9 @@ export interface Prompt {
   /** Category for organization (e.g., "Code Review", "Documentation") */
   category: string;
   
+  /** Order of the prompt within its category (for drag & drop) */
+  order?: number;
+  
   /** Tags for flexible filtering and search */
   tags: string[];
   
@@ -75,7 +78,7 @@ export interface FileContext {
   language: string;
   
   /** Project type if detectable */
-  projectType?: string;
+  projectType?: string | undefined;
 }
 
 /**
@@ -164,4 +167,14 @@ function getVariableDescription(name: string): string {
  */
 function generateId(): string {
   return `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Category model for drag & drop reordering
+ */
+export interface Category {
+  /** Category name */
+  name: string;
+  /** Order of the category (for drag & drop) */
+  order: number;
 } 
