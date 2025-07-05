@@ -19,7 +19,8 @@ export abstract class BaseTreeItem extends vscode.TreeItem {
 export class CategoryTreeItem extends BaseTreeItem {
   constructor(
     public readonly category: string,
-    public readonly promptCount: number
+    public readonly promptCount: number,
+    public readonly order: number
   ) {
     super(`${category} (${promptCount})`, vscode.TreeItemCollapsibleState.Expanded);
     
@@ -42,13 +43,6 @@ export class PromptTreeItem extends BaseTreeItem {
     this.description = this.buildDescription();
     this.contextValue = 'prompt';
     this.iconPath = new vscode.ThemeIcon('file-text');
-    
-    // Add command to insert prompt when clicked
-    this.command = {
-      command: 'promptBank.insertPromptFromTree',
-      title: 'Insert Prompt',
-      arguments: [this.prompt]
-    };
   }
 
   private buildTooltip(): string {
@@ -87,6 +81,18 @@ export class PromptTreeItem extends BaseTreeItem {
 }
 
 /**
+ * Tree item representing an empty state (no prompts/categories)
+ */
+export class EmptyStateTreeItem extends BaseTreeItem {
+  constructor() {
+    super('No prompts found. Use the Command Palette (Ctrl+Shift+P) to add your first prompt!', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'empty';
+    this.iconPath = new vscode.ThemeIcon('info');
+    this.tooltip = 'Prompt Bank is empty. Start by adding a prompt from the Command Palette!';
+  }
+}
+
+/**
  * Union type for all tree items
  */
-export type TreeItem = CategoryTreeItem | PromptTreeItem; 
+export type TreeItem = CategoryTreeItem | PromptTreeItem | EmptyStateTreeItem; 

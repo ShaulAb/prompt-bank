@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { PromptService } from '../services/promptService';
-import { Prompt } from '../models/prompt';
-import { TreeItem, CategoryTreeItem, PromptTreeItem } from './promptTreeItem';
+import { Prompt, Category } from '../models/prompt';
+import { TreeItem, CategoryTreeItem, PromptTreeItem, EmptyStateTreeItem } from './promptTreeItem';
 
 /**
  * Tree data provider for the Prompt Bank sidebar view
@@ -47,27 +47,39 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   /**
    * Get category tree items
    */
-  private async getCategoryItems(): Promise<CategoryTreeItem[]> {
+  private async getCategoryItems(): Promise<CategoryTreeItem[] | [EmptyStateTreeItem]> {
     try {
       const prompts = await this.promptService.listPrompts();
       
       if (prompts.length === 0) {
-        return [];
+        // Show empty state item if no prompts exist
+        return [new EmptyStateTreeItem()];
       }
 
       // Group prompts by category
       const categoryMap = new Map<string, number>();
-      
       prompts.forEach(prompt => {
         const count = categoryMap.get(prompt.category) || 0;
         categoryMap.set(prompt.category, count + 1);
       });
 
-      // Convert to tree items and sort alphabetically
-      const categoryItems = Array.from(categoryMap.entries())
-        .map(([category, count]) => new CategoryTreeItem(category, count))
-        .sort((a, b) => a.category.localeCompare(b.category));
+      // Build Category objects with order (for now, order is alphabetical or from prompt metadata)
+      const categories: Category[] = Array.from(categoryMap.keys())
+        .map((name, idx) => {
+          // Find a prompt in this category with categoryOrder
+          const promptWithOrder = prompts.find(p => p.category === name && (p as any).categoryOrder !== undefined);
+          return {
+            name,
+            order: promptWithOrder ? (promptWithOrder as any).categoryOrder : idx
+          };
+        })
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 
+      // Convert to tree items and sort by order
+      const categoryItems = categories
+        .map(cat => new CategoryTreeItem(cat.name, categoryMap.get(cat.name) || 0, cat.order));
+
+      // Already sorted by order
       return categoryItems;
     } catch (error) {
       console.error('Error getting category items:', error);
@@ -81,9 +93,17 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   private async getPromptItems(category: string): Promise<PromptTreeItem[]> {
     try {
       const prompts = await this.promptService.listPrompts({
-        category,
-        sortBy: 'title',
-        sortOrder: 'asc'
+        category
+      });
+
+      // Sort by order if present, otherwise by title
+      prompts.sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        return a.title.localeCompare(b.title);
       });
 
       return prompts.map(prompt => new PromptTreeItem(prompt));
@@ -103,6 +123,109 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
     } catch (error) {
       console.error('Error getting prompt by ID:', error);
       return undefined;
+    }
+  }
+}
+
+export class PromptDragAndDropController implements vscode.TreeDragAndDropController<TreeItem> {
+  public readonly dropMimeTypes = ['application/vnd.code.tree.promptBank.promptsView'];
+  public readonly dragMimeTypes = ['application/vnd.code.tree.promptBank.promptsView'];
+  public readonly supportedTypes = ['category', 'prompt'];
+
+  constructor(
+    private treeProvider: PromptTreeProvider,
+    private promptService: import('../services/promptService').PromptService
+  ) {}
+
+  public handleDrag?(source: readonly TreeItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): void | Thenable<void> {
+    // Only allow dragging one item at a time for now
+    const item = source[0];
+    if (!item) return;
+    if (item instanceof CategoryTreeItem) {
+      dataTransfer.set('application/vnd.code.tree.promptBank.promptsView', new vscode.DataTransferItem(JSON.stringify({ type: 'category', name: item.category })));
+    } else if (item instanceof PromptTreeItem) {
+      dataTransfer.set('application/vnd.code.tree.promptBank.promptsView', new vscode.DataTransferItem(JSON.stringify({ type: 'prompt', id: item.prompt.id })));
+    }
+  }
+  public async handleDrop(target: TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+    const raw = dataTransfer.get('application/vnd.code.tree.promptBank.promptsView');
+    if (!raw) return;
+    let dragged;
+    try {
+      dragged = JSON.parse(await raw.asString());
+    } catch {
+      return;
+    }
+
+    // Category drag & drop
+    if (dragged.type === 'category') {
+      if (!(target instanceof CategoryTreeItem)) return;
+      // Reorder categories: move dragged.name to the position of target.category
+      const prompts = await this.promptService.listPrompts();
+      // Get unique categories with their current order
+      const categoryMap = new Map<string, number>();
+      prompts.forEach(p => {
+        if (!categoryMap.has(p.category)) {
+          categoryMap.set(p.category, p.order ?? 0);
+        }
+      });
+      const categories = Array.from(categoryMap.keys());
+      const fromIdx = categories.indexOf(dragged.name);
+      const toIdx = categories.indexOf(target.category);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+      // Move dragged category to new position
+      categories.splice(fromIdx, 1);
+      categories.splice(toIdx, 0, dragged.name);
+      // Update order for all prompts in each category
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        const catPrompts = prompts.filter(p => p.category === cat);
+        for (const prompt of catPrompts) {
+          prompt.order = prompt.order ?? 0; // fallback
+          // Store category order in prompt metadata (or add a new property if needed)
+          (prompt as any).categoryOrder = i;
+          await this.promptService.updatePromptById(prompt);
+        }
+      }
+      this.treeProvider.refresh();
+      return;
+    }
+
+    // Prompt drag & drop
+    if (dragged.type === 'prompt') {
+      // Only allow drop on CategoryTreeItem or PromptTreeItem
+      if (!(target instanceof CategoryTreeItem || target instanceof PromptTreeItem)) return;
+      const prompts = await this.promptService.listPrompts();
+      const prompt = prompts.find(p => p.id === dragged.id);
+      if (!prompt) return;
+      let newCategory = prompt.category;
+      let newOrder = 0;
+      if (target instanceof CategoryTreeItem) {
+        newCategory = target.category;
+        // Place at end of target category
+        const catPrompts = prompts.filter(p => p.category === newCategory);
+        newOrder = catPrompts.length;
+      } else if (target instanceof PromptTreeItem) {
+        newCategory = target.prompt.category;
+        // Place before the target prompt in the same category
+        const catPrompts = prompts.filter(p => p.category === newCategory && p.id !== prompt.id);
+        const targetIdx = catPrompts.findIndex(p => p.id === target.prompt.id);
+        if (targetIdx === -1) return;
+        catPrompts.splice(targetIdx, 0, prompt);
+        // Reassign order for all prompts in the category
+        for (let i = 0; i < catPrompts.length; i++) {
+          catPrompts[i].order = i;
+          await this.promptService.updatePromptById(catPrompts[i]);
+        }
+        this.treeProvider.refresh();
+        return;
+      }
+      // Move prompt to new category at end
+      prompt.category = newCategory;
+      prompt.order = newOrder;
+      await this.promptService.updatePromptById(prompt);
+      this.treeProvider.refresh();
+      return;
     }
   }
 } 
