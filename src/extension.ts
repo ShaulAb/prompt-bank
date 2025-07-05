@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { registerCommands } from './commands';
 import { promptService } from './services/promptService';
-import { PromptTreeProvider } from './views/promptTreeProvider';
+import { PromptTreeProvider, PromptDragAndDropController } from './views/promptTreeProvider';
 import { TreeCommands } from './commands/treeCommands';
 import { SearchCommands } from './commands/searchCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
@@ -19,13 +19,15 @@ export async function activate(context: vscode.ExtensionContext) {
     
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);
+    const dndController = new PromptDragAndDropController(treeProvider, promptService);
     const treeView = vscode.window.createTreeView('promptBank.promptsView', {
       treeDataProvider: treeProvider,
+      dragAndDropController: dndController,
       showCollapseAll: true
     });
     
     // Register tree commands
-    const treeCommands = new TreeCommands(treeProvider);
+    const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
     
     // Register search commands

@@ -12,59 +12,21 @@ export class SearchCommands {
    * Register all search commands
    */
   registerCommands(context: vscode.ExtensionContext): void {
-    const searchCommand = vscode.commands.registerCommand(
-      'promptBank.searchPrompts',
-      () => this.searchPrompts()
-    );
-
-    context.subscriptions.push(searchCommand);
+    // Remove the entire SearchCommands class and all references to 'promptBank.searchPrompts'.
   }
 
   /**
    * Smart search for prompts across all categories
    */
   private async searchPrompts(): Promise<void> {
-    try {
-      // Get search term from user
-      const searchTerm = await vscode.window.showInputBox({
-        prompt: 'Search prompts by title, description, content, or category',
-        placeHolder: 'Type your search term...',
-        validateInput: (value) => {
-          if (!value.trim()) {
-            return 'Please enter a search term';
-          }
-          if (value.length < 2) {
-            return 'Search term must be at least 2 characters';
-          }
-          return null;
-        }
-      });
-
-      if (!searchTerm) {
-        return; // User cancelled
-      }
-
-      // Get all prompts and filter them
-      const allPrompts = await this.promptService.listPrompts();
-      const filteredPrompts = this.filterPrompts(allPrompts, searchTerm.trim());
-
-      if (filteredPrompts.length === 0) {
-        vscode.window.showInformationMessage(`No prompts found matching "${searchTerm}"`);
-        return;
-      }
-
-      // Show results in quick pick
-      await this.showSearchResults(filteredPrompts, searchTerm);
-
-    } catch (error) {
-      vscode.window.showErrorMessage(`Search failed: ${error}`);
-    }
+    // Remove the entire SearchCommands class and all references to 'promptBank.searchPrompts'.
   }
 
   /**
    * Filter prompts based on search term
    */
   private filterPrompts(prompts: Prompt[], searchTerm: string): Prompt[] {
+    // Remove the entire SearchCommands class and all references to 'promptBank.searchPrompts'.
     const lowerSearchTerm = searchTerm.toLowerCase();
 
     return prompts.filter(prompt => {
@@ -96,6 +58,7 @@ export class SearchCommands {
    * Show search results in a quick pick and handle selection
    */
   private async showSearchResults(prompts: Prompt[], searchTerm: string): Promise<void> {
+    // Remove the entire SearchCommands class and all references to 'promptBank.searchPrompts'.
     const items = prompts.map(prompt => ({
       label: prompt.title,
       description: `${prompt.category} • Used ${prompt.metadata.usageCount}x`,
@@ -129,6 +92,7 @@ export class SearchCommands {
    * Get a preview of the prompt with search term highlighted context
    */
   private getPromptPreview(prompt: Prompt, searchTerm: string): string {
+    // Remove the entire SearchCommands class and all references to 'promptBank.searchPrompts'.
     const lowerSearchTerm = searchTerm.toLowerCase();
     
     // Try to find context around the search term in content
@@ -159,27 +123,6 @@ export class SearchCommands {
    * Insert a prompt at the current cursor position
    */
   private async insertPrompt(prompt: Prompt): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('No active editor found');
-      return;
-    }
-
-    try {
-      // Insert content at cursor
-      await editor.edit((editBuilder: vscode.TextEditorEdit) => {
-        editBuilder.insert(editor.selection.active, prompt.content);
-      });
-
-      // Update usage statistics
-      prompt.metadata.usageCount++;
-      prompt.metadata.lastUsed = new Date();
-      
-      // TODO: Update prompt in storage (for now we skip this step)
-      
-      vscode.window.showInformationMessage(`Inserted: "${prompt.title}"`);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to insert prompt: ${error}`);
-    }
+    await this.promptService.insertPromptById(prompt);
   }
 } 
