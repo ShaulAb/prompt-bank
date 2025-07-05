@@ -3,11 +3,13 @@ import { Prompt } from '../models/prompt';
 import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { CategoryTreeItem, PromptTreeItem } from '../views/promptTreeItem';
+import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 
 /**
  * Context menu commands for tree view items
  */
 export class ContextMenuCommands {
+  private extensionContext: vscode.ExtensionContext | undefined;
   constructor(
     private promptService: PromptService,
     private treeProvider: PromptTreeProvider
@@ -17,6 +19,7 @@ export class ContextMenuCommands {
    * Register all context menu commands
    */
   registerCommands(context: vscode.ExtensionContext): void {
+    this.extensionContext = context;
     const editPromptCommand = vscode.commands.registerCommand(
       'promptBank.editPromptFromTree',
       (item: PromptTreeItem) => this.editPrompt(item)
@@ -37,11 +40,17 @@ export class ContextMenuCommands {
       (item: CategoryTreeItem) => this.renameCategory(item)
     );
 
+    const deleteCategoryCommand = vscode.commands.registerCommand(
+      'promptBank.deleteCategory',
+      (item: CategoryTreeItem) => this.deleteCategory(item)
+    );
+
     context.subscriptions.push(
       editPromptCommand,
       copyContentCommand,
       deletePromptCommand,
-      renameCategoryCommand
+      renameCategoryCommand,
+      deleteCategoryCommand
     );
   }
 
@@ -50,77 +59,17 @@ export class ContextMenuCommands {
    */
   private async editPrompt(item: PromptTreeItem): Promise<void> {
     const prompt = item.prompt;
-
-    try {
-      // Edit title
-      const newTitle = await vscode.window.showInputBox({
-        prompt: 'Edit prompt title',
-        value: prompt.title,
-        validateInput: (value) => {
-          if (!value.trim()) {
-            return 'Title is required';
-          }
-          if (value.length > 100) {
-            return 'Title must be less than 100 characters';
-          }
-          return null;
+    if (!this.extensionContext) {
+      vscode.window.showErrorMessage('Extension context not available.');
+      return;
         }
-      });
-
-      if (newTitle === undefined) {
-        return; // User cancelled
-      }
-
-      // Edit description
-      const newDescription = await vscode.window.showInputBox({
-        prompt: 'Edit prompt description (optional)',
-        value: prompt.description || '',
-        placeHolder: 'Describe what this prompt is used for...'
-      });
-
-      if (newDescription === undefined) {
-        return; // User cancelled
-      }
-
-      // Edit content
-      const newContent = await vscode.window.showInputBox({
-        prompt: 'Edit prompt content',
-        value: prompt.content,
-        validateInput: (value) => {
-          if (!value.trim()) {
-            return 'Content is required';
-          }
-          return null;
-        }
-      });
-
-      if (newContent === undefined) {
-        return; // User cancelled
-      }
-
-      // Update the prompt
-      const trimmedDescription = newDescription.trim();
-      const updatedPrompt: Prompt = {
-        ...prompt,
-        title: newTitle.trim(),
-        content: newContent.trim(),
-        metadata: {
-          ...prompt.metadata,
-          modified: new Date()
-        },
-        ...(trimmedDescription !== '' && { description: trimmedDescription })
-      };
-
-      // Save changes using the storage update method
-      await this.promptService.updatePromptById(updatedPrompt);
-
-      // Refresh the tree
-      this.treeProvider.refresh();
-
-      vscode.window.showInformationMessage(`Updated prompt: "${updatedPrompt.title}"`);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to edit prompt: ${error}`);
-    }
+    // Open the webview editor panel with the prompt data and categories
+    await PromptEditorPanel.show(
+      this.extensionContext,
+      prompt,
+      this.promptService,
+      this.treeProvider
+    );
   }
 
   /**
@@ -197,37 +146,69 @@ export class ContextMenuCommands {
     }
 
     try {
-      // Get all prompts in this category
-      const prompts = await this.promptService.listPrompts({ category: oldCategoryName });
-      
-      if (prompts.length === 0) {
+      // Atomically rename entire category in the service
+      const count = await this.promptService.renameCategory(oldCategoryName, newCategoryName.trim());
+      if (count === 0) {
         vscode.window.showWarningMessage(`No prompts found in category "${oldCategoryName}"`);
-        return;
+      } else {
+        this.treeProvider.refresh();
+        vscode.window.showInformationMessage(
+          `Renamed category "${oldCategoryName}" to "${newCategoryName}" (${count} prompts updated)`
+        );
       }
-
-             // Update all prompts in this category
-       const updatePromises = prompts.map(async (prompt) => {
-         const updatedPrompt: Prompt = {
-           ...prompt,
-           category: newCategoryName.trim(),
-           metadata: {
-             ...prompt.metadata,
-             modified: new Date()
-           }
-         };
-         return this.promptService.updatePromptById(updatedPrompt);
-       });
-
-      await Promise.all(updatePromises);
-
-      // Refresh the tree
-      this.treeProvider.refresh();
-
-      vscode.window.showInformationMessage(
-        `Renamed category "${oldCategoryName}" to "${newCategoryName}" (${prompts.length} prompts updated)`
-      );
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to rename category: ${error}`);
+    }
+  }
+
+  /**
+   * Delete a category and all its prompts
+   */
+  private async deleteCategory(item: CategoryTreeItem): Promise<void> {
+    const category = item.category;
+    
+    try {
+      // Check if category has prompts
+      const promptsInCategory = await this.promptService.listPrompts({ category });
+      
+      let confirmationMessage = `Are you sure you want to delete the category "${category}"?`;
+      
+      if (promptsInCategory.length > 0) {
+        confirmationMessage = `Are you sure you want to delete the category "${category}" and all ${promptsInCategory.length} prompts in it? This cannot be undone.`;
+      }
+      
+      // Confirm deletion
+      const confirmation = await vscode.window.showWarningMessage(
+        confirmationMessage,
+        { modal: true },
+        'Delete'
+      );
+      
+      if (confirmation !== 'Delete') {
+        return;
+      }
+      
+      // Delete all prompts in this category
+      if (promptsInCategory.length > 0) {
+        const deletePromises = promptsInCategory.map(prompt => 
+          this.promptService.deletePromptById(prompt.id)
+        );
+        
+        await Promise.all(deletePromises);
+      }
+      
+      // Refresh the tree view
+      this.treeProvider.refresh();
+      
+      if (promptsInCategory.length > 0) {
+        vscode.window.showInformationMessage(
+          `Deleted category "${category}" and ${promptsInCategory.length} prompts`
+        );
+      } else {
+        vscode.window.showInformationMessage(`Deleted category: "${category}"`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error deleting category: ${error}`);
     }
   }
 } 
