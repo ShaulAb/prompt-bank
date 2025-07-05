@@ -76,10 +76,16 @@ export class PromptService {
     if (!category) {
       return null; // User cancelled
     }
+    const categoryName: string = category;
 
     // Create prompt with file context
-    const prompt = createPrompt(title.trim(), selectedText, category);
+    const prompt = createPrompt(title.trim(), selectedText, categoryName);
     prompt.description = description?.trim();
+
+    // Assign order: place at end of category
+    const promptsInCategory = (await this.storage.list({ category: categoryName })) || [];
+    const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    prompt.order = maxOrder + 1;
 
     // Add file context for future smart suggestions
     const document = editor.document;
@@ -88,7 +94,7 @@ export class PromptService {
       prompt.metadata.context = {
         fileExtension: path.extname(document.fileName).slice(1),
         language: document.languageId,
-        projectType
+        projectType: projectType!
       };
     }
 
@@ -226,6 +232,12 @@ export class PromptService {
    */
   async updatePromptById(prompt: Prompt): Promise<void> {
     await this.ensureInitialized();
+    // Ensure order is set if missing
+    if (prompt.order === undefined) {
+      const promptsInCategory = (await this.storage.list({ category: prompt.category })) || [];
+      const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+      prompt.order = maxOrder + 1;
+    }
     await this.storage.update(prompt);
   }
 
@@ -243,6 +255,25 @@ export class PromptService {
   async getStats() {
     await this.ensureInitialized();
     return this.storage.getStats();
+  }
+
+  // Add centralized insertion method
+  async insertPromptById(prompt: Prompt): Promise<void> {
+    await this.ensureInitialized();
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage('No active editor found');
+      return;
+    }
+    // Insert prompt content at cursor
+    await editor.edit(editBuilder => {
+      editBuilder.insert(editor.selection.active, prompt.content);
+    });
+    // Update usage statistics
+    prompt.metadata.usageCount++;
+    prompt.metadata.lastUsed = new Date();
+    await this.storage.update(prompt);
+    vscode.window.showInformationMessage(`Inserted prompt: "${prompt.title}"`);
   }
 
   // Private helper methods
@@ -312,6 +343,28 @@ export class PromptService {
     if (fileName.includes('Gemfile')) return 'Ruby';
     
     return undefined;
+  }
+
+  /**
+   * Rename all prompts in a category in one atomic operation
+   */
+  async renameCategory(oldName: string, newName: string): Promise<number> {
+    await this.ensureInitialized();
+    // Load all prompts in the old category
+    const prompts = await this.storage.list({ category: oldName });
+    if (prompts.length === 0) {
+      return 0;
+    }
+    // Update category and modified timestamp in memory
+    prompts.forEach(prompt => {
+      prompt.category = newName;
+      prompt.metadata.modified = new Date();
+    });
+    // Persist each updated prompt sequentially to avoid race conditions
+    for (const prompt of prompts) {
+      await this.storage.update(prompt);
+    }
+    return prompts.length;
   }
 }
 
