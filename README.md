@@ -1,7 +1,7 @@
 # Prompt Bank
 
 <p align="center">
-  <img src="httpsa://raw.githubusercontent.com/ShaulAb/prompt-bank/master/logo.svg" alt="Prompt Bank Logo" width="150">
+  <img src="https://github.com/ShaulAb/prompt-bank/master/assets/logo.png" alt="Prompt Bank Logo" width="150">
 </p>
 
 <p align="center">
