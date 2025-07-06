@@ -135,17 +135,7 @@ export function registerCommands(
     }
   );
 
-  // Register delete prompt command
-  const deletePromptCommand = vscode.commands.registerCommand(
-    'promptBank.deletePrompt',
-    async () => {
-      try {
-        await promptService.deletePrompt();
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error deleting prompt: ${error}`);
-      }
-    }
-  );
+
 
   // Register show stats command (useful for debugging)
   const showStatsCommand = vscode.commands.registerCommand(
@@ -175,7 +165,6 @@ export function registerCommands(
     savePromptCommand,
     insertPromptCommand,
     listPromptsCommand,
-    deletePromptCommand,
     showStatsCommand
   );
 } 

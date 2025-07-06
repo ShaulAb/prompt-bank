@@ -46,11 +46,7 @@
         "title": "💬 List All Prompts",
         "category": "Prompt Bank"
       },
-      {
-        "command": "promptBank.deletePrompt",
-        "title": "Delete Prompt",
-        "category": "Prompt Bank"
-      },
+
       {
         "command": "promptBank.refreshTreeView",
         "title": "Refresh Prompts",
