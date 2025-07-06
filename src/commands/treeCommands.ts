@@ -26,7 +26,6 @@ export class TreeCommands {
     const insertFromTreeCommand = vscode.commands.registerCommand(
       'promptBank.insertPromptFromTree',
       (item: any) => {
-        // Support both Prompt and PromptTreeItem
         let prompt;
         if (item && item.prompt) {
           prompt = item.prompt;

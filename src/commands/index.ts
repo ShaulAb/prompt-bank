@@ -1,10 +1,15 @@
 import * as vscode from 'vscode';
 import { promptService } from '../services/promptService';
+import { PromptTreeProvider } from '../views/promptTreeProvider';
+import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 
 /**
  * Register all Prompt Bank commands
  */
-export function registerCommands(context: vscode.ExtensionContext): void {
+export function registerCommands(
+  context: vscode.ExtensionContext,
+  treeProvider: PromptTreeProvider
+): void {
   // Register save prompt command
   const savePromptCommand = vscode.commands.registerCommand(
     'promptBank.savePrompt',
@@ -44,33 +49,85 @@ export function registerCommands(context: vscode.ExtensionContext): void {
           return;
         }
 
-        // Show prompts in a quick pick for preview
-        const items = prompts.map(prompt => ({
+        // Step 1: choose prompt
+        const promptItems = prompts.map(prompt => ({
           label: prompt.title,
           description: `${prompt.category} • ${prompt.metadata.usageCount} uses`,
           detail: `${prompt.description || prompt.content.substring(0, 150)}...`,
           prompt
         }));
 
-        const selected = await vscode.window.showQuickPick(items, {
+        const selectedPromptItem = await vscode.window.showQuickPick(promptItems, {
           placeHolder: `${prompts.length} prompts available`,
           matchOnDescription: true,
           matchOnDetail: true,
           ignoreFocusOut: true
         });
 
-        if (selected) {
-          // Show prompt details in a information message
-          const details = [
-            `Title: ${selected.prompt.title}`,
-            `Category: ${selected.prompt.category}`,
-            `Created: ${selected.prompt.metadata.created.toLocaleDateString()}`,
-            `Used: ${selected.prompt.metadata.usageCount} times`,
-            selected.prompt.description ? `Description: ${selected.prompt.description}` : '',
-            `Content preview: ${selected.prompt.content.substring(0, 200)}...`
-          ].filter(Boolean).join('\n');
+        if (!selectedPromptItem) {
+          return;
+        }
 
+        const prompt = selectedPromptItem.prompt;
+
+        // Step 2: choose action
+        const actionItems: { label: string; action: 'view' | 'insert' | 'edit' | 'delete'; }[] = [
+          { label: 'View', action: 'view' },
+          { label: 'Insert', action: 'insert' },
+          { label: 'Edit', action: 'edit' },
+          { label: 'Delete', action: 'delete' }
+        ];
+
+        const selectedAction = await vscode.window.showQuickPick(actionItems.map(i => i.label), {
+          placeHolder: `Choose action for "${prompt.title}"`,
+          ignoreFocusOut: true
+        });
+
+        if (!selectedAction) {
+          return;
+        }
+
+        const action = actionItems.find(a => a.label === selectedAction)?.action;
+
+        switch (action) {
+          case 'view': {
+          const details = [
+              `Title: ${prompt.title}`,
+              `Category: ${prompt.category}`,
+              `Created: ${prompt.metadata.created.toLocaleDateString()}`,
+              `Used: ${prompt.metadata.usageCount} times`,
+              prompt.description ? `Description: ${prompt.description}` : '',
+              `Content preview: ${prompt.content.substring(0, 200)}...`
+          ].filter(Boolean).join('\n');
           vscode.window.showInformationMessage(details, { modal: true });
+            break;
+          }
+          case 'insert': {
+            await promptService.insertPromptById(prompt);
+            treeProvider.refresh();
+            break;
+          }
+          case 'edit': {
+            await PromptEditorPanel.show(context, prompt, promptService, treeProvider);
+            break;
+          }
+          case 'delete': {
+            const confirmation = await vscode.window.showWarningMessage(
+              `Delete prompt "${prompt.title}"?`,
+              { modal: true },
+              'Delete'
+            );
+            if (confirmation === 'Delete') {
+              const success = await promptService.deletePromptById(prompt.id);
+              if (success) {
+                treeProvider.refresh();
+                vscode.window.showInformationMessage(`Deleted prompt: "${prompt.title}"`);
+              } else {
+                vscode.window.showErrorMessage('Failed to delete prompt');
+              }
+            }
+            break;
+          }
         }
       } catch (error) {
         vscode.window.showErrorMessage(`Error listing prompts: ${error}`);

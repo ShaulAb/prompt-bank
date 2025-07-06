@@ -76,11 +76,13 @@ export class PromptService {
     if (!category) {
       return null; // User cancelled
     }
-    const categoryName: string = category;
+    const categoryName = category;
 
     // Create prompt with file context
     const prompt = createPrompt(title.trim(), selectedText, categoryName);
-    prompt.description = description?.trim();
+    if (description?.trim()) {
+      prompt.description = description.trim();
+    }
 
     // Assign order: place at end of category
     const promptsInCategory = (await this.storage.list({ category: categoryName })) || [];
@@ -228,9 +230,9 @@ export class PromptService {
   }
 
   /**
-   * Update an existing prompt
+   * Edit an existing prompt
    */
-  async updatePromptById(prompt: Prompt): Promise<void> {
+  async editPromptById(prompt: Prompt): Promise<void> {
     await this.ensureInitialized();
     // Ensure order is set if missing
     if (prompt.order === undefined) {
@@ -247,6 +249,29 @@ export class PromptService {
   async deletePromptById(id: string): Promise<boolean> {
     await this.ensureInitialized();
     return this.storage.delete(id);
+  }
+
+  /**
+   * Duplicate an existing prompt (creates a new prompt with a fresh ID)
+   * Returns the newly created prompt
+   */
+  async duplicatePrompt(original: Prompt): Promise<Prompt> {
+    await this.ensureInitialized();
+
+    // Create a new prompt object using createPrompt to ensure new id & metadata
+    const newTitle = `${original.title} (Copy)`;
+    const duplicate = createPrompt(newTitle, original.content, original.category, [...original.tags]);
+
+    // Preserve optional fields
+    if (original.description) duplicate.description = original.description;
+
+    // Place duplicate at end of its category
+    const promptsInCategory = await this.storage.list({ category: original.category });
+    const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    duplicate.order = maxOrder + 1;
+
+    await this.storage.save(duplicate);
+    return duplicate;
   }
 
   /**

@@ -39,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
     contextMenuCommands.registerCommands(context);
     
     // Register all other commands
-    registerCommands(context);
+    registerCommands(context, treeProvider);
     
     // Refresh tree when prompts change
     context.subscriptions.push(treeView);
