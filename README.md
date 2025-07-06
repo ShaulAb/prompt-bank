@@ -12,9 +12,12 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Insert Prompts**: Quickly insert saved prompts at cursor position
 - **Sidebar Tree View**: Browse prompts hierarchically in VS Code Explorer sidebar
 - **Smart Search**: Intelligent search across all prompt fields via command palette
-- **Context Menus**: Right-click actions for editing, copying, and managing prompts
-- **Category Management**: Organize prompts with custom categories and rename functionality
+- **Context Menus & Inline Icons**: Right-click actions for editing, duplicating, and managing prompts, plus inline icons for Insert and Delete for fast access.
+- **Modern Prompt Editor**: The prompt editor modal now features a two-column layout for title/description and category, with a large content area, compact styling, and a modern look.
+- **Category Dropdown with Creation**: Category selection is now a dropdown with existing categories and a "+ Create new category" option, supporting both selection and creation in a user-friendly way.
 - **Usage Tracking**: Track how often prompts are used with smart sorting
+- **Consistent Insertion & Usage Tracking**: All prompt insertions—whether from the sidebar tree, search, or context menus—now use a single, centralized logic. This ensures accurate usage counts and eliminates discrepancies between different insertion methods.
+- **Robust Category Renaming**: Category renaming is now atomic and reliable, updating all prompts in a single operation and preventing partial updates or race conditions.
 - **Smart Storage**: Stores prompts in `.vscode/prompt-bank/` for project-specific prompts
 
 ## 📦 Installation
@@ -139,6 +142,8 @@ src/
 └── utils/                    # Utilities
 ```
 
+**Centralized Business Logic**: Core operations such as prompt insertion and category renaming are now handled by dedicated service methods (`PromptService`). This ensures consistent behavior across all commands (tree, search, context menu) and simplifies future maintenance and feature development.
+
 ## 🛣️ Roadmap
 
 ### ✅ Phase 1 & 2 (Complete)
@@ -148,6 +153,7 @@ src/
 - **Smart Search**: Intelligent filtering and discovery
 - **Context Menus**: Right-click operations for efficiency
 - **Usage Analytics**: Track and sort by usage patterns
+- **Stability & Consistency Improvements**: Centralized insertion and category renaming logic, eliminating race conditions and ensuring accurate usage tracking across all features.
 
 ### Phase 3 (Next)
 - **Template Variables**: Support `{{filename}}`, `{{selectedText}}`, `{{language}}`, etc.
@@ -192,6 +198,12 @@ npm run package       # Create .vsix file
 2. Press `F5` to launch Extension Development Host
 3. Use `PHASE1-CHECKLIST.md` and `PHASE2-CHECKLIST.md` for comprehensive testing
 4. Test all features: save/insert, tree view, search, context menus
+
+### UI/UX Notes
+- The prompt editor modal uses a modern, compact two-column layout for better usability.
+- Category selection is a dropdown with existing categories and a "+ Create new category" option.
+- Inline icons for Insert and Delete are available in the tree view for fast actions; all actions are also available in the context menu (including Duplicate).
+- Keybindings for tree actions were removed in favor of icons and context menu for clarity and reliability.
 
 ## 📝 Data Format
 

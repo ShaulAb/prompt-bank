@@ -2,7 +2,7 @@
   "name": "prompt-bank",
   "displayName": "Prompt Bank",
   "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "promptbank",
   "engines": {
     "vscode": "^1.85.0",
@@ -92,6 +92,12 @@
         "title": "Delete Category",
         "icon": "$(trash)",
         "commandPalette": false
+      },
+      {
+        "command": "promptBank.duplicatePromptFromTree",
+        "title": "Duplicate Prompt",
+        "icon": "$(copy)",
+        "commandPalette": false
       }
     ],
     "menus": {
@@ -128,7 +134,7 @@
         {
           "command": "promptBank.deletePromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == prompt",
-          "group": "2_danger@1"
+          "group": "inline"
         },
         {
           "command": "promptBank.renameCategory",
@@ -139,6 +145,11 @@
           "command": "promptBank.deleteCategory",
           "when": "view == promptBank.promptsView && viewItem == category",
           "group": "2_danger@1"
+        },
+        {
+          "command": "promptBank.duplicatePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "1_modification@3"
         }
       ]
     },
@@ -153,25 +164,11 @@
         "command": "promptBank.insertPrompt",
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i"
-      },
-      {
-        "command": "promptBank.insertPromptFromTree",
-        "key": "enter",
-        "when": "view == promptBank.promptsView && viewItem == prompt && focus"
-      },
-      {
-        "command": "promptBank.deletePromptFromTree",
-        "key": "delete",
-        "when": "view == promptBank.promptsView && viewItem == prompt && focus"
       }
     ]
   },
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:promptBank.savePrompt",
-    "onCommand:promptBank.insertPrompt",
-    "onCommand:promptBank.listPrompts",
-    "onCommand:promptBank.deletePrompt"
+    "onStartupFinished"
   ],
   "scripts": {
     "dev": "nodemon --exec tsx src/extension.ts",
