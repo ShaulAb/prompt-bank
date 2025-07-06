@@ -129,7 +129,7 @@ export class PromptEditorPanel {
         },
         ...(trimmedDescription !== '' ? { description: trimmedDescription } : {})
       };
-      await this.promptService.updatePromptById(updatedPrompt);
+      await this.promptService.editPromptById(updatedPrompt);
       this.treeProvider.refresh();
       vscode.window.showInformationMessage(
         `Updated prompt: "${updatedPrompt.title}"`

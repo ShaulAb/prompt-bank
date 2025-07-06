@@ -30,6 +30,11 @@ export class ContextMenuCommands {
       (item: PromptTreeItem) => this.copyPromptContent(item)
     );
 
+    const duplicatePromptCommand = vscode.commands.registerCommand(
+      'promptBank.duplicatePromptFromTree',
+      (item: PromptTreeItem) => this.duplicatePrompt(item)
+    );
+
     const deletePromptCommand = vscode.commands.registerCommand(
       'promptBank.deletePromptFromTree',
       (item: PromptTreeItem) => this.deletePrompt(item)
@@ -48,6 +53,7 @@ export class ContextMenuCommands {
     context.subscriptions.push(
       editPromptCommand,
       copyContentCommand,
+      duplicatePromptCommand,
       deletePromptCommand,
       renameCategoryCommand,
       deleteCategoryCommand
@@ -85,6 +91,21 @@ export class ContextMenuCommands {
   }
 
   /**
+   * Duplicate a prompt
+   */
+  private async duplicatePrompt(item: PromptTreeItem): Promise<void> {
+    const prompt = item.prompt;
+
+    try {
+      const duplicate = await this.promptService.duplicatePrompt(prompt);
+      this.treeProvider.refresh();
+      vscode.window.showInformationMessage(`Duplicated prompt as "${duplicate.title}"`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to duplicate prompt: ${error}`);
+    }
+  }
+
+  /**
    * Delete a prompt with confirmation
    */
   private async deletePrompt(item: PromptTreeItem): Promise<void> {
@@ -118,47 +139,11 @@ export class ContextMenuCommands {
   }
 
   /**
-   * Rename a category
+   * Rename a category using the improved tree provider method
    */
   private async renameCategory(item: CategoryTreeItem): Promise<void> {
-    const oldCategoryName = item.category;
-
-    // Get new category name
-    const newCategoryName = await vscode.window.showInputBox({
-      prompt: 'Rename category',
-      value: oldCategoryName,
-      validateInput: (value) => {
-        if (!value.trim()) {
-          return 'Category name is required';
-        }
-        if (value.length > 50) {
-          return 'Category name must be less than 50 characters';
-        }
-        if (value.trim() === oldCategoryName) {
-          return 'Please enter a different name';
-        }
-        return null;
-      }
-    });
-
-    if (!newCategoryName) {
-      return; // User cancelled
-    }
-
-    try {
-      // Atomically rename entire category in the service
-      const count = await this.promptService.renameCategory(oldCategoryName, newCategoryName.trim());
-      if (count === 0) {
-        vscode.window.showWarningMessage(`No prompts found in category "${oldCategoryName}"`);
-      } else {
-        this.treeProvider.refresh();
-        vscode.window.showInformationMessage(
-          `Renamed category "${oldCategoryName}" to "${newCategoryName}" (${count} prompts updated)`
-        );
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to rename category: ${error}`);
-    }
+    // Delegate to the tree provider's improved rename method
+    await this.treeProvider.showRenameCategoryInput(item.category);
   }
 
   /**

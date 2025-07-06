@@ -5,6 +5,7 @@ import { TreeItem, CategoryTreeItem, PromptTreeItem, EmptyStateTreeItem } from '
 
 /**
  * Tree data provider for the Prompt Bank sidebar view
+ * Supports inline editing for category renaming
  */
 export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined | null | void> = new vscode.EventEmitter<TreeItem | undefined | null | void>();
@@ -125,6 +126,83 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
       return undefined;
     }
   }
+
+  // ============================================================================
+  // CATEGORY RENAMING SUPPORT
+  // ============================================================================
+
+  /**
+   * Show an input box for renaming a category with improved UX
+   * This provides a more user-friendly alternative to command palette
+   */
+  async showRenameCategoryInput(categoryName: string): Promise<void> {
+    try {
+      // Get existing categories for validation
+      const existingPrompts = await this.promptService.listPrompts();
+      const existingCategories = [...new Set(existingPrompts.map(p => p.category))];
+
+      const newCategoryName = await vscode.window.showInputBox({
+        title: `Rename Category: ${categoryName}`,
+        prompt: 'Enter the new category name',
+        value: categoryName, // Pre-populate with current name
+        valueSelection: [0, categoryName.length], // Select all text for easy replacement
+        validateInput: (value: string) => {
+          const trimmed = value.trim();
+          
+          // Check if empty
+          if (!trimmed) {
+            return 'Category name cannot be empty';
+          }
+          
+          // Check if same as current name
+          if (trimmed === categoryName) {
+            return null; // Allow keeping the same name (no-op)
+          }
+          
+          // Check if already exists
+          if (existingCategories.includes(trimmed)) {
+            return `Category "${trimmed}" already exists`;
+          }
+          
+          // Check for invalid characters (optional - add your own rules)
+          if (trimmed.includes('/') || trimmed.includes('\\')) {
+            return 'Category name cannot contain / or \\ characters';
+          }
+          
+          return null; // Valid
+        }
+      });
+
+      // User cancelled the input
+      if (newCategoryName === undefined) {
+        return;
+      }
+
+      const trimmedNewName = newCategoryName.trim();
+      
+      // No change needed
+      if (trimmedNewName === categoryName) {
+        return;
+      }
+
+      // Perform the rename
+      await this.promptService.renameCategory(categoryName, trimmedNewName);
+      
+      // Refresh the tree view
+      this.refresh();
+      
+      // Show success message
+      vscode.window.showInformationMessage(
+        `Category renamed from "${categoryName}" to "${trimmedNewName}"`
+      );
+
+    } catch (error) {
+      console.error('Error renaming category:', error);
+      vscode.window.showErrorMessage(
+        `Failed to rename category: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
 }
 
 export class PromptDragAndDropController implements vscode.TreeDragAndDropController<TreeItem> {
@@ -184,7 +262,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
           prompt.order = prompt.order ?? 0; // fallback
           // Store category order in prompt metadata (or add a new property if needed)
           (prompt as any).categoryOrder = i;
-          await this.promptService.updatePromptById(prompt);
+          await this.promptService.editPromptById(prompt);
         }
       }
       this.treeProvider.refresh();
@@ -215,7 +293,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
         // Reassign order for all prompts in the category
         for (let i = 0; i < catPrompts.length; i++) {
           catPrompts[i].order = i;
-          await this.promptService.updatePromptById(catPrompts[i]);
+          await this.promptService.editPromptById(catPrompts[i]);
         }
         this.treeProvider.refresh();
         return;
@@ -223,7 +301,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       // Move prompt to new category at end
       prompt.category = newCategory;
       prompt.order = newOrder;
-      await this.promptService.updatePromptById(prompt);
+      await this.promptService.editPromptById(prompt);
       this.treeProvider.refresh();
       return;
     }

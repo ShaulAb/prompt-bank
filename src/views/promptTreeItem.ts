@@ -43,6 +43,7 @@ export class PromptTreeItem extends BaseTreeItem {
     this.description = this.buildDescription();
     this.contextValue = 'prompt';
     this.iconPath = new vscode.ThemeIcon('file-text');
+    // Inline actions are contributed via package.json (group "inline").
   }
 
   private buildTooltip(): string {
