@@ -1,13 +1,13 @@
 # Prompt Bank
 
 <p align="center">
-  <img src="https://github.com/ShaulAb/prompt-bank/master/assets/logo.png" alt="Prompt Bank Logo" width="150">
+  <img src="./assets/logo.png" alt="Prompt Bank Logo" width="150">
 </p>
 
 <p align="center">
-  <strong>The ultimate tool for managing and reusing prompts in VS Code.</strong>
+  <strong>Managing, Reusing and Sharing Prompts Right From Your IDE.</strong>
   <br />
-  Supercharge your development workflow by saving, searching, and inserting code snippets and AI prompts in seconds.
+  Enhance your development workflow by saving, searching, and inserting AI prompts instanly.
 </p>
 
 <p align="center">
