@@ -143,7 +143,14 @@ export class AuthService implements vscode.UriHandler {
 
     vscode.env.openExternal(vscode.Uri.parse(loginUrl));
 
-    this.debug.show(true); // bring the output channel to front once
+    // Only show the channel automatically if the user has enabled verbose auth logging
+    const verbose = vscode.workspace
+      .getConfiguration('promptBank')
+      .get<boolean>('verboseAuthLogging', false);
+
+    if (verbose) {
+      this.debug.show(true);
+    }
 
     return authPromise;
   }
