@@ -4,6 +4,8 @@ import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { CategoryTreeItem, PromptTreeItem } from '../views/promptTreeItem';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
+import { AuthService } from '../services/authService';
+import { createShare } from '../services/shareService';
 
 /**
  * Context menu commands for tree view items
@@ -50,13 +52,29 @@ export class ContextMenuCommands {
       (item: CategoryTreeItem) => this.deleteCategory(item)
     );
 
+    const sharePromptCommand = vscode.commands.registerCommand(
+      'promptBank.sharePromptFromTree',
+      async (item: PromptTreeItem) => {
+        const prompt = item.prompt;
+        try {
+          const token = await AuthService.get().getValidAccessToken();
+          const { url } = await createShare(prompt, token);
+          await vscode.env.clipboard.writeText(url);
+          vscode.window.showInformationMessage('Share link copied to clipboard (expires in 24h)');
+        } catch (error) {
+          vscode.window.showErrorMessage(`Failed to share prompt: ${error}`);
+        }
+      }
+    );
+
     context.subscriptions.push(
       editPromptCommand,
       copyContentCommand,
       duplicatePromptCommand,
       deletePromptCommand,
       renameCategoryCommand,
-      deleteCategoryCommand
+      deleteCategoryCommand,
+      sharePromptCommand
     );
   }
 
