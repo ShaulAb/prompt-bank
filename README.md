@@ -51,33 +51,20 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 3.  **Manage Prompts**:
     - Right-click any item in the tree view to access all management options.
 
-## 🛣️ Roadmap
-
-Our goal is to make Prompt Bank the central hub for all your reusable code and text snippets.
-
-### Next Up (Phase 3)
-- **Template Variables**: Support for dynamic values like `{{filename}}`, `{{selectedText}}`, and `{{language}}`.
-- **Import/Export**: Share your prompt libraries with others via JSON files.
-- **Advanced Search**: Add filters, saved searches, and bookmarks for even faster access.
-
-### Future (Phase 4)
-- **Cloud Sync**: Synchronize your prompts across multiple devices.
-- **Team Sharing**: Collaborate on shared prompt libraries with your team.
-- **AI-Powered Suggestions**: Get context-aware recommendations for prompts as you type.
-
 ## 🔧 Commands & Keybindings
 
-| Command | Keybinding | Description |
-|---|---|---|
-| `promptBank.savePrompt` | `Ctrl+Shift+S` | Save the current selection as a new prompt. |
-| `promptBank.insertPrompt` | `Ctrl+Shift+I` | Show a list of prompts to insert. |
-| `promptBank.searchPrompts`| - | Search across all fields of your prompts. |
-| `promptBank.refreshTree` | - | Manually refresh the sidebar tree view. |
-| **Context Menu Actions** | (Right-Click) | `Edit`, `Delete`, `Copy Content`, `Rename Category`, `Duplicate`. |
+| Command                    | Keybinding     | Description                                                       |
+| -------------------------- | -------------- | ----------------------------------------------------------------- |
+| `promptBank.savePrompt`    | `Ctrl+Shift+S` | Save the current selection as a new prompt.                       |
+| `promptBank.insertPrompt`  | `Ctrl+Shift+I` | Show a list of prompts to insert.                                 |
+| `promptBank.searchPrompts` | -              | Search across all fields of your prompts.                         |
+| `promptBank.refreshTree`   | -              | Manually refresh the sidebar tree view.                           |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Delete`, `Copy Content`, `Rename Category`, `Duplicate`. |
 
 ## 📁 Storage
 
 Prompts are stored locally on your machine:
+
 - **Project-Specific**: `.vscode/prompt-bank/prompts.json` (for prompts tied to the current workspace)
 - **Global**: `~/.vscode-prompt-bank/prompts.json` (as a fallback for prompts available everywhere)
 

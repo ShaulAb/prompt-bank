@@ -5,6 +5,7 @@ import { PromptTreeProvider, PromptDragAndDropController } from './views/promptT
 import { TreeCommands } from './commands/treeCommands';
 import { SearchCommands } from './commands/searchCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
+import { AuthService } from './services/authService';
 
 /**
  * Extension activation function
@@ -16,6 +17,10 @@ export async function activate(context: vscode.ExtensionContext) {
   try {
     // Initialize the prompt service
     await promptService.initialize();
+    
+    // Initialise authentication service and register URI handler
+    const authService = AuthService.initialize(context);
+    context.subscriptions.push(vscode.window.registerUriHandler(authService));
     
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);

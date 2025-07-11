@@ -46,7 +46,6 @@
         "title": "💬 List All Prompts",
         "category": "Prompt Bank"
       },
-
       {
         "command": "promptBank.refreshTreeView",
         "title": "Refresh Prompts",
@@ -94,6 +93,17 @@
         "title": "Duplicate Prompt",
         "icon": "$(copy)",
         "commandPalette": false
+      },
+      {
+        "command": "promptBank.sharePromptFromTree",
+        "title": "Share Prompt",
+        "icon": "$(cloud-upload)",
+        "commandPalette": false
+      },
+      {
+        "command": "promptBank.sharePrompt",
+        "title": "🔗 Share Prompt",
+        "category": "Prompt Bank"
       }
     ],
     "menus": {
@@ -146,6 +156,11 @@
           "command": "promptBank.duplicatePromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == prompt",
           "group": "1_modification@3"
+        },
+        {
+          "command": "promptBank.sharePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "1_modification@0"
         }
       ]
     },
