@@ -42,6 +42,11 @@ export class ContextMenuCommands {
       (item: PromptTreeItem) => this.deletePrompt(item)
     );
 
+    const sharePromptCommand = vscode.commands.registerCommand(
+      'promptBank.sharePromptFromTree',
+      (item: PromptTreeItem) => this.sharePrompt(item)
+    );
+
     const renameCategoryCommand = vscode.commands.registerCommand(
       'promptBank.renameCategory',
       (item: CategoryTreeItem) => this.renameCategory(item)
@@ -52,21 +57,6 @@ export class ContextMenuCommands {
       (item: CategoryTreeItem) => this.deleteCategory(item)
     );
 
-    const sharePromptCommand = vscode.commands.registerCommand(
-      'promptBank.sharePromptFromTree',
-      async (item: PromptTreeItem) => {
-        const prompt = item.prompt;
-        try {
-          const token = await AuthService.get().getValidAccessToken();
-          const { url } = await createShare(prompt, token);
-          await vscode.env.clipboard.writeText(url);
-          vscode.window.showInformationMessage('Share link copied to clipboard (expires in 24h)');
-        } catch (error) {
-          vscode.window.showErrorMessage(`Failed to share prompt: ${error}`);
-        }
-      }
-    );
-
     context.subscriptions.push(
       editPromptCommand,
       copyContentCommand,
@@ -74,7 +64,8 @@ export class ContextMenuCommands {
       deletePromptCommand,
       renameCategoryCommand,
       deleteCategoryCommand,
-      sharePromptCommand
+      sharePromptCommand,
+      // sharePromptsCommand removed (registered globally elsewhere)
     );
   }
 
@@ -153,6 +144,28 @@ export class ContextMenuCommands {
       }
     } catch (error) {
       vscode.window.showErrorMessage(`Error deleting prompt: ${error}`);
+    }
+  }
+
+  /**
+   * Share a single prompt and copy link to clipboard
+   */
+  private async sharePrompt(item: PromptTreeItem): Promise<void> {
+    const prompt = item.prompt;
+
+    try {
+      // Ensure user signed in
+      const accessToken = await AuthService.get().getValidAccessToken();
+      if (!accessToken) {
+        vscode.window.showErrorMessage('You must be signed in with GitHub to share prompts.');
+        return;
+      }
+
+      const result = await createShare(prompt, accessToken);
+      await vscode.env.clipboard.writeText(result.url);
+      vscode.window.showInformationMessage('Share link copied to clipboard! Expires in 24h.');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to share prompt: ${error}`);
     }
   }
 

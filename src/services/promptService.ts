@@ -301,6 +301,45 @@ export class PromptService {
     vscode.window.showInformationMessage(`Inserted prompt: "${prompt.title}"`);
   }
 
+  /**
+   * Save a prompt that comes from an external share link.
+   * Generates a new ID and ensures ordering within its category.
+   */
+  async importPrompt(original: Prompt): Promise<Prompt> {
+    await this.ensureInitialized();
+
+    // Determine a title that avoids duplicates (same title + identical content within the category)
+    let newTitle = original.title;
+    const promptsInCategory = (await this.storage.list({ category: original.category })) || [];
+
+    const isExactDuplicate = promptsInCategory.some(p => p.title === original.title && p.content === original.content);
+    if (isExactDuplicate) {
+      // Generate an available suffix: "<title> (imported)", "<title> (imported 2)", etc.
+      let attempt = 1;
+      let candidateTitle = `${original.title} (imported)`;
+      while (promptsInCategory.some(p => p.title === candidateTitle)) {
+        attempt += 1;
+        candidateTitle = `${original.title} (imported ${attempt})`;
+      }
+      newTitle = candidateTitle;
+    }
+
+    // Create a new prompt using the (possibly modified) title
+    const imported = createPrompt(newTitle, original.content, original.category);
+    if (original.description) {
+      imported.description = original.description;
+    }
+    imported.tags = [...new Set(original.tags)]; // de-duplicate tags
+
+    // Place at end of its category
+    const maxOrder = promptsInCategory.reduce((max, p) =>
+      p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    imported.order = maxOrder + 1;
+
+    await this.storage.save(imported);
+    return imported;
+  }
+
   // Private helper methods
 
   private async ensureInitialized(): Promise<void> {

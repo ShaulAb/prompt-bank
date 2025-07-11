@@ -3,7 +3,7 @@ import { promptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 import { AuthService } from '../services/authService';
-import { createShare } from '../services/shareService';
+import { createShare, parseShareUrl, fetchShare } from '../services/shareService';
 
 /**
  * Register all Prompt Bank commands
@@ -160,38 +160,31 @@ export function registerCommands(
     }
   });
 
-  // Register share prompt command
-  const sharePromptCommand = vscode.commands.registerCommand(
-    'promptBank.sharePrompt',
+  // Register import prompt command
+  const importPromptCommand = vscode.commands.registerCommand(
+    'promptBank.importPrompt',
     async () => {
       try {
-        const prompts = await promptService.listPrompts({ sortBy: 'modified', sortOrder: 'desc' });
-        if (prompts.length === 0) {
-          vscode.window.showInformationMessage('No prompts saved yet');
+        const url = await vscode.window.showInputBox({
+          prompt: 'Paste a Prompt Bank share link',
+          placeHolder: 'https://prestissimo.ai/share/<id>',
+          ignoreFocusOut: true,
+        });
+        if (!url) return;
+
+        const parsed = parseShareUrl(url);
+        if (!parsed) {
+          vscode.window.showErrorMessage('Invalid Prompt Bank share link');
           return;
         }
 
-        const pick = await vscode.window.showQuickPick(
-          prompts.map((p) => ({
-            label: p.title,
-            description: p.category,
-            detail: p.description || p.content.substring(0, 150),
-            prompt: p,
-          })),
-          {
-            placeHolder: 'Select a prompt to share',
-            matchOnDescription: true,
-            ignoreFocusOut: true,
-          }
-        );
-        if (!pick) return;
+        const promptData = await fetchShare(parsed.id);
 
-        const token = await AuthService.get().getValidAccessToken();
-        const { url } = await createShare(pick.prompt, token);
-        await vscode.env.clipboard.writeText(url);
-        vscode.window.showInformationMessage('Share link copied to clipboard (expires in 24h)');
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error sharing prompt: ${error}`);
+        const saved = await promptService.importPrompt(promptData);
+        treeProvider.refresh();
+        vscode.window.showInformationMessage(`Imported prompt "${saved.title}"`);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Failed to import prompt: ${err}`);
       }
     }
   );
@@ -202,6 +195,6 @@ export function registerCommands(
     insertPromptCommand,
     listPromptsCommand,
     showStatsCommand,
-    sharePromptCommand
+    importPromptCommand
   );
 }
