@@ -1,8 +1,15 @@
 import { Buffer } from 'buffer';
+import * as vscode from 'vscode';
 import { Prompt } from '../models/prompt';
 
-const CREATE_URL = 'https://xlqtowactrzmslpkzliq.supabase.co/functions/v1/create-share';
-const PUBLIC_VIEW_BASE = 'https://prestissimo.ai/share/';
+/**
+ * Read backend URLs from Prompt Bank configuration with sensible fallbacks.
+ */
+const cfg = vscode.workspace.getConfiguration('promptBank');
+const SUPABASE_URL = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
+const PUBLIC_VIEW_BASE = cfg.get<string>('publicShareBase', 'https://prestissimo.ai/share/');
+
+const CREATE_URL = `${SUPABASE_URL}/functions/v1/create-share`;
 
 export interface ShareResult {
   url: string;

@@ -10,8 +10,8 @@ export class AuthService implements vscode.UriHandler {
     reject: (err: any) => void;
   };
 
-  // Supabase project settings – hard-code for now, can be moved to config later
-  private readonly SUPABASE_URL = 'https://xlqtowactrzmslpkzliq.supabase.co';
+  // Supabase project URL is loaded from extension settings (promptBank.supabaseUrl)
+  private readonly supabaseUrl: string;
 
   // SecretStorage keys
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
@@ -20,7 +20,10 @@ export class AuthService implements vscode.UriHandler {
   /** Output channel for verbose logging */
   private readonly debug = vscode.window.createOutputChannel('Prompt Bank Auth');
 
-  private constructor(private context: vscode.ExtensionContext) {}
+  private constructor(private context: vscode.ExtensionContext) {
+    const cfg = vscode.workspace.getConfiguration('promptBank');
+    this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
+  }
 
   /**
    * Initialise the singleton. Must be called once from extension activation.
@@ -132,7 +135,7 @@ export class AuthService implements vscode.UriHandler {
     // Construct vscode:// deep link for redirect
     const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://promptbank.prompt-bank/auth`);
 
-    const loginUrl = `${this.SUPABASE_URL}/auth/v1/authorize?provider=github&redirect_to=${encodeURIComponent(
+    const loginUrl = `${this.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${encodeURIComponent(
       handlerUri.toString()
     )}`;
 

@@ -176,7 +176,22 @@
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Prompt Bank",
+      "properties": {
+        "promptBank.supabaseUrl": {
+          "type": "string",
+          "default": "https://xlqtowactrzmslpkzliq.supabase.co",
+          "description": "Supabase project base URL used for authentication and sharing"
+        },
+        "promptBank.publicShareBase": {
+          "type": "string",
+          "default": "https://prestissimo.ai/share/",
+          "description": "Base URL used to construct public share links"
+        }
+      }
+    }
   },
   "activationEvents": [
     "onStartupFinished"
