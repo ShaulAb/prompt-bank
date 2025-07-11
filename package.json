@@ -96,13 +96,11 @@
       },
       {
         "command": "promptBank.sharePromptFromTree",
-        "title": "Share Prompt",
-        "icon": "$(cloud-upload)",
-        "commandPalette": false
+        "title": "Share Prompt"
       },
       {
-        "command": "promptBank.sharePrompt",
-        "title": "🔗 Share Prompt",
+        "command": "promptBank.importPrompt",
+        "title": "⬇️ Import Prompt",
         "category": "Prompt Bank"
       }
     ],
@@ -229,5 +227,6 @@
     "tsx": "^4.7.0",
     "typescript": "^5.8.3",
     "vitest": "^1.1.0"
-  }
+  },
+  "dependencies": {}
 }
