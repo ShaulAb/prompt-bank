@@ -3,7 +3,6 @@ import { registerCommands } from './commands';
 import { promptService } from './services/promptService';
 import { PromptTreeProvider, PromptDragAndDropController } from './views/promptTreeProvider';
 import { TreeCommands } from './commands/treeCommands';
-import { SearchCommands } from './commands/searchCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
 import { AuthService } from './services/authService';
 
@@ -17,9 +16,14 @@ export async function activate(context: vscode.ExtensionContext) {
   try {
     // Initialize the prompt service
     await promptService.initialize();
-    
+
+    // Get extension details for auth URI construction
+    const extensionId = context.extension.id;
+    const publisher = extensionId.split('.')[0];
+    const extensionName = extensionId.split('.')[1];
+
     // Initialise authentication service and register URI handler
-    const authService = AuthService.initialize(context);
+    const authService = AuthService.initialize(context, publisher, extensionName);
     context.subscriptions.push(vscode.window.registerUriHandler(authService));
     
     // Create and register tree view
@@ -34,10 +38,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register tree commands
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
-    
-    // Register search commands
-    const searchCommands = new SearchCommands(promptService);
-    searchCommands.registerCommands(context);
     
     // Register context menu commands
     const contextMenuCommands = new ContextMenuCommands(promptService, treeProvider);
