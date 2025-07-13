@@ -12,6 +12,8 @@ export class AuthService implements vscode.UriHandler {
 
   // Supabase project URL is loaded from extension settings (promptBank.supabaseUrl)
   private readonly supabaseUrl: string;
+  private readonly publisher: string;
+  private readonly extensionName: string;
 
   // SecretStorage keys
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
@@ -20,17 +22,19 @@ export class AuthService implements vscode.UriHandler {
   /** Output channel for verbose logging */
   private readonly debug = vscode.window.createOutputChannel('Prompt Bank Auth');
 
-  private constructor(private context: vscode.ExtensionContext) {
+  private constructor(private context: vscode.ExtensionContext, publisher: string, extensionName: string) {
     const cfg = vscode.workspace.getConfiguration('promptBank');
     this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
+    this.publisher = publisher;
+    this.extensionName = extensionName;
   }
 
   /**
    * Initialise the singleton. Must be called once from extension activation.
    */
-  public static initialize(context: vscode.ExtensionContext): AuthService {
+  public static initialize(context: vscode.ExtensionContext, publisher: string, extensionName: string): AuthService {
     if (!AuthService.instance) {
-      AuthService.instance = new AuthService(context);
+      AuthService.instance = new AuthService(context, publisher, extensionName);
     }
     return AuthService.instance;
   }
@@ -133,7 +137,7 @@ export class AuthService implements vscode.UriHandler {
     });
 
     // Construct vscode:// deep link for redirect
-    const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://ShaulAbergil.prompt-bank/auth`);
+    const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://${this.publisher}.${this.extensionName}/auth`);
 
     const loginUrl = `${this.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${encodeURIComponent(
       handlerUri.toString()
