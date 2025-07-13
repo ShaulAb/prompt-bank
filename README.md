@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=ShaulAb.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/ShaulAb.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ShaulAbergil.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/ShaulAb.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ShaulAb/prompt-bank?style=for-the-badge&color=green" alt="License"></a>
 </p>
 
