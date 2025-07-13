@@ -144,26 +144,18 @@ export class PromptService {
       return; // User cancelled
     }
 
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('No active editor found');
-      return;
-    }
-
     // TODO: Phase 3 - Handle template variables
     const contentToInsert = selected.prompt.content;
 
-    // Insert at current cursor position
-    await editor.edit((editBuilder: vscode.TextEditorEdit) => {
-      editBuilder.insert(editor.selection.active, contentToInsert);
-    });
+    // Copy to clipboard
+    await vscode.env.clipboard.writeText(contentToInsert);
 
     // Update usage statistics
     selected.prompt.metadata.usageCount++;
     selected.prompt.metadata.lastUsed = new Date();
     await this.storage.update(selected.prompt);
 
-    vscode.window.showInformationMessage(`Inserted prompt: "${selected.prompt.title}"`);
+    vscode.window.showInformationMessage(`Prompt "${selected.prompt.title}" copied to clipboard!`);
   }
 
   /**
@@ -285,20 +277,18 @@ export class PromptService {
   // Add centralized insertion method
   async insertPromptById(prompt: Prompt): Promise<void> {
     await this.ensureInitialized();
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('No active editor found');
-      return;
-    }
-    // Insert prompt content at cursor
-    await editor.edit(editBuilder => {
-      editBuilder.insert(editor.selection.active, prompt.content);
-    });
+
+    const contentToInsert = prompt.content;
+
+    // Copy to clipboard
+    await vscode.env.clipboard.writeText(contentToInsert);
+
     // Update usage statistics
     prompt.metadata.usageCount++;
     prompt.metadata.lastUsed = new Date();
     await this.storage.update(prompt);
-    vscode.window.showInformationMessage(`Inserted prompt: "${prompt.title}"`);
+
+    vscode.window.showInformationMessage(`Prompt "${prompt.title}" copied to clipboard!`);
   }
 
   /**
