@@ -133,7 +133,7 @@ export class AuthService implements vscode.UriHandler {
     });
 
     // Construct vscode:// deep link for redirect
-    const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://promptbank.prompt-bank/auth`);
+    const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://ShaulAbergil.prompt-bank/auth`);
 
     const loginUrl = `${this.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${encodeURIComponent(
       handlerUri.toString()

@@ -2,10 +2,14 @@
   "name": "prompt-bank",
   "displayName": "Prompt Bank",
   "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-  "version": "0.2.0",
-  "publisher": "promptbank",
+  "version": "0.4.0",
+  "publisher": "ShaulAbergil",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShaulAb/prompt-bank"
+  },
   "engines": {
-    "vscode": "^1.85.0",
+    "vscode": "^1.101.0",
     "node": ">=18.0.0"
   },
   "categories": [
