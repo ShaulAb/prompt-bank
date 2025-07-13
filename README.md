@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=ShaulAbergil.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/ShaulAb.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ShaulAbergil.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/ShaulAbergil.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ShaulAb/prompt-bank?style=for-the-badge&color=green" alt="License"></a>
 </p>
 
@@ -32,6 +32,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Modern & Usable Editor**: Create and edit prompts in a clean, two-column webview editor with a dynamic dropdown for selecting or creating categories on the fly.
 - **Full Context Menu Support**: Right-click on any prompt or category in the tree view to access all actions: Edit, Insert, Delete, Duplicate, and Rename Category.
 - **Inline Actions**: Use the convenient inline icons in the tree view to insert or delete prompts with a single click.
+- **Share & Import Prompts**: Easily share your prompts with others via a public link and import prompts shared by other users.
 - **Usage Tracking**: Prompts are automatically sorted by usage, so your most frequently used templates are always at the top.
 - **Project-Specific & Global Storage**: Keep prompts specific to a project within its `.vscode` directory or store them globally to access them across all your projects.
 - **Centralized & Reliable**: All core logic for prompt insertion and category management is centralized, ensuring consistent behavior and data integrity.
@@ -46,10 +47,14 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 2.  **Insert a Prompt**:
     - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click it.
     - **With a Shortcut**: Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac) and select a prompt from the list.
-    - **Via Search**: Open the Command Palette (`Ctrl+Shift+P`), run "Prompt Bank: Search Prompts," and select from the results.
+    - **Via Search**: Open the Command Palette (`Ctrl+Shift+P`), run "Prompt Bank: List All Prompts", and type to filter the results.
 
 3.  **Manage Prompts**:
     - Right-click any item in the tree view to access all management options.
+
+4.  **Import a Prompt**:
+    - Open the Command Palette (`Ctrl+Shift+P`), run "Prompt Bank: Import Prompt".
+    - Paste the share link into the input box and press Enter.
 
 ## 🔧 Commands & Keybindings
 
@@ -57,9 +62,9 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
 | `promptBank.savePrompt`    | `Ctrl+Shift+S` | Save the current selection as a new prompt.                       |
 | `promptBank.insertPrompt`  | `Ctrl+Shift+I` | Show a list of prompts to insert.                                 |
-| `promptBank.searchPrompts` | -              | Search across all fields of your prompts.                         |
+| `promptBank.importPrompt`  | -              | Import a prompt from a share link.                                |
 | `promptBank.refreshTree`   | -              | Manually refresh the sidebar tree view.                           |
-| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Delete`, `Copy Content`, `Rename Category`, `Duplicate`. |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Delete`, `Copy Content`, `Rename Category`, `Duplicate`, `Share`. |
 
 ## 📁 Storage
 
