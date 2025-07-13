@@ -217,7 +217,7 @@
     "@typescript-eslint/eslint-plugin": "^6.18.0",
     "@typescript-eslint/parser": "^6.18.0",
     "@vscode/test-electron": "^2.3.0",
-    "@vscode/vsce": "^2.22.0",
+    "@vscode/vsce": "^2.32.0",
     "esbuild": "^0.19.12",
     "eslint": "^8.56.0",
     "husky": "^8.0.0",
@@ -227,6 +227,5 @@
     "tsx": "^4.7.0",
     "typescript": "^5.8.3",
     "vitest": "^1.1.0"
-  },
-  "dependencies": {}
+  }
 }
