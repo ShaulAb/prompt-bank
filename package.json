@@ -58,8 +58,8 @@
       },
       {
         "command": "promptBank.insertPromptFromTree",
-        "title": "Insert Prompt",
-        "icon": "$(insert)",
+        "title": "Copy Prompt",
+        "icon": "$(copy)",
         "commandPalette": false
       },
       {
@@ -125,9 +125,14 @@
       ],
       "view/item/context": [
         {
+          "command": "promptBank.deletePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "group": "inline@1"
+        },
+        {
           "command": "promptBank.insertPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == prompt",
-          "group": "inline"
+          "group": "inline@2"
         },
         {
           "command": "promptBank.editPromptFromTree",
@@ -138,11 +143,6 @@
           "command": "promptBank.copyPromptContent",
           "when": "view == promptBank.promptsView && viewItem == prompt",
           "group": "1_modification@2"
-        },
-        {
-          "command": "promptBank.deletePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
-          "group": "inline"
         },
         {
           "command": "promptBank.renameCategory",
