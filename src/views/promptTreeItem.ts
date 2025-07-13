@@ -69,10 +69,6 @@ export class PromptTreeItem extends BaseTreeItem {
   private buildDescription(): string {
     const parts: string[] = [];
     
-    if (this.prompt.metadata.usageCount > 0) {
-      parts.push(`${this.prompt.metadata.usageCount}x`);
-    }
-    
     if (this.prompt.tags.length > 0) {
       parts.push(`#${this.prompt.tags[0]}`);
     }
