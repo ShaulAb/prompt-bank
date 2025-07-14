@@ -107,6 +107,11 @@
         "command": "promptBank.importPrompt",
         "title": "⬇️ Import Prompt",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.shareCollection",
+        "title": "Share Collection",
+        "category": "Prompt Bank"
       }
     ],
     "menus": {
@@ -127,42 +132,47 @@
       "view/item/context": [
         {
           "command": "promptBank.deletePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "inline@1"
         },
         {
           "command": "promptBank.insertPromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "inline@2"
         },
         {
           "command": "promptBank.editPromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@1"
         },
         {
           "command": "promptBank.copyPromptContent",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@2"
         },
         {
           "command": "promptBank.renameCategory",
-          "when": "view == promptBank.promptsView && viewItem == category",
+          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@1"
         },
         {
           "command": "promptBank.deleteCategory",
-          "when": "view == promptBank.promptsView && viewItem == category",
+          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "2_danger@1"
         },
         {
           "command": "promptBank.duplicatePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@3"
         },
         {
           "command": "promptBank.sharePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == prompt",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+          "group": "1_modification@0"
+        },
+        {
+          "command": "promptBank.shareCollection",
+          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@0"
         }
       ]

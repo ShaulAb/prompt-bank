@@ -25,7 +25,7 @@ export class CategoryTreeItem extends BaseTreeItem {
     super(`${category} (${promptCount})`, vscode.TreeItemCollapsibleState.Expanded);
     
     this.tooltip = `Category: ${category} - ${promptCount} prompts`;
-    this.contextValue = 'category';
+    this.contextValue = 'promptBankCategory';
     this.iconPath = new vscode.ThemeIcon('folder');
   }
 }
@@ -41,7 +41,7 @@ export class PromptTreeItem extends BaseTreeItem {
     
     this.tooltip = this.buildTooltip();
     this.description = this.buildDescription();
-    this.contextValue = 'prompt';
+    this.contextValue = 'promptBankPrompt';
     this.iconPath = new vscode.ThemeIcon('file-text');
     // Inline actions are contributed via package.json (group "inline").
   }

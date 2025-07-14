@@ -5,7 +5,7 @@ import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { CategoryTreeItem, PromptTreeItem } from '../views/promptTreeItem';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 import { AuthService } from '../services/authService';
-import { createShare } from '../services/shareService';
+import { createShare, createShareMulti } from '../services/shareService';
 
 /**
  * Context menu commands for tree view items
@@ -57,6 +57,11 @@ export class ContextMenuCommands {
       (item: CategoryTreeItem) => this.deleteCategory(item)
     );
 
+    const shareCollectionCommand = vscode.commands.registerCommand(
+      'promptBank.shareCollection',
+      (item: CategoryTreeItem) => this.shareCollection(item)
+    );
+
     context.subscriptions.push(
       editPromptCommand,
       copyContentCommand,
@@ -65,7 +70,7 @@ export class ContextMenuCommands {
       renameCategoryCommand,
       deleteCategoryCommand,
       sharePromptCommand,
-      // sharePromptsCommand removed (registered globally elsewhere)
+      shareCollectionCommand
     );
   }
 
@@ -166,6 +171,35 @@ export class ContextMenuCommands {
       vscode.window.showInformationMessage('Share link copied to clipboard! Expires in 24h.');
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to share prompt: ${error}`);
+    }
+  }
+
+  /**
+   * Share an entire collection of prompts and copy link to clipboard
+   */
+  private async shareCollection(item: CategoryTreeItem): Promise<void> {
+    const categoryName = item.category;
+
+    try {
+      // Ensure user signed in
+      const accessToken = await AuthService.get().getValidAccessToken();
+      if (!accessToken) {
+        vscode.window.showErrorMessage('You must be signed in with GitHub to share collections.');
+        return;
+      }
+
+      const promptsToShare = await this.promptService.listPrompts({ category: categoryName });
+
+      if (promptsToShare.length === 0) {
+        vscode.window.showInformationMessage(`Category "${categoryName}" has no prompts to share.`);
+        return;
+      }
+
+      const shareResult = await createShareMulti(promptsToShare, accessToken);
+      await vscode.env.clipboard.writeText(shareResult.url);
+      vscode.window.showInformationMessage(`Collection "${categoryName}" shared! Link copied to clipboard!`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to share collection: ${error}`);
     }
   }
 

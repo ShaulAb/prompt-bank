@@ -178,13 +178,37 @@ export function registerCommands(
           return;
         }
 
-        const promptData = await fetchShare(parsed.id);
+        const sharedData = await fetchShare(parsed.id);
 
-        const saved = await promptService.importPrompt(promptData);
-        treeProvider.refresh();
-        vscode.window.showInformationMessage(`Imported prompt "${saved.title}"`);
+        if (Array.isArray(sharedData)) {
+          // It's a collection of prompts
+          const totalPrompts = sharedData.length;
+          const uniqueCategories = new Set(sharedData.map(p => p.category)).size;
+
+          const confirmationMessage = `You are about to import ${uniqueCategories} categories with a total of ${totalPrompts} prompts. Do you want to proceed?`;
+          const confirmation = await vscode.window.showInformationMessage(
+            confirmationMessage,
+            { modal: true },
+            'Import'
+          );
+
+          if (confirmation !== 'Import') {
+            vscode.window.showInformationMessage('Collection import cancelled.');
+            return;
+          }
+
+          const importedCategoryNames = await promptService.importCollection(sharedData);
+          treeProvider.refresh();
+          vscode.window.showInformationMessage(`Imported collection(s): "${importedCategoryNames.join(', ')}"`);
+
+        } else {
+          // It's a single prompt
+          const saved = await promptService.importPrompt(sharedData);
+          treeProvider.refresh();
+          vscode.window.showInformationMessage(`Imported prompt "${saved.title}"`);
+        }
       } catch (err) {
-        vscode.window.showErrorMessage(`Failed to import prompt: ${err}`);
+        vscode.window.showErrorMessage(`Failed to import: ${err}`);
       }
     }
   );
