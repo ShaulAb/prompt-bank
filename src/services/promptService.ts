@@ -3,6 +3,8 @@ import * as path from 'path';
 import { Prompt, createPrompt } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
+import { createShare, createShareMulti } from './shareService';
+import { AuthService } from './authService';
 
 /**
  * Core prompt service that handles business logic
@@ -252,15 +254,15 @@ export class PromptService {
 
     // Create a new prompt object using createPrompt to ensure new id & metadata
     const newTitle = `${original.title} (Copy)`;
-    const duplicate = createPrompt(newTitle, original.content, original.category, [...original.tags]);
-
-    // Preserve optional fields
-    if (original.description) duplicate.description = original.description;
+    const duplicate = createPrompt(newTitle, original.content, original.category, [...original.tags], original.description);
 
     // Place duplicate at end of its category
     const promptsInCategory = await this.storage.list({ category: original.category });
     const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
     duplicate.order = maxOrder + 1;
+    duplicate.metadata.usageCount = 0; // Reset usage count for imported prompts
+    duplicate.metadata.created = new Date();
+    duplicate.metadata.modified = new Date();
 
     await this.storage.save(duplicate);
     return duplicate;
@@ -315,19 +317,140 @@ export class PromptService {
     }
 
     // Create a new prompt using the (possibly modified) title
-    const imported = createPrompt(newTitle, original.content, original.category);
-    if (original.description) {
-      imported.description = original.description;
-    }
+    const imported = createPrompt(newTitle, original.content, original.category, original.tags, original.description);
     imported.tags = [...new Set(original.tags)]; // de-duplicate tags
 
     // Place at end of its category
     const maxOrder = promptsInCategory.reduce((max, p) =>
       p.order !== undefined ? Math.max(max, p.order) : max, -1);
     imported.order = maxOrder + 1;
+    imported.metadata.usageCount = 0; // Reset usage count for imported prompts
+    imported.metadata.created = new Date();
+    imported.metadata.modified = new Date();
 
     await this.storage.save(imported);
     return imported;
+  }
+
+  /**
+   * Import multiple prompts as a new collection
+   * Returns the names of the categories that were created
+   */
+  async importCollection(prompts: Prompt[]): Promise<string[]> {
+    await this.ensureInitialized();
+
+    const importedCategories: Set<string> = new Set();
+    const categoryNameMap: Map<string, string> = new Map(); // To map original category name to new unique name
+
+    for (const originalPrompt of prompts) {
+      let newCategoryName: string;
+
+      // Determine the unique category name for this imported prompt
+      if (categoryNameMap.has(originalPrompt.category)) {
+        newCategoryName = categoryNameMap.get(originalPrompt.category)!;
+      } else {
+        // If it's the first prompt from this original category, generate a unique name
+        let candidateCategoryName = originalPrompt.category;
+        let counter = 1;
+        // Ensure the new category name is unique within the existing prompt bank
+        let categoryExists = (await this.getCategoryNames()).includes(candidateCategoryName);
+
+        while (categoryExists) {
+          candidateCategoryName = `${originalPrompt.category} - Imported${counter > 1 ? ` (${counter})` : ''}`;
+          categoryExists = (await this.getCategoryNames()).includes(candidateCategoryName);
+          counter++;
+        }
+        newCategoryName = candidateCategoryName;
+        categoryNameMap.set(originalPrompt.category, newCategoryName);
+      }
+
+      const newPrompt = createPrompt(
+        originalPrompt.title,
+        originalPrompt.content,
+        newCategoryName,
+        originalPrompt.tags,
+        originalPrompt.description
+      );
+
+      // Reset usage count and dates for newly imported prompts
+      newPrompt.metadata.usageCount = 0;
+      newPrompt.metadata.created = new Date();
+      newPrompt.metadata.modified = new Date();
+
+      // Preserve original order if present, otherwise storage.save will assign it
+      // This is crucial for maintaining relative order within the imported collection
+      if (originalPrompt.order !== undefined) {
+        newPrompt.order = originalPrompt.order;
+      }
+
+      await this.storage.save(newPrompt);
+      importedCategories.add(newCategoryName);
+    }
+    return Array.from(importedCategories);
+  }
+
+  /**
+   * Share a collection of prompts.
+   */
+  async shareCollection(categoryToShare?: string): Promise<void> {
+    await this.ensureInitialized();
+
+    let promptsToShare: Prompt[] = [];
+    let selectedCategoryLabel: string;
+
+    if (categoryToShare) {
+      promptsToShare = await this.storage.list({ category: categoryToShare });
+      selectedCategoryLabel = categoryToShare;
+    } else {
+      const allCategories = await this.storage.getAllCategories();
+      if (allCategories.length === 0) {
+        vscode.window.showInformationMessage('No categories to share');
+        return;
+      }
+
+      const quickPickItems: vscode.QuickPickItem[] = allCategories.map(category => ({
+        label: category,
+        description: 'Category',
+      }));
+
+      quickPickItems.unshift({
+        label: 'All Categories',
+        description: 'Share all prompts across all categories',
+        alwaysShow: true,
+      });
+
+      const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
+        placeHolder: 'Select categories to share',
+        ignoreFocusOut: true,
+      });
+
+      if (!selectedItem) {
+        vscode.window.showInformationMessage('Share collection cancelled.');
+        return;
+      }
+
+      selectedCategoryLabel = selectedItem.label;
+
+      if (selectedItem.label === 'All Categories') {
+        promptsToShare = await this.storage.list({});
+      } else {
+        promptsToShare = await this.storage.list({ category: selectedItem.label as string });
+      }
+    }
+
+    if (promptsToShare.length === 0) {
+      vscode.window.showInformationMessage(`No prompts found in ${selectedCategoryLabel}.`);
+      return;
+    }
+
+    const accessToken = await AuthService.get().getValidAccessToken();
+    if (!accessToken) {
+      vscode.window.showErrorMessage('You must be logged in to share collections.');
+      return;
+    }
+    const shareResult = await createShareMulti(promptsToShare, accessToken);
+    vscode.env.clipboard.writeText(shareResult.url);
+    vscode.window.showInformationMessage('Collection share link copied to clipboard! Expires in 24h.');
   }
 
   // Private helper methods
@@ -386,6 +509,11 @@ export class PromptService {
     }
 
     return selected.label;
+  }
+
+  private async getCategoryNames(): Promise<string[]> {
+    const prompts = await this.storage.list();
+    return [...new Set(prompts.map(p => p.category))];
   }
 
   private detectProjectType(fileName: string): string | undefined {
