@@ -66,13 +66,11 @@
       {
         "command": "promptBank.editPromptFromTree",
         "title": "Edit Prompt",
-        "icon": "$(edit)",
         "commandPalette": false
       },
       {
         "command": "promptBank.copyPromptContent",
         "title": "Copy Content",
-        "icon": "$(copy)",
         "commandPalette": false
       },
       {
@@ -84,19 +82,16 @@
       {
         "command": "promptBank.renameCategory",
         "title": "Rename Category",
-        "icon": "$(edit)",
         "commandPalette": false
       },
       {
         "command": "promptBank.deleteCategory",
         "title": "Delete Category",
-        "icon": "$(trash)",
         "commandPalette": false
       },
       {
         "command": "promptBank.duplicatePromptFromTree",
         "title": "Duplicate Prompt",
-        "icon": "$(copy)",
         "commandPalette": false
       },
       {
@@ -105,7 +100,7 @@
       },
       {
         "command": "promptBank.importPrompt",
-        "title": "⬇️ Import Prompt",
+        "title": "⬇️ Import Prompt / Collection",
         "category": "Prompt Bank"
       },
       {
