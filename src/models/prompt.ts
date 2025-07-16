@@ -88,9 +88,10 @@ export function createPrompt(
   title: string,
   content: string,
   category: string = 'General',
-  tags: string[] = []
+  tags: string[] = [],
+  description?: string // Add description as an optional parameter
 ): Prompt {
-  return {
+  const newPrompt: Prompt = {
     id: generateId(),
     title,
     content,
@@ -103,6 +104,12 @@ export function createPrompt(
       usageCount: 0
     }
   };
+
+  if (description !== undefined) {
+    newPrompt.description = description;
+  }
+
+  return newPrompt;
 }
 
 /**
