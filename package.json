@@ -107,6 +107,11 @@
         "command": "promptBank.shareCollection",
         "title": "Share Collection",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.shareCollectionFromTree",
+        "title": "Share Category",
+        "commandPalette": false
       }
     ],
     "menus": {
@@ -166,7 +171,7 @@
           "group": "1_modification@0"
         },
         {
-          "command": "promptBank.shareCollection",
+          "command": "promptBank.shareCollectionFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@0"
         }

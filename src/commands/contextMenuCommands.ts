@@ -58,7 +58,7 @@ export class ContextMenuCommands {
     );
 
     const shareCollectionCommand = vscode.commands.registerCommand(
-      'promptBank.shareCollection',
+      'promptBank.shareCollectionFromTree',
       (item: CategoryTreeItem) => this.shareCollection(item)
     );
 
@@ -175,29 +175,13 @@ export class ContextMenuCommands {
   }
 
   /**
-   * Share an entire collection of prompts and copy link to clipboard
+   * Share an entire collection of prompts from the context menu
    */
   private async shareCollection(item: CategoryTreeItem): Promise<void> {
     const categoryName = item.category;
-
     try {
-      // Ensure user signed in
-      const accessToken = await AuthService.get().getValidAccessToken();
-      if (!accessToken) {
-        vscode.window.showErrorMessage('You must be signed in with GitHub to share collections.');
-        return;
-      }
-
-      const promptsToShare = await this.promptService.listPrompts({ category: categoryName });
-
-      if (promptsToShare.length === 0) {
-        vscode.window.showInformationMessage(`Category "${categoryName}" has no prompts to share.`);
-        return;
-      }
-
-      const shareResult = await createShareMulti(promptsToShare, accessToken);
-      await vscode.env.clipboard.writeText(shareResult.url);
-      vscode.window.showInformationMessage(`Collection "${categoryName}" shared! Link copied to clipboard!`);
+      // Call the centralized promptService method with the specific category
+      await this.promptService.shareCollection(categoryName);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to share collection: ${error}`);
     }
