@@ -21,12 +21,14 @@ export class AuthService implements vscode.UriHandler {
 
   /** Output channel for verbose logging */
   private readonly debug = vscode.window.createOutputChannel('Prompt Bank Auth');
+  private verboseLoggingEnabled: boolean;
 
   private constructor(private context: vscode.ExtensionContext, publisher: string, extensionName: string) {
     const cfg = vscode.workspace.getConfiguration('promptBank');
     this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
     this.publisher = publisher;
     this.extensionName = extensionName;
+    this.verboseLoggingEnabled = cfg.get<boolean>('verboseAuthLogging', false);
   }
 
   /**
@@ -67,7 +69,9 @@ export class AuthService implements vscode.UriHandler {
    */
   public async handleUri(uri: vscode.Uri): Promise<void> {
     // Provide verbose diagnostics to aid troubleshooting
-    this.debug.appendLine(`[AuthService] handleUri invoked with: ${uri.toString()}`);
+    if (this.verboseLoggingEnabled) {
+      this.debug.appendLine(`[AuthService] handleUri invoked with: ${uri.toString()}`);
+    }
     try {
       // Supabase implicit flow returns parameters in the URL fragment (#...),
       // whereas VS Code's deep-link handler exposes the fragment via uri.fragment.
@@ -84,8 +88,10 @@ export class AuthService implements vscode.UriHandler {
       this.token = accessToken;
       this.expiresAt = Date.now() + Number(expiresIn) * 1000;
 
-      this.debug.appendLine(`[AuthService] Received access_token of length ${accessToken.length}`);
-      this.debug.appendLine(`[AuthService] Expires in: ${expiresIn}s (epoch ms ${this.expiresAt})`);
+      if (this.verboseLoggingEnabled) {
+        this.debug.appendLine(`[AuthService] Received access_token of length ${accessToken.length}`);
+        this.debug.appendLine(`[AuthService] Expires in: ${expiresIn}s (epoch ms ${this.expiresAt})`);
+      }
 
       await this.context.secrets.store(this.TOKEN_KEY, this.token);
       await this.context.secrets.store(this.EXPIRY_KEY, this.expiresAt.toString());
