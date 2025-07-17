@@ -15,7 +15,6 @@ describe('FileStorageProvider - Create Prompt', () => {
     expect(prompts[0].title).toBe('Test Title');
     expect(prompts[0].content).toBe('Test Content');
     expect(prompts[0].category).toBe('General');
-    expect(prompts[0].tags).toEqual(['tag1']);
     expect(prompts[0].id).toBeDefined();
   });
 

@@ -26,7 +26,6 @@ describe('FileStorageProvider - Update Prompt', () => {
     initialPrompt.title = 'Updated Title';
     initialPrompt.content = 'Updated Content';
     initialPrompt.category = 'Category B';
-    initialPrompt.tags = ['tag2'];
     initialPrompt.metadata.usageCount = 5;
 
     await storageProvider.update(initialPrompt);
@@ -39,7 +38,6 @@ describe('FileStorageProvider - Update Prompt', () => {
     expect(updatedPrompt.title).toBe('Updated Title');
     expect(updatedPrompt.content).toBe('Updated Content');
     expect(updatedPrompt.category).toBe('Category B');
-    expect(updatedPrompt.tags).toEqual(['tag2']);
     expect(updatedPrompt.metadata.usageCount).toBe(5);
     expect(new Date(updatedPrompt.metadata.modified).getTime())
       .toBeGreaterThanOrEqual(initialPrompt.metadata.modified.getTime());

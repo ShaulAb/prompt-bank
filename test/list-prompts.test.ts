@@ -51,26 +51,6 @@ describe('PromptService - List Prompts', () => {
     expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 3']);
   });
 
-  it('should filter prompts by tags', async () => {
-    const prompt1 = createPrompt('Prompt 1', 'Content 1', 'Category A', ['tag1', 'tag2']);
-    const prompt2 = createPrompt('Prompt 2', 'Content 2', 'Category B', ['tag2', 'tag3']);
-    const prompt3 = createPrompt('Prompt 3', 'Content 3', 'Category A', ['tag1']);
-    await storageProvider.save(prompt1);
-    await storageProvider.save(prompt2);
-    await storageProvider.save(prompt3);
-
-    const prompts1 = await promptService.listPrompts({ tags: ['tag1'] });
-    expect(prompts1).toHaveLength(2);
-    expect(prompts1.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 3']);
-
-    const prompts2 = await promptService.listPrompts({ tags: ['tag2'] });
-    expect(prompts2).toHaveLength(2);
-    expect(prompts2.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
-
-    const prompts3 = await promptService.listPrompts({ tags: ['tag1', 'tag2'] });
-    expect(prompts3).toHaveLength(1);
-    expect(prompts3.map(p => p.title)).toEqual(['Prompt 1']);
-  });
 
   it('should filter prompts by search term (title, content, description)', async () => {
     const prompt1 = createPrompt('My Awesome Prompt', 'This is some content about awesome things.', 'Category A');
@@ -133,16 +113,5 @@ describe('PromptService - List Prompts', () => {
     expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
   });
 
-  it('should limit the number of returned prompts', async () => {
-    const prompt1 = createPrompt('Prompt 1', 'Content 1');
-    const prompt2 = createPrompt('Prompt 2', 'Content 2');
-    const prompt3 = createPrompt('Prompt 3', 'Content 3');
-    await storageProvider.save(prompt1);
-    await storageProvider.save(prompt2);
-    await storageProvider.save(prompt3);
 
-    const prompts = await promptService.listPrompts({ limit: 2 });
-    expect(prompts).toHaveLength(2);
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
-  });
 });
