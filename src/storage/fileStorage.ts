@@ -13,15 +13,19 @@ export class FileStorageProvider implements IStorageProvider {
   private storagePath: string;
   private isInitialized = false;
   
-  constructor(private config?: Partial<StorageConfig>) {
-    // Store in workspace .vscode folder if workspace exists, otherwise in global location
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    
-    if (workspaceFolder) {
-      this.storagePath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'prompt-bank');
+  constructor(config?: Partial<StorageConfig>) {
+    if (config?.storagePath) {
+      this.storagePath = config.storagePath;
     } else {
-      // Use VS Code's global storage path as fallback
-      this.storagePath = path.join(os.homedir(), '.vscode-prompt-bank');
+      // Store in workspace .vscode folder if workspace exists, otherwise in global location
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      
+      if (workspaceFolder) {
+        this.storagePath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'prompt-bank');
+      } else {
+        // Use VS Code's global storage path as fallback
+        this.storagePath = path.join(os.homedir(), '.vscode-prompt-bank');
+      }
     }
   }
   
@@ -111,6 +115,7 @@ export class FileStorageProvider implements IStorageProvider {
       
       // Sort results
       if (filter.sortBy) {
+        const effectiveSortOrder = filter.sortOrder || 'desc'; // Default to 'desc' if not specified
         prompts.sort((a, b) => {
           let aVal: any, bVal: any;
           
@@ -136,7 +141,7 @@ export class FileStorageProvider implements IStorageProvider {
           }
           
           const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-          return filter.sortOrder === 'desc' ? -comparison : comparison;
+          return effectiveSortOrder === 'desc' ? -comparison : comparison;
         });
       }
       
@@ -227,7 +232,7 @@ export class FileStorageProvider implements IStorageProvider {
     }
   }
   
-  private async loadAllPrompts(): Promise<Prompt[]> {
+  public async loadAllPrompts(): Promise<Prompt[]> {
     const promptsFile = path.join(this.storagePath, 'prompts.json');
     
     try {
