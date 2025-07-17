@@ -1,246 +1,247 @@
 {
-  "name": "prompt-bank",
-  "displayName": "Prompt Bank",
-  "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-  "version": "0.5.4",
-  "icon": "assets/logo.png",
-  "publisher": "prestissimo",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ShaulAb/prompt-bank"
-  },
-  "engines": {
-    "vscode": "^1.99.0",
-    "node": ">=18.0.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "keywords": [
-    "prompts",
-    "snippets",
-    "productivity",
-    "ai",
-    "templates"
-  ],
-  "main": "./dist/extension.js",
-  "contributes": {
-    "views": {
-      "explorer": [
-        {
-          "id": "promptBank.promptsView",
-          "name": "Prompt Bank",
-          "icon": "logo.svg",
-          "when": "true"
-        }
-      ]
+    "name": "prompt-bank",
+    "displayName": "Prompt Bank",
+    "description": "Save and manage your frequent prompts for AI assistants and development workflows",
+    "version": "0.5.4",
+    "icon": "assets/logo.png",
+    "publisher": "prestissimo",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ShaulAb/prompt-bank"
     },
-    "commands": [
-      {
-        "command": "promptBank.savePrompt",
-        "title": "💾 Save Current Selection as Prompt",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.insertPrompt",
-        "title": "💬 Insert Prompt",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.listPrompts",
-        "title": "💬 List All Prompts",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.refreshTreeView",
-        "title": "Refresh Prompts",
-        "icon": "$(refresh)",
-        "commandPalette": true
-      },
-      {
-        "command": "promptBank.insertPromptFromTree",
-        "title": "Copy Prompt",
-        "icon": "$(copy)",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.editPromptFromTree",
-        "title": "Edit Prompt",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.copyPromptContent",
-        "title": "Copy Content",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.deletePromptFromTree",
-        "title": "Delete Prompt",
-        "icon": "$(trash)",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.renameCategory",
-        "title": "Rename Category",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.deleteCategory",
-        "title": "Delete Category",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.duplicatePromptFromTree",
-        "title": "Duplicate Prompt",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.sharePromptFromTree",
-        "title": "Share Prompt"
-      },
-      {
-        "command": "promptBank.importPrompt",
-        "title": "⬇️ Import Prompt / Collection",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.shareCollection",
-        "title": "Share Collection",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.shareCollectionFromTree",
-        "title": "Share Category",
-        "commandPalette": false
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "promptBank.refreshTreeView",
-          "when": "view == promptBank.promptsView",
-          "group": "navigation@0"
-        }
-      ],
-      "view/title/context": [
-        {
-          "command": "promptBank.refreshTreeView",
-          "when": "view == promptBank.promptsView",
-          "group": "refresh"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "promptBank.deletePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "inline@1"
-        },
-        {
-          "command": "promptBank.insertPromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "inline@2"
-        },
-        {
-          "command": "promptBank.editPromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@1"
-        },
-        {
-          "command": "promptBank.copyPromptContent",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@2"
-        },
-        {
-          "command": "promptBank.renameCategory",
-          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
-          "group": "1_modification@1"
-        },
-        {
-          "command": "promptBank.deleteCategory",
-          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
-          "group": "2_danger@1"
-        },
-        {
-          "command": "promptBank.duplicatePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@3"
-        },
-        {
-          "command": "promptBank.sharePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@0"
-        },
-        {
-          "command": "promptBank.shareCollectionFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
-          "group": "1_modification@0"
-        }
-      ]
+    "engines": {
+        "vscode": "^1.99.0",
+        "node": ">=18.0.0"
     },
-    "keybindings": [
-      {
-        "command": "promptBank.savePrompt",
-        "key": "ctrl+shift+s",
-        "mac": "cmd+shift+s",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "promptBank.insertPrompt",
-        "key": "ctrl+shift+i",
-        "mac": "cmd+shift+i"
-      }
+    "categories": [
+        "Other"
     ],
-    "configuration": {
-      "title": "Prompt Bank",
-      "properties": {
-        "promptBank.supabaseUrl": {
-          "type": "string",
-          "default": "https://xlqtowactrzmslpkzliq.supabase.co",
-          "description": "Supabase project base URL used for authentication and sharing"
+    "keywords": [
+        "prompts",
+        "snippets",
+        "productivity",
+        "ai",
+        "templates"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "views": {
+            "explorer": [
+                {
+                    "id": "promptBank.promptsView",
+                    "name": "Prompt Bank",
+                    "icon": "logo.svg",
+                    "when": "true"
+                }
+            ]
         },
-        "promptBank.publicShareBase": {
-          "type": "string",
-          "default": "https://prestissimo.ai/share/",
-          "description": "Base URL used to construct public share links"
+        "commands": [
+            {
+                "command": "promptBank.savePrompt",
+                "title": "💾 Save Current Selection as Prompt",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.insertPrompt",
+                "title": "💬 Insert Prompt",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.listPrompts",
+                "title": "💬 List All Prompts",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.refreshTreeView",
+                "title": "Refresh Prompts",
+                "icon": "$(refresh)",
+                "commandPalette": true
+            },
+            {
+                "command": "promptBank.insertPromptFromTree",
+                "title": "Copy Prompt",
+                "icon": "$(copy)",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.editPromptFromTree",
+                "title": "Edit Prompt",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.copyPromptContent",
+                "title": "Copy Content",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.deletePromptFromTree",
+                "title": "Delete Prompt",
+                "icon": "$(trash)",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.renameCategory",
+                "title": "Rename Category",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.deleteCategory",
+                "title": "Delete Category",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.duplicatePromptFromTree",
+                "title": "Duplicate Prompt",
+                "commandPalette": false
+            },
+            {
+                "command": "promptBank.sharePromptFromTree",
+                "title": "Share Prompt"
+            },
+            {
+                "command": "promptBank.importPrompt",
+                "title": "⬇️ Import Prompt / Collection",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.shareCollection",
+                "title": "Share Collection",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.shareCollectionFromTree",
+                "title": "Share Category",
+                "commandPalette": false
+            }
+        ],
+        "menus": {
+            "view/title": [
+                {
+                    "command": "promptBank.refreshTreeView",
+                    "when": "view == promptBank.promptsView",
+                    "group": "navigation@0"
+                }
+            ],
+            "view/title/context": [
+                {
+                    "command": "promptBank.refreshTreeView",
+                    "when": "view == promptBank.promptsView",
+                    "group": "refresh"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "promptBank.deletePromptFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "promptBank.insertPromptFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "promptBank.editPromptFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "1_modification@1"
+                },
+                {
+                    "command": "promptBank.copyPromptContent",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "1_modification@2"
+                },
+                {
+                    "command": "promptBank.renameCategory",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
+                    "group": "1_modification@1"
+                },
+                {
+                    "command": "promptBank.deleteCategory",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
+                    "group": "2_danger@1"
+                },
+                {
+                    "command": "promptBank.duplicatePromptFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "1_modification@3"
+                },
+                {
+                    "command": "promptBank.sharePromptFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+                    "group": "1_modification@0"
+                },
+                {
+                    "command": "promptBank.shareCollectionFromTree",
+                    "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
+                    "group": "1_modification@0"
+                }
+            ]
         },
-        "promptBank.verboseAuthLogging": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show verbose authentication logs automatically when the OAuth callback is received"
+        "keybindings": [
+            {
+                "command": "promptBank.savePrompt",
+                "key": "ctrl+shift+s",
+                "mac": "cmd+shift+s",
+                "when": "editorHasSelection"
+            },
+            {
+                "command": "promptBank.insertPrompt",
+                "key": "ctrl+shift+i",
+                "mac": "cmd+shift+i"
+            }
+        ],
+        "configuration": {
+            "title": "Prompt Bank",
+            "properties": {
+                "promptBank.supabaseUrl": {
+                    "type": "string",
+                    "default": "https://xlqtowactrzmslpkzliq.supabase.co",
+                    "description": "Supabase project base URL used for authentication and sharing"
+                },
+                "promptBank.publicShareBase": {
+                    "type": "string",
+                    "default": "https://prestissimo.ai/share/",
+                    "description": "Base URL used to construct public share links"
+                },
+                "promptBank.verboseAuthLogging": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show verbose authentication logs automatically when the OAuth callback is received"
+                }
+            }
         }
-      }
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "scripts": {
+        "dev": "nodemon --exec tsx src/extension.ts",
+        "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
+        "build:watch": "npm run build -- --watch --sourcemap",
+        "build:dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap",
+        "test": "vitest --config vitest.config.ts",
+        "test:ui": "vitest --config vitest.config.ts --ui",
+        "lint": "eslint src --ext ts",
+        "format": "prettier --write src",
+        "package": "vsce package",
+        "deploy": "vsce publish"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "@types/vscode": "^1.99.0",
+        "@typescript-eslint/eslint-plugin": "^6.18.0",
+        "@typescript-eslint/parser": "^6.18.0",
+        "@vitest/ui": "^3.2.4",
+        "@vscode/test-electron": "^2.3.0",
+        "@vscode/vsce": "^2.32.0",
+        "esbuild": "^0.19.12",
+        "eslint": "^8.56.0",
+        "husky": "^8.0.0",
+        "lint-staged": "^15.2.0",
+        "nodemon": "^3.0.0",
+        "prettier": "^3.1.0",
+        "tsx": "^4.7.0",
+        "typescript": "^5.8.3",
+        "vitest": "^3.2.4"
     }
-  },
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "scripts": {
-    "dev": "nodemon --exec tsx src/extension.ts",
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
-    "build:watch": "npm run build -- --watch --sourcemap",
-    "build:dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap",
-    "test": "vitest --config vitest.config.ts",
-    "test:ui": "vitest --ui",
-    "lint": "eslint src --ext ts",
-    "format": "prettier --write src",
-    "package": "vsce package",
-    "deploy": "vsce publish"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.0",
-    "@types/vscode": "^1.99.0",
-    "@typescript-eslint/eslint-plugin": "^6.18.0",
-    "@typescript-eslint/parser": "^6.18.0",
-    "@vscode/test-electron": "^2.3.0",
-    "@vscode/vsce": "^2.32.0",
-    "esbuild": "^0.19.12",
-    "eslint": "^8.56.0",
-    "husky": "^8.0.0",
-    "lint-staged": "^15.2.0",
-    "nodemon": "^3.0.0",
-    "prettier": "^3.1.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.8.3",
-    "vitest": "^1.1.0"
-  }
 }
