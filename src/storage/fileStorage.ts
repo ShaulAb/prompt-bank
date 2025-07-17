@@ -13,7 +13,7 @@ export class FileStorageProvider implements IStorageProvider {
   private storagePath: string;
   private isInitialized = false;
   
-  constructor(private config?: Partial<StorageConfig>) {
+  constructor(config?: Partial<StorageConfig>) {
     if (config?.storagePath) {
       this.storagePath = config.storagePath;
     } else {
