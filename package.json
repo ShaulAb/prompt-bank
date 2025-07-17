@@ -219,7 +219,7 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
     "build:watch": "npm run build -- --watch --sourcemap",
     "build:dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap",
-    "test": "vitest",
+    "test": "vitest --config vitest.config.ts",
     "test:ui": "vitest --ui",
     "lint": "eslint src --ext ts",
     "format": "prettier --write src",
