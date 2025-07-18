@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Prompt, createPrompt } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
-import { createShare, createShareMulti } from './shareService';
+import { createShareMulti } from './shareService';
 import { AuthService } from './authService';
 
 /**
@@ -62,7 +62,7 @@ export class PromptService {
           return 'Title must be less than 100 characters';
         }
         return null;
-      }
+      },
     });
 
     if (!title) {
@@ -71,7 +71,7 @@ export class PromptService {
 
     const description = await vscode.window.showInputBox({
       prompt: 'Enter a description (optional)',
-      placeHolder: 'Describe what this prompt is used for...'
+      placeHolder: 'Describe what this prompt is used for...',
     });
 
     const category = await this.selectCategory();
@@ -88,7 +88,10 @@ export class PromptService {
 
     // Assign order: place at end of category
     const promptsInCategory = (await this.storage.list({ category: categoryName })) || [];
-    const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    const maxOrder = promptsInCategory.reduce(
+      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+      -1
+    );
     prompt.order = maxOrder + 1;
 
     // Add file context for future smart suggestions
@@ -98,7 +101,7 @@ export class PromptService {
       prompt.metadata.context = {
         fileExtension: path.extname(document.fileName).slice(1),
         language: document.languageId,
-        projectType: projectType!
+        projectType: projectType!,
       };
     }
 
@@ -120,7 +123,7 @@ export class PromptService {
 
     const prompts = await this.storage.list({
       sortBy: 'modified',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
     });
 
     if (prompts.length === 0) {
@@ -129,17 +132,17 @@ export class PromptService {
     }
 
     // Create quick pick items
-    const items = prompts.map(prompt => ({
+    const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: prompt.category,
       detail: prompt.description || prompt.content.substring(0, 100) + '...',
-      prompt
+      prompt,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       placeHolder: 'Select a prompt to insert',
       matchOnDescription: true,
-      matchOnDetail: true
+      matchOnDetail: true,
     });
 
     if (!selected) {
@@ -176,7 +179,7 @@ export class PromptService {
 
     const prompts = await this.storage.list({
       sortBy: 'title',
-      sortOrder: 'asc'
+      sortOrder: 'asc',
     });
 
     if (prompts.length === 0) {
@@ -185,17 +188,17 @@ export class PromptService {
     }
 
     // Create quick pick items for deletion
-    const items = prompts.map(prompt => ({
+    const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: `${prompt.category} • Used ${prompt.metadata.usageCount} times`,
       detail: prompt.description || prompt.content.substring(0, 100) + '...',
-      prompt
+      prompt,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       placeHolder: 'Select a prompt to delete',
       matchOnDescription: true,
-      matchOnDetail: true
+      matchOnDetail: true,
     });
 
     if (!selected) {
@@ -231,7 +234,10 @@ export class PromptService {
     // Ensure order is set if missing
     if (prompt.order === undefined) {
       const promptsInCategory = (await this.storage.list({ category: prompt.category })) || [];
-      const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+      const maxOrder = promptsInCategory.reduce(
+        (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+        -1
+      );
       prompt.order = maxOrder + 1;
     }
     await this.storage.update(prompt);
@@ -254,11 +260,20 @@ export class PromptService {
 
     // Create a new prompt object using createPrompt to ensure new id & metadata
     const newTitle = `${original.title} (Copy)`;
-    const duplicate = createPrompt(newTitle, original.content, original.category, [...original.tags], original.description);
+    const duplicate = createPrompt(
+      newTitle,
+      original.content,
+      original.category,
+      [...original.tags],
+      original.description
+    );
 
     // Place duplicate at end of its category
     const promptsInCategory = await this.storage.list({ category: original.category });
-    const maxOrder = promptsInCategory.reduce((max, p) => p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    const maxOrder = promptsInCategory.reduce(
+      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+      -1
+    );
     duplicate.order = maxOrder + 1;
     duplicate.metadata.usageCount = 0; // Reset usage count for imported prompts
     duplicate.metadata.created = new Date();
@@ -304,12 +319,14 @@ export class PromptService {
     let newTitle = original.title;
     const promptsInCategory = (await this.storage.list({ category: original.category })) || [];
 
-    const isExactDuplicate = promptsInCategory.some(p => p.title === original.title && p.content === original.content);
+    const isExactDuplicate = promptsInCategory.some(
+      (p) => p.title === original.title && p.content === original.content
+    );
     if (isExactDuplicate) {
       // Generate an available suffix: "<title> (imported)", "<title> (imported 2)", etc.
       let attempt = 1;
       let candidateTitle = `${original.title} (imported)`;
-      while (promptsInCategory.some(p => p.title === candidateTitle)) {
+      while (promptsInCategory.some((p) => p.title === candidateTitle)) {
         attempt += 1;
         candidateTitle = `${original.title} (imported ${attempt})`;
       }
@@ -317,12 +334,20 @@ export class PromptService {
     }
 
     // Create a new prompt using the (possibly modified) title
-    const imported = createPrompt(newTitle, original.content, original.category, original.tags, original.description);
+    const imported = createPrompt(
+      newTitle,
+      original.content,
+      original.category,
+      original.tags,
+      original.description
+    );
     imported.tags = [...new Set(original.tags)]; // de-duplicate tags
 
     // Place at end of its category
-    const maxOrder = promptsInCategory.reduce((max, p) =>
-      p.order !== undefined ? Math.max(max, p.order) : max, -1);
+    const maxOrder = promptsInCategory.reduce(
+      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+      -1
+    );
     imported.order = maxOrder + 1;
     imported.metadata.usageCount = 0; // Reset usage count for imported prompts
     imported.metadata.created = new Date();
@@ -408,7 +433,7 @@ export class PromptService {
         return;
       }
 
-      const quickPickItems: vscode.QuickPickItem[] = allCategories.map(category => ({
+      const quickPickItems: vscode.QuickPickItem[] = allCategories.map((category) => ({
         label: category,
         description: 'Category',
       }));
@@ -450,7 +475,9 @@ export class PromptService {
     }
     const shareResult = await createShareMulti(promptsToShare, accessToken);
     vscode.env.clipboard.writeText(shareResult.url);
-    vscode.window.showInformationMessage('Collection share link copied to clipboard! Expires in 24h.');
+    vscode.window.showInformationMessage(
+      'Collection share link copied to clipboard! Expires in 24h.'
+    );
   }
 
   // Private helper methods
@@ -464,26 +491,21 @@ export class PromptService {
   private async selectCategory(): Promise<string | null> {
     // Get existing categories from saved prompts
     const prompts = await this.storage.list();
-    const existingCategories = [...new Set(prompts.map(p => p.category))];
+    const existingCategories = [...new Set(prompts.map((p) => p.category))];
 
-    const predefinedCategories = [
-      'General',
-      'Architecture',
-      'UI/UX',
-      'Testing',
-    ];
+    const predefinedCategories = ['General', 'Architecture', 'UI/UX', 'Testing'];
 
     // Combine and deduplicate categories
     const allCategories = [...new Set([...predefinedCategories, ...existingCategories])];
 
     const items = [
-      ...allCategories.map(cat => ({ label: cat, description: 'Existing category' })),
-      { label: '$(plus) Create New Category', description: 'Create a new category' }
+      ...allCategories.map((cat) => ({ label: cat, description: 'Existing category' })),
+      { label: '$(plus) Create New Category', description: 'Create a new category' },
     ];
 
     const selected = await vscode.window.showQuickPick(items, {
       placeHolder: 'Select or create a category',
-      matchOnDescription: false
+      matchOnDescription: false,
     });
 
     if (!selected) {
@@ -503,7 +525,7 @@ export class PromptService {
             return 'Category name must be less than 50 characters';
           }
           return null;
-        }
+        },
       });
       return newCategory?.trim() || null;
     }
@@ -513,17 +535,18 @@ export class PromptService {
 
   private async getCategoryNames(): Promise<string[]> {
     const prompts = await this.storage.list();
-    return [...new Set(prompts.map(p => p.category))];
+    return [...new Set(prompts.map((p) => p.category))];
   }
 
   private detectProjectType(fileName: string): string | undefined {
     // Simple project type detection based on file patterns
     if (fileName.includes('package.json')) return 'Node.js';
     if (fileName.includes('Cargo.toml')) return 'Rust';
-    if (fileName.includes('requirements.txt') || fileName.includes('pyproject.toml')) return 'Python';
+    if (fileName.includes('requirements.txt') || fileName.includes('pyproject.toml'))
+      return 'Python';
     if (fileName.includes('pom.xml') || fileName.includes('build.gradle')) return 'Java';
     if (fileName.includes('Gemfile')) return 'Ruby';
-    
+
     return undefined;
   }
 
@@ -538,7 +561,7 @@ export class PromptService {
       return 0;
     }
     // Update category and modified timestamp in memory
-    prompts.forEach(prompt => {
+    prompts.forEach((prompt) => {
       prompt.category = newName;
       prompt.metadata.modified = new Date();
     });
@@ -551,4 +574,4 @@ export class PromptService {
 }
 
 // Export singleton instance
-export const promptService = new PromptService(); 
+export const promptService = new PromptService();

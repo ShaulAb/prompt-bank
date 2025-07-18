@@ -4,28 +4,28 @@
 export interface Prompt {
   /** Unique identifier for the prompt */
   id: string;
-  
+
   /** Human-readable title for the prompt */
   title: string;
-  
+
   /** The actual prompt content */
   content: string;
-  
+
   /** Optional description explaining the prompt's purpose */
   description?: string;
-  
+
   /** Category for organization (e.g., "Code Review", "Documentation") */
   category: string;
-  
+
   /** Order of the prompt within its category (for drag & drop) */
   order?: number;
-  
+
   /** Tags for flexible filtering and search */
   tags: string[];
-  
+
   /** Template variables found in the content (e.g., {{filename}}) */
   variables: TemplateVariable[];
-  
+
   /** Metadata for analytics and future features */
   metadata: PromptMetadata;
 }
@@ -36,13 +36,13 @@ export interface Prompt {
 export interface TemplateVariable {
   /** Variable name (without braces) */
   name: string;
-  
+
   /** Variable type for validation and UI hints */
   type: 'text' | 'filename' | 'selection' | 'language' | 'custom';
-  
+
   /** Optional default value */
   defaultValue?: string;
-  
+
   /** Human-readable description */
   description?: string;
 }
@@ -53,16 +53,16 @@ export interface TemplateVariable {
 export interface PromptMetadata {
   /** When the prompt was created */
   created: Date;
-  
+
   /** When the prompt was last modified */
   modified: Date;
-  
+
   /** How many times the prompt has been used */
   usageCount: number;
-  
+
   /** Last time the prompt was used */
   lastUsed?: Date;
-  
+
   /** File context where prompt was created (future: smart suggestions) */
   context?: FileContext;
 }
@@ -73,10 +73,10 @@ export interface PromptMetadata {
 export interface FileContext {
   /** File extension (e.g., "ts", "py", "md") */
   fileExtension: string;
-  
+
   /** Programming language detected */
   language: string;
-  
+
   /** Project type if detectable */
   projectType?: string | undefined;
 }
@@ -101,8 +101,8 @@ export function createPrompt(
     metadata: {
       created: new Date(),
       modified: new Date(),
-      usageCount: 0
-    }
+      usageCount: 0,
+    },
   };
 
   if (description !== undefined) {
@@ -119,7 +119,7 @@ export function extractVariables(content: string): TemplateVariable[] {
   const variableRegex = /\{\{(\w+)\}\}/g;
   const variables: TemplateVariable[] = [];
   const found = new Set<string>();
-  
+
   let match;
   while ((match = variableRegex.exec(content)) !== null) {
     const varName = match[1];
@@ -128,11 +128,11 @@ export function extractVariables(content: string): TemplateVariable[] {
       variables.push({
         name: varName,
         type: getVariableType(varName),
-        description: getVariableDescription(varName)
+        description: getVariableDescription(varName),
       });
     }
   }
-  
+
   return variables;
 }
 
@@ -141,7 +141,7 @@ export function extractVariables(content: string): TemplateVariable[] {
  */
 function getVariableType(name: string): TemplateVariable['type'] {
   const lowerName = name.toLowerCase();
-  
+
   if (lowerName.includes('file') || lowerName.includes('name')) {
     return 'filename';
   }
@@ -151,7 +151,7 @@ function getVariableType(name: string): TemplateVariable['type'] {
   if (lowerName.includes('lang')) {
     return 'language';
   }
-  
+
   return 'text';
 }
 
@@ -163,9 +163,9 @@ function getVariableDescription(name: string): string {
     filename: 'Current file name',
     selectedText: 'Currently selected text',
     language: 'Current file language',
-    projectName: 'Current project name'
+    projectName: 'Current project name',
   };
-  
+
   return descriptions[name] || `Variable: ${name}`;
 }
 
@@ -184,4 +184,4 @@ export interface Category {
   name: string;
   /** Order of the category (for drag & drop) */
   order: number;
-} 
+}

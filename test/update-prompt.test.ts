@@ -1,21 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { createPrompt } from '../src/models/prompt';
-import { mockWorkspacePath } from './test-setup';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 describe('FileStorageProvider - Update Prompt', () => {
   let storageProvider: FileStorageProvider;
+  let testStorageDir: string;
 
   beforeEach(async () => {
-    storageProvider = new FileStorageProvider({ storagePath: path.join(mockWorkspacePath, '.vscode', 'prompt-bank') });
+    // Create a unique test directory for each test
+    testStorageDir = path.join(os.tmpdir(), `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
     await storageProvider.initialize();
   });
 
   afterEach(async () => {
     // Clean up the storage directory after each test
-    await fs.rm(path.join(mockWorkspacePath, '.vscode', 'prompt-bank'), { recursive: true, force: true }).catch(() => {});
+    await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
   });
 
   it('should update an existing prompt', async () => {

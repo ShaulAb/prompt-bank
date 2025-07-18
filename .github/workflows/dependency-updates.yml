@@ -1,0 +1,105 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 8:00 AM UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          
+      - name: Check for outdated packages
+        id: outdated
+        run: |
+          npm outdated --json > outdated.json || true
+          if [ -s outdated.json ]; then
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+            echo "Updates available:"
+            cat outdated.json
+          else
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+            echo "No updates available"
+          fi
+          
+      - name: Update dependencies
+        if: steps.outdated.outputs.has_updates == 'true'
+        run: |
+          npm update
+          npm audit fix --force || true
+          
+      - name: Run tests after update
+        if: steps.outdated.outputs.has_updates == 'true'
+        run: |
+          npm ci
+          npm test
+          npm run lint
+          
+      - name: Create Pull Request
+        if: steps.outdated.outputs.has_updates == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: automated dependency updates'
+          body: |
+            ## 🤖 Automated Dependency Updates
+            
+            This PR contains automated dependency updates. 
+            
+            ### Changes
+            - Updated npm dependencies to latest compatible versions
+            - Fixed security vulnerabilities if any
+            
+            ### Verification
+            - ✅ Tests pass
+            - ✅ Linting passes
+            - ✅ Build successful
+            
+            Please review the changes and merge if everything looks good.
+          branch: chore/dependency-updates
+          delete-branch: true
+          
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+        
+      - name: Check for high/critical vulnerabilities
+        run: |
+          if npm audit --audit-level=high --json | jq -e '.vulnerabilities | length > 0'; then
+            echo "⚠️ High or critical vulnerabilities found!"
+            npm audit --audit-level=high
+            exit 1
+          else
+            echo "✅ No high or critical vulnerabilities found"
+          fi

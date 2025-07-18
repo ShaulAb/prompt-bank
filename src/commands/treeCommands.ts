@@ -49,4 +49,4 @@ export class TreeCommands {
     await this.promptService.insertPromptById(prompt);
     this.treeProvider.refresh();
   }
-} 
+}

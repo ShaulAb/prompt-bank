@@ -25,33 +25,33 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialise authentication service and register URI handler
     const authService = AuthService.initialize(context, publisher, extensionName);
     context.subscriptions.push(vscode.window.registerUriHandler(authService));
-    
+
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);
     const dndController = new PromptDragAndDropController(treeProvider, promptService);
     const treeView = vscode.window.createTreeView('promptBank.promptsView', {
       treeDataProvider: treeProvider,
       dragAndDropController: dndController,
-      showCollapseAll: true
+      showCollapseAll: true,
     });
-    
+
     // Register tree commands
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
-    
+
     // Register context menu commands
     const contextMenuCommands = new ContextMenuCommands(promptService, treeProvider);
     contextMenuCommands.registerCommands(context);
-    
+
     // Register all other commands
     registerCommands(context, treeProvider);
-    
+
     // Refresh tree when prompts change
     context.subscriptions.push(treeView);
-    
+
     // Show activation message
     vscode.window.showInformationMessage('Prompt Bank is ready! 🚀');
-    
+
     console.log('Prompt Bank extension activated successfully');
   } catch (error) {
     console.error('Failed to activate Prompt Bank extension:', error);
@@ -65,4 +65,4 @@ export async function activate(context: vscode.ExtensionContext) {
  */
 export function deactivate() {
   console.log('Prompt Bank extension deactivated');
-} 
+}
