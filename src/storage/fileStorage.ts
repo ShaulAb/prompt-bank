@@ -101,10 +101,6 @@ export class FileStorageProvider implements IStorageProvider {
         prompts = prompts.filter((p) => p.category === filter.category);
       }
 
-      if (filter.tags && filter.tags.length > 0) {
-        prompts = prompts.filter((p) => filter.tags!.every((tag) => p.tags.includes(tag)));
-      }
-
       if (filter.search) {
         const searchLower = filter.search.toLowerCase();
         prompts = prompts.filter(
@@ -145,11 +141,6 @@ export class FileStorageProvider implements IStorageProvider {
           const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
           return effectiveSortOrder === 'desc' ? -comparison : comparison;
         });
-      }
-
-      // Apply limit
-      if (filter.limit && filter.limit > 0) {
-        prompts = prompts.slice(0, filter.limit);
       }
     }
 

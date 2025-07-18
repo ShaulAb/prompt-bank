@@ -55,10 +55,6 @@ export class PromptTreeItem extends BaseTreeItem {
       lines.push(`Description: ${this.prompt.description}`);
     }
 
-    if (this.prompt.tags.length > 0) {
-      lines.push(`Tags: ${this.prompt.tags.join(', ')}`);
-    }
-
     lines.push(
       `Content: ${this.prompt.content.substring(0, 100)}${this.prompt.content.length > 100 ? '...' : ''}`
     );
@@ -68,10 +64,6 @@ export class PromptTreeItem extends BaseTreeItem {
 
   private buildDescription(): string {
     const parts: string[] = [];
-
-    if (this.prompt.tags.length > 0) {
-      parts.push(`#${this.prompt.tags[0]}`);
-    }
 
     return parts.join(' ');
   }

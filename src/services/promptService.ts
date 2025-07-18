@@ -264,7 +264,6 @@ export class PromptService {
       newTitle,
       original.content,
       original.category,
-      [...original.tags],
       original.description
     );
 
@@ -338,10 +337,8 @@ export class PromptService {
       newTitle,
       original.content,
       original.category,
-      original.tags,
       original.description
     );
-    imported.tags = [...new Set(original.tags)]; // de-duplicate tags
 
     // Place at end of its category
     const maxOrder = promptsInCategory.reduce(
@@ -393,7 +390,6 @@ export class PromptService {
         originalPrompt.title,
         originalPrompt.content,
         newCategoryName,
-        originalPrompt.tags,
         originalPrompt.description
       );
 

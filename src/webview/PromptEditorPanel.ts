@@ -124,7 +124,6 @@ export class PromptEditorPanel {
         title: data.title.trim(),
         content: data.content,
         category: data.category.trim(),
-        tags: this.promptData.tags,
         metadata: {
           ...this.promptData.metadata,
           modified: new Date(),
