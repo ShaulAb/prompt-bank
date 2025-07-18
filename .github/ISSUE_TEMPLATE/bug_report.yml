@@ -9,7 +9,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        Thanks for taking the time to fill out this bug report
 
   - type: input
     id: contact
@@ -37,8 +37,6 @@ body:
       options:
         - 0.5.4 (Current)
         - 0.5.3
-        - 0.5.2
-        - Other (please specify in description)
     validations:
       required: true
 
@@ -71,7 +69,7 @@ body:
     id: steps
     attributes:
       label: Steps to Reproduce
-      description: Please provide detailed steps to reproduce the issue
+      description: Please provide steps to reproduce the issue
       placeholder: |
         1. Go to '...'
         2. Click on '....'
@@ -86,12 +84,3 @@ body:
       label: Relevant log output
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
       render: shell
-
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com)
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true
