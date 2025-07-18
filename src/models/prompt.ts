@@ -20,8 +20,7 @@ export interface Prompt {
   /** Order of the prompt within its category (for drag & drop) */
   order?: number;
 
-  /** Tags for flexible filtering and search */
-  tags: string[];
+
 
   /** Template variables found in the content (e.g., {{filename}}) */
   variables: TemplateVariable[];
@@ -88,7 +87,6 @@ export function createPrompt(
   title: string,
   content: string,
   category: string = 'General',
-  tags: string[] = [],
   description?: string // Add description as an optional parameter
 ): Prompt {
   const newPrompt: Prompt = {
@@ -96,7 +94,6 @@ export function createPrompt(
     title,
     content,
     category,
-    tags,
     variables: extractVariables(content),
     metadata: {
       created: new Date(),

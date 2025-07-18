@@ -58,8 +58,7 @@ export interface PromptFilter {
   /** Filter by category */
   category?: string;
 
-  /** Filter by tags (must contain all specified tags) */
-  tags?: string[];
+
 
   /** Search in title and content */
   search?: string;
