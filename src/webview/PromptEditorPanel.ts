@@ -31,7 +31,7 @@ export class PromptEditorPanel {
     this.categories = categories;
 
     // Set the webview's HTML content
-    this.panel.webview.html = this.getHtmlForWebview(this.panel.webview);
+    this.panel.webview.html = this.getHtmlForWebview();
 
     // Handle messages from the webview
     this.panel.webview.onDidReceiveMessage(
@@ -96,7 +96,7 @@ export class PromptEditorPanel {
     );
   }
 
-  private getHtmlForWebview(webview: vscode.Webview): string {
+  private getHtmlForWebview(): string {
     const htmlPath = path.join(this.extensionUri.fsPath, 'media', 'promptEditorLit.html');
     let html = fs.readFileSync(htmlPath, 'utf-8');
     const promptJson = this.promptData ? JSON.stringify(this.promptData) : 'null';

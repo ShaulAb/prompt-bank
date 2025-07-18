@@ -215,7 +215,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
     private promptService: import('../services/promptService').PromptService
   ) {}
 
-  public handleDrag?(source: readonly TreeItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): void | Thenable<void> {
+  public handleDrag?(source: readonly TreeItem[], dataTransfer: vscode.DataTransfer): void | Thenable<void> {
     // Only allow dragging one item at a time for now
     const item = source[0];
     if (!item) return;
@@ -225,7 +225,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       dataTransfer.set('application/vnd.code.tree.promptBank.promptsView', new vscode.DataTransferItem(JSON.stringify({ type: 'prompt', id: item.prompt.id })));
     }
   }
-  public async handleDrop(target: TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+  public async handleDrop(target: TreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
     const raw = dataTransfer.get('application/vnd.code.tree.promptBank.promptsView');
     if (!raw) return;
     let dragged;
