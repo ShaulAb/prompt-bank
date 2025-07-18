@@ -7,10 +7,9 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 Our CI/CD pipeline consists of multiple workflows that ensure code quality, run tests, and automate releases:
 
 1. **Main CI Workflow** (`ci.yml`) - Core testing and validation
-2. **Release Workflow** (`release.yml`) - Automated publishing
-3. **Code Quality Workflow** (`code-quality.yml`) - Additional quality checks
-4. **Dependency Updates** (`dependency-updates.yml`) - Automated dependency management
-5. **Dependabot** (`dependabot.yml`) - Security updates and dependency management
+2. **Code Quality Workflow** (`code-quality.yml`) - Additional quality checks
+3. **Dependency Updates** (`dependency-updates.yml`) - Automated dependency management
+4. **Dependabot** (`dependabot.yml`) - Security updates and dependency management
 
 ## 🔄 Workflows
 
@@ -26,33 +25,7 @@ Our CI/CD pipeline consists of multiple workflows that ensure code quality, run 
 - Runs VS Code compatibility tests
 - Uploads build artifacts
 
-**Badge:** Add this to your README.md:
-```markdown
-[![CI](https://github.com/ShaulAb/prompt-bank/actions/workflows/ci.yml/badge.svg)](https://github.com/ShaulAb/prompt-bank/actions/workflows/ci.yml)
-```
-
-### 2. Release (`release.yml`)
-
-**Triggers:** Push tags matching `v*` (e.g., `v1.0.0`)
-
-**What it does:**
-- Runs full test suite
-- Builds and packages extension
-- Creates GitHub release with release notes
-- Uploads `.vsix` file to release
-- Publishes to VS Code Marketplace
-
-**Required Secrets:**
-- `VSCE_PAT`: Personal Access Token for VS Code Marketplace
-
-**How to trigger a release:**
-```bash
-# Create and push a version tag
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-### 3. Code Quality (`code-quality.yml`)
+### 2. Code Quality (`code-quality.yml`)
 
 **Triggers:** Push to `main`/`develop`, Pull Requests to `main`/`develop`
 
@@ -65,7 +38,7 @@ git push origin v1.0.0
 - Dependency usage analysis
 - Performance measurements
 
-### 4. Dependency Updates (`dependency-updates.yml`)
+### 3. Dependency Updates (`dependency-updates.yml`)
 
 **Triggers:** Weekly schedule (Mondays 8:00 AM UTC), Manual trigger
 
@@ -76,7 +49,7 @@ git push origin v1.0.0
 - Creates Pull Request with changes
 - Performs security audit
 
-### 5. Dependabot (`dependabot.yml`)
+### 4. Dependabot (`dependabot.yml`)
 
 **What it does:**
 - Automatically opens PRs for dependency updates
@@ -84,40 +57,15 @@ git push origin v1.0.0
 - Runs weekly on Mondays
 - Automatically assigns to maintainers
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-1. **GitHub Secrets Setup:**
-   - `VSCE_PAT`: Get from [Azure DevOps](https://dev.azure.com/) for VS Code Marketplace publishing
-
-2. **Repository Settings:**
-   - Enable GitHub Actions in repository settings
-   - Set up branch protection rules for `main` branch
-   - Require status checks to pass before merging
-
-### Setting up VS Code Marketplace Publishing
-
-1. Create a Personal Access Token:
-   - Go to [Azure DevOps](https://dev.azure.com/)
-   - Create new organization (if needed)
-   - Go to User Settings > Personal Access Tokens
-   - Create token with `Marketplace (manage)` scope
-
-2. Add token to GitHub Secrets:
-   - Go to Repository Settings > Secrets and variables > Actions
-   - Add new secret named `VSCE_PAT`
-   - Paste your Azure DevOps PAT
-
 ## 📊 Quality Gates
 
 All PRs must pass these quality gates:
 
-✅ **Tests** - All tests must pass
-✅ **Linting** - Code must pass ESLint rules
-✅ **Type Checking** - TypeScript compilation must succeed
-✅ **Formatting** - Code must be formatted with Prettier
-✅ **Build** - Extension must build successfully
+✅ **Tests** - All tests must pass  
+✅ **Linting** - Code must pass ESLint rules  
+✅ **Type Checking** - TypeScript compilation must succeed  
+✅ **Formatting** - Code must be formatted with Prettier   
+✅ **Build** - Extension must build successfully  
 ✅ **Security** - No high/critical security vulnerabilities
 
 ## 🛠️ Local Development
@@ -166,68 +114,3 @@ Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-b
 - Security audits run automatically
 - Address high/critical vulnerabilities immediately
 - Review Dependabot security updates
-
-## 🔧 Customization
-
-### Adding New Workflows
-1. Create new `.yml` file in `.github/workflows/`
-2. Define triggers and jobs
-3. Test with pull request
-
-### Modifying Existing Workflows
-1. Edit the relevant `.yml` file
-2. Test changes in a feature branch
-3. Ensure all quality gates pass
-
-### Environment-Specific Configuration
-- Use GitHub Environments for staging/production
-- Set up environment-specific secrets
-- Configure deployment protection rules
-
-## 📋 Troubleshooting
-
-### Common Issues
-
-**Tests failing in CI but passing locally:**
-- Check Node.js version compatibility
-- Verify all dependencies are in `package.json`
-- Check for environment-specific paths
-
-**Release workflow failing:**
-- Verify `VSCE_PAT` secret is configured
-- Check marketplace permissions
-- Ensure version in `package.json` is updated
-
-**Dependency update PRs failing:**
-- Review breaking changes in dependencies
-- Update test configurations if needed
-- Check TypeScript compatibility
-
-### Getting Help
-- Check workflow logs in GitHub Actions
-- Review error messages and stack traces
-- Open an issue with the `ci/cd` label
-
-## 📝 Best Practices
-
-1. **Version Management:**
-   - Use semantic versioning
-   - Update CHANGELOG.md with releases
-   - Test releases in staging environment
-
-2. **Code Quality:**
-   - Write tests for new features
-   - Maintain test coverage above 80%
-   - Address linting warnings promptly
-
-3. **Security:**
-   - Review dependency updates carefully
-   - Keep secrets secure and rotated
-   - Monitor for security advisories
-
-4. **Performance:**
-   - Monitor bundle size growth
-   - Profile extension startup time
-   - Optimize build performance
-
-This CI/CD setup ensures high code quality, automated testing, and reliable releases for the Prompt Bank extension.
