@@ -142,11 +142,6 @@ export class FileStorageProvider implements IStorageProvider {
           return effectiveSortOrder === 'desc' ? -comparison : comparison;
         });
       }
-
-      // Apply limit
-      if (filter.limit && filter.limit > 0) {
-        prompts = prompts.slice(0, filter.limit);
-      }
     }
 
     return prompts;
