@@ -7,7 +7,7 @@ describe('FileStorageProvider - Create Prompt', () => {
     const storage = new FileStorageProvider();
     await storage.initialize();
 
-    const prompt = createPrompt('Test Title', 'Test Content', 'General', ['tag1']);
+    const prompt = createPrompt('Test Title', 'Test Content', 'General');
     await storage.save(prompt);
 
     const prompts = await storage.loadAllPrompts();

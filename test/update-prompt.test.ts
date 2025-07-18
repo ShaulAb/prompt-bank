@@ -22,7 +22,7 @@ describe('FileStorageProvider - Update Prompt', () => {
   });
 
   it('should update an existing prompt', async () => {
-    const initialPrompt = createPrompt('Original Title', 'Original Content', 'Category A', ['tag1']);
+    const initialPrompt = createPrompt('Original Title', 'Original Content', 'Category A');
     await storageProvider.save(initialPrompt);
 
     // Modify values
