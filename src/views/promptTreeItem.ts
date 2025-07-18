@@ -55,8 +55,6 @@ export class PromptTreeItem extends BaseTreeItem {
       lines.push(`Description: ${this.prompt.description}`);
     }
 
-
-
     lines.push(
       `Content: ${this.prompt.content.substring(0, 100)}${this.prompt.content.length > 100 ? '...' : ''}`
     );
@@ -66,8 +64,6 @@ export class PromptTreeItem extends BaseTreeItem {
 
   private buildDescription(): string {
     const parts: string[] = [];
-
-
 
     return parts.join(' ');
   }

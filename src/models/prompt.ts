@@ -20,8 +20,6 @@ export interface Prompt {
   /** Order of the prompt within its category (for drag & drop) */
   order?: number;
 
-
-
   /** Template variables found in the content (e.g., {{filename}}) */
   variables: TemplateVariable[];
 

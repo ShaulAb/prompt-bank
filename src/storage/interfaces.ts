@@ -58,8 +58,6 @@ export interface PromptFilter {
   /** Filter by category */
   category?: string;
 
-
-
   /** Search in title and content */
   search?: string;
 
