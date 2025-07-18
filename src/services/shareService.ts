@@ -30,7 +30,12 @@ export function parseShareUrl(raw: string): { id: string } | null {
       return { id: parts[1] };
     }
 
-    if (parts.length === 4 && parts[0] === 'functions' && parts[1] === 'v1' && parts[2] === 'get-share') {
+    if (
+      parts.length === 4 &&
+      parts[0] === 'functions' &&
+      parts[1] === 'v1' &&
+      parts[2] === 'get-share'
+    ) {
       return { id: parts[3] };
     }
   } catch {
@@ -87,7 +92,10 @@ export async function createShare(prompt: Prompt, accessToken: string): Promise<
   return { url: `${PUBLIC_VIEW_BASE}${id}`, expiresAt: new Date(expiresAt) };
 }
 
-export async function createShareMulti(prompts: Prompt[], accessToken: string): Promise<ShareResult> {
+export async function createShareMulti(
+  prompts: Prompt[],
+  accessToken: string
+): Promise<ShareResult> {
   // Encode the array of prompts as base64 (UTF-8)
   const payload = Buffer.from(JSON.stringify({ prompts }), 'utf8').toString('base64');
 
@@ -112,4 +120,4 @@ export async function createShareMulti(prompts: Prompt[], accessToken: string): 
   }
 
   return { url: `${PUBLIC_VIEW_BASE}${id}`, expiresAt: new Date(expiresAt) };
-} 
+}

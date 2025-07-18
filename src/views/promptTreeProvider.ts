@@ -8,8 +8,10 @@ import { TreeItem, CategoryTreeItem, PromptTreeItem, EmptyStateTreeItem } from '
  * Supports inline editing for category renaming
  */
 export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined | null | void> = new vscode.EventEmitter<TreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined | null | void> =
+    new vscode.EventEmitter<TreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<TreeItem | undefined | null | void> =
+    this._onDidChangeTreeData.event;
 
   constructor(private promptService: PromptService) {}
 
@@ -51,7 +53,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   private async getCategoryItems(): Promise<CategoryTreeItem[] | [EmptyStateTreeItem]> {
     try {
       const prompts = await this.promptService.listPrompts();
-      
+
       if (prompts.length === 0) {
         // Show empty state item if no prompts exist
         return [new EmptyStateTreeItem()];
@@ -59,7 +61,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
 
       // Group prompts by category
       const categoryMap = new Map<string, number>();
-      prompts.forEach(prompt => {
+      prompts.forEach((prompt) => {
         const count = categoryMap.get(prompt.category) || 0;
         categoryMap.set(prompt.category, count + 1);
       });
@@ -68,17 +70,20 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
       const categories: Category[] = Array.from(categoryMap.keys())
         .map((name, idx) => {
           // Find a prompt in this category with categoryOrder
-          const promptWithOrder = prompts.find(p => p.category === name && (p as any).categoryOrder !== undefined);
+          const promptWithOrder = prompts.find(
+            (p) => p.category === name && (p as any).categoryOrder !== undefined
+          );
           return {
             name,
-            order: promptWithOrder ? (promptWithOrder as any).categoryOrder : idx
+            order: promptWithOrder ? (promptWithOrder as any).categoryOrder : idx,
           };
         })
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 
       // Convert to tree items and sort by order
-      const categoryItems = categories
-        .map(cat => new CategoryTreeItem(cat.name, categoryMap.get(cat.name) || 0, cat.order));
+      const categoryItems = categories.map(
+        (cat) => new CategoryTreeItem(cat.name, categoryMap.get(cat.name) || 0, cat.order)
+      );
 
       // Already sorted by order
       return categoryItems;
@@ -94,7 +99,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   private async getPromptItems(category: string): Promise<PromptTreeItem[]> {
     try {
       const prompts = await this.promptService.listPrompts({
-        category
+        category,
       });
 
       // Sort by order if present, otherwise by title
@@ -107,7 +112,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
         return a.title.localeCompare(b.title);
       });
 
-      return prompts.map(prompt => new PromptTreeItem(prompt));
+      return prompts.map((prompt) => new PromptTreeItem(prompt));
     } catch (error) {
       console.error('Error getting prompt items:', error);
       return [];
@@ -120,7 +125,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   async getPromptById(id: string): Promise<Prompt | undefined> {
     try {
       const prompts = await this.promptService.listPrompts();
-      return prompts.find(p => p.id === id);
+      return prompts.find((p) => p.id === id);
     } catch (error) {
       console.error('Error getting prompt by ID:', error);
       return undefined;
@@ -139,7 +144,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
     try {
       // Get existing categories for validation
       const existingPrompts = await this.promptService.listPrompts();
-      const existingCategories = [...new Set(existingPrompts.map(p => p.category))];
+      const existingCategories = [...new Set(existingPrompts.map((p) => p.category))];
 
       const newCategoryName = await vscode.window.showInputBox({
         title: `Rename Category: ${categoryName}`,
@@ -148,29 +153,29 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
         valueSelection: [0, categoryName.length], // Select all text for easy replacement
         validateInput: (value: string) => {
           const trimmed = value.trim();
-          
+
           // Check if empty
           if (!trimmed) {
             return 'Category name cannot be empty';
           }
-          
+
           // Check if same as current name
           if (trimmed === categoryName) {
             return null; // Allow keeping the same name (no-op)
           }
-          
+
           // Check if already exists
           if (existingCategories.includes(trimmed)) {
             return `Category "${trimmed}" already exists`;
           }
-          
+
           // Check for invalid characters (optional - add your own rules)
           if (trimmed.includes('/') || trimmed.includes('\\')) {
             return 'Category name cannot contain / or \\ characters';
           }
-          
+
           return null; // Valid
-        }
+        },
       });
 
       // User cancelled the input
@@ -179,7 +184,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
       }
 
       const trimmedNewName = newCategoryName.trim();
-      
+
       // No change needed
       if (trimmedNewName === categoryName) {
         return;
@@ -187,15 +192,14 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
 
       // Perform the rename
       await this.promptService.renameCategory(categoryName, trimmedNewName);
-      
+
       // Refresh the tree view
       this.refresh();
-      
+
       // Show success message
       vscode.window.showInformationMessage(
         `Category renamed from "${categoryName}" to "${trimmedNewName}"`
       );
-
     } catch (error) {
       console.error('Error renaming category:', error);
       vscode.window.showErrorMessage(
@@ -215,17 +219,29 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
     private promptService: import('../services/promptService').PromptService
   ) {}
 
-  public handleDrag?(source: readonly TreeItem[], dataTransfer: vscode.DataTransfer): void | Thenable<void> {
+  public handleDrag?(
+    source: readonly TreeItem[],
+    dataTransfer: vscode.DataTransfer
+  ): void | Thenable<void> {
     // Only allow dragging one item at a time for now
     const item = source[0];
     if (!item) return;
     if (item instanceof CategoryTreeItem) {
-      dataTransfer.set('application/vnd.code.tree.promptBank.promptsView', new vscode.DataTransferItem(JSON.stringify({ type: 'category', name: item.category })));
+      dataTransfer.set(
+        'application/vnd.code.tree.promptBank.promptsView',
+        new vscode.DataTransferItem(JSON.stringify({ type: 'category', name: item.category }))
+      );
     } else if (item instanceof PromptTreeItem) {
-      dataTransfer.set('application/vnd.code.tree.promptBank.promptsView', new vscode.DataTransferItem(JSON.stringify({ type: 'prompt', id: item.prompt.id })));
+      dataTransfer.set(
+        'application/vnd.code.tree.promptBank.promptsView',
+        new vscode.DataTransferItem(JSON.stringify({ type: 'prompt', id: item.prompt.id }))
+      );
     }
   }
-  public async handleDrop(target: TreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+  public async handleDrop(
+    target: TreeItem | undefined,
+    dataTransfer: vscode.DataTransfer
+  ): Promise<void> {
     const raw = dataTransfer.get('application/vnd.code.tree.promptBank.promptsView');
     if (!raw) return;
     let dragged;
@@ -242,7 +258,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       const prompts = await this.promptService.listPrompts();
       // Get unique categories with their current order
       const categoryMap = new Map<string, number>();
-      prompts.forEach(p => {
+      prompts.forEach((p) => {
         if (!categoryMap.has(p.category)) {
           categoryMap.set(p.category, p.order ?? 0);
         }
@@ -257,7 +273,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       // Update order for all prompts in each category
       for (let i = 0; i < categories.length; i++) {
         const cat = categories[i];
-        const catPrompts = prompts.filter(p => p.category === cat);
+        const catPrompts = prompts.filter((p) => p.category === cat);
         for (const prompt of catPrompts) {
           prompt.order = prompt.order ?? 0; // fallback
           // Store category order in prompt metadata (or add a new property if needed)
@@ -274,20 +290,20 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       // Only allow drop on CategoryTreeItem or PromptTreeItem
       if (!(target instanceof CategoryTreeItem || target instanceof PromptTreeItem)) return;
       const prompts = await this.promptService.listPrompts();
-      const prompt = prompts.find(p => p.id === dragged.id);
+      const prompt = prompts.find((p) => p.id === dragged.id);
       if (!prompt) return;
       let newCategory = prompt.category;
       let newOrder = 0;
       if (target instanceof CategoryTreeItem) {
         newCategory = target.category;
         // Place at end of target category
-        const catPrompts = prompts.filter(p => p.category === newCategory);
+        const catPrompts = prompts.filter((p) => p.category === newCategory);
         newOrder = catPrompts.length;
       } else if (target instanceof PromptTreeItem) {
         newCategory = target.prompt.category;
         // Place before the target prompt in the same category
-        const catPrompts = prompts.filter(p => p.category === newCategory && p.id !== prompt.id);
-        const targetIdx = catPrompts.findIndex(p => p.id === target.prompt.id);
+        const catPrompts = prompts.filter((p) => p.category === newCategory && p.id !== prompt.id);
+        const targetIdx = catPrompts.findIndex((p) => p.id === target.prompt.id);
         if (targetIdx === -1) return;
         catPrompts.splice(targetIdx, 0, prompt);
         // Reassign order for all prompts in the category
@@ -306,4 +322,4 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
       return;
     }
   }
-} 
+}

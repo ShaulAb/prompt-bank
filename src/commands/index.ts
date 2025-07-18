@@ -182,7 +182,7 @@ export function registerCommands(
         if (Array.isArray(sharedData)) {
           // It's a collection of prompts
           const totalPrompts = sharedData.length;
-          const uniqueCategories = new Set(sharedData.map(p => p.category)).size;
+          const uniqueCategories = new Set(sharedData.map((p) => p.category)).size;
 
           const confirmationMessage = `You are about to import ${uniqueCategories} categories with a total of ${totalPrompts} prompts. Do you want to proceed?`;
           const confirmation = await vscode.window.showInformationMessage(
@@ -198,8 +198,9 @@ export function registerCommands(
 
           const importedCategoryNames = await promptService.importCollection(sharedData);
           treeProvider.refresh();
-          vscode.window.showInformationMessage(`Imported collection(s): "${importedCategoryNames.join(', ')}"`);
-
+          vscode.window.showInformationMessage(
+            `Imported collection(s): "${importedCategoryNames.join(', ')}"`
+          );
         } else {
           // It's a single prompt
           const saved = await promptService.importPrompt(sharedData);

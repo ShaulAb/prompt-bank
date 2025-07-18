@@ -35,7 +35,7 @@ export class PromptEditorPanel {
 
     // Handle messages from the webview
     this.panel.webview.onDidReceiveMessage(
-      async message => {
+      async (message) => {
         switch (message.type) {
           case 'save':
             await this.handleSave(message.data);
@@ -46,11 +46,15 @@ export class PromptEditorPanel {
           case 'newCategory': {
             const newCat = await vscode.window.showInputBox({
               prompt: 'Enter new category name',
-              validateInput: val => val.trim() ? null : 'Name required'
+              validateInput: (val) => (val.trim() ? null : 'Name required'),
             });
             if (newCat) {
               this.categories = [...this.categories, newCat.trim()];
-              this.panel.webview.postMessage({ type: 'categories', data: this.categories, selected: newCat.trim() });
+              this.panel.webview.postMessage({
+                type: 'categories',
+                data: this.categories,
+                selected: newCat.trim(),
+              });
             }
             break;
           }
@@ -74,16 +78,14 @@ export class PromptEditorPanel {
       : undefined;
     // Load existing categories
     const prompts = await promptService.listPrompts();
-    const categories = Array.from(new Set(prompts.map(p => p.category))).sort();
+    const categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
       promptData ? 'Edit Prompt' : 'New Prompt',
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(context.extensionUri, 'media')
-        ]
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')],
       }
     );
     PromptEditorPanel.currentPanel = new PromptEditorPanel(
@@ -125,15 +127,13 @@ export class PromptEditorPanel {
         tags: this.promptData.tags,
         metadata: {
           ...this.promptData.metadata,
-          modified: new Date()
+          modified: new Date(),
         },
-        ...(trimmedDescription !== '' ? { description: trimmedDescription } : {})
+        ...(trimmedDescription !== '' ? { description: trimmedDescription } : {}),
       };
       await this.promptService.editPromptById(updatedPrompt);
       this.treeProvider.refresh();
-      vscode.window.showInformationMessage(
-        `Updated prompt: "${updatedPrompt.title}"`
-      );
+      vscode.window.showInformationMessage(`Updated prompt: "${updatedPrompt.title}"`);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
     } finally {
@@ -149,4 +149,4 @@ export class PromptEditorPanel {
       if (d) d.dispose();
     }
   }
-} 
+}

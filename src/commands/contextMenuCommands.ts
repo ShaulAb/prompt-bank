@@ -81,7 +81,7 @@ export class ContextMenuCommands {
     if (!this.extensionContext) {
       vscode.window.showErrorMessage('Extension context not available.');
       return;
-        }
+    }
     // Open the webview editor panel with the prompt data and categories
     await PromptEditorPanel.show(
       this.extensionContext,
@@ -138,7 +138,7 @@ export class ContextMenuCommands {
     try {
       // Delete the prompt
       const success = await this.promptService.deletePromptById(prompt.id);
-      
+
       if (success) {
         // Refresh the tree
         this.treeProvider.refresh();
@@ -199,40 +199,40 @@ export class ContextMenuCommands {
    */
   private async deleteCategory(item: CategoryTreeItem): Promise<void> {
     const category = item.category;
-    
+
     try {
       // Check if category has prompts
       const promptsInCategory = await this.promptService.listPrompts({ category });
-      
+
       let confirmationMessage = `Are you sure you want to delete the category "${category}"?`;
-      
+
       if (promptsInCategory.length > 0) {
         confirmationMessage = `Are you sure you want to delete the category "${category}" and all ${promptsInCategory.length} prompts in it? This cannot be undone.`;
       }
-      
+
       // Confirm deletion
       const confirmation = await vscode.window.showWarningMessage(
         confirmationMessage,
         { modal: true },
         'Delete'
       );
-      
+
       if (confirmation !== 'Delete') {
         return;
       }
-      
+
       // Delete all prompts in this category
       if (promptsInCategory.length > 0) {
-        const deletePromises = promptsInCategory.map(prompt => 
+        const deletePromises = promptsInCategory.map((prompt) =>
           this.promptService.deletePromptById(prompt.id)
         );
-        
+
         await Promise.all(deletePromises);
       }
-      
+
       // Refresh the tree view
       this.treeProvider.refresh();
-      
+
       if (promptsInCategory.length > 0) {
         vscode.window.showInformationMessage(
           `Deleted category "${category}" and ${promptsInCategory.length} prompts`
@@ -244,4 +244,4 @@ export class ContextMenuCommands {
       vscode.window.showErrorMessage(`Error deleting category: ${error}`);
     }
   }
-} 
+}

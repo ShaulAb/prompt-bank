@@ -23,7 +23,11 @@ export class AuthService implements vscode.UriHandler {
   private readonly debug = vscode.window.createOutputChannel('Prompt Bank Auth');
   private verboseLoggingEnabled: boolean;
 
-  private constructor(private context: vscode.ExtensionContext, publisher: string, extensionName: string) {
+  private constructor(
+    private context: vscode.ExtensionContext,
+    publisher: string,
+    extensionName: string
+  ) {
     const cfg = vscode.workspace.getConfiguration('promptBank');
     this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
     this.publisher = publisher;
@@ -34,7 +38,11 @@ export class AuthService implements vscode.UriHandler {
   /**
    * Initialise the singleton. Must be called once from extension activation.
    */
-  public static initialize(context: vscode.ExtensionContext, publisher: string, extensionName: string): AuthService {
+  public static initialize(
+    context: vscode.ExtensionContext,
+    publisher: string,
+    extensionName: string
+  ): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService(context, publisher, extensionName);
     }
@@ -89,8 +97,12 @@ export class AuthService implements vscode.UriHandler {
       this.expiresAt = Date.now() + Number(expiresIn) * 1000;
 
       if (this.verboseLoggingEnabled) {
-        this.debug.appendLine(`[AuthService] Received access_token of length ${accessToken.length}`);
-        this.debug.appendLine(`[AuthService] Expires in: ${expiresIn}s (epoch ms ${this.expiresAt})`);
+        this.debug.appendLine(
+          `[AuthService] Received access_token of length ${accessToken.length}`
+        );
+        this.debug.appendLine(
+          `[AuthService] Expires in: ${expiresIn}s (epoch ms ${this.expiresAt})`
+        );
       }
 
       await this.context.secrets.store(this.TOKEN_KEY, this.token);
@@ -114,7 +126,7 @@ export class AuthService implements vscode.UriHandler {
 
   private async loadFromSecretStorage(): Promise<void> {
     if (!this.token) {
-      this.token = await this.context.secrets.get(this.TOKEN_KEY) || undefined;
+      this.token = (await this.context.secrets.get(this.TOKEN_KEY)) || undefined;
       const expiryStr = await this.context.secrets.get(this.EXPIRY_KEY);
       this.expiresAt = expiryStr ? Number(expiryStr) : undefined;
     }
@@ -143,7 +155,9 @@ export class AuthService implements vscode.UriHandler {
     });
 
     // Construct vscode:// deep link for redirect
-    const handlerUri = vscode.Uri.parse(`${vscode.env.uriScheme}://${this.publisher}.${this.extensionName}/auth`);
+    const handlerUri = vscode.Uri.parse(
+      `${vscode.env.uriScheme}://${this.publisher}.${this.extensionName}/auth`
+    );
 
     const loginUrl = `${this.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${encodeURIComponent(
       handlerUri.toString()
@@ -164,4 +178,4 @@ export class AuthService implements vscode.UriHandler {
 
     return authPromise;
   }
-} 
+}
