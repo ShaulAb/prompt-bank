@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
-import { Prompt } from '../models/prompt';
 import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { CategoryTreeItem, PromptTreeItem } from '../views/promptTreeItem';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 import { AuthService } from '../services/authService';
-import { createShare, createShareMulti } from '../services/shareService';
+import { createShare } from '../services/shareService';
 
 /**
  * Context menu commands for tree view items

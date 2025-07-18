@@ -2,8 +2,7 @@ import * as vscode from 'vscode';
 import { promptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
-import { AuthService } from '../services/authService';
-import { createShare, parseShareUrl, fetchShare } from '../services/shareService';
+import { parseShareUrl, fetchShare } from '../services/shareService';
 
 /**
  * Register all Prompt Bank commands

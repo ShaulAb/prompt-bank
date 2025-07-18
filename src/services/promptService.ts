@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Prompt, createPrompt } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
-import { createShare, createShareMulti } from './shareService';
+import { createShareMulti } from './shareService';
 import { AuthService } from './authService';
 
 /**
