@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { FileStorageProvider } from '../src/storage/fileStorage';
-import { mockWorkspacePath } from './test-setup';
 
 describe('FileStorageProvider Initialization', () => {
   let storageProvider: FileStorageProvider;
-
   let storageDir: string;
 
   beforeEach(async () => {
-    storageDir = path.join(mockWorkspacePath, '.vscode', 'prompt-bank');
+    // Create a unique test directory for each test
+    storageDir = path.join(os.tmpdir(), `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
     await fs.rm(storageDir, { recursive: true, force: true }).catch(() => {});
     storageProvider = new FileStorageProvider({ storagePath: storageDir });
   });

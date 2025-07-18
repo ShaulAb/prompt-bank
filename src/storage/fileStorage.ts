@@ -229,6 +229,7 @@ export class FileStorageProvider implements IStorageProvider {
   private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
+      this.isInitialized = true;
     }
   }
   
@@ -262,6 +263,9 @@ export class FileStorageProvider implements IStorageProvider {
     const promptsFile = path.join(this.storagePath, 'prompts.json');
     
     try {
+      // Ensure the directory exists before writing
+      await fs.mkdir(this.storagePath, { recursive: true });
+      
       await fs.writeFile(promptsFile, JSON.stringify(prompts, null, 2));
       
       // Update metadata

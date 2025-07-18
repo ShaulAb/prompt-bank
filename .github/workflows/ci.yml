@@ -68,19 +68,5 @@ jobs:
       - name: Build extension
         run: npm run build
         
-      - name: Run VS Code integration tests
-        run: |
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          npm run test 2>&1 | tee test-results.log
-        continue-on-error: true
-        
-      - name: Check test results
-        run: |
-          if grep -q "Test Files.*passed" test-results.log; then
-            echo "✅ All tests passed"
-            exit 0
-          else
-            echo "❌ Tests failed"
-            exit 1
-          fi
+              - name: Run VS Code integration tests
+          run: npm test
