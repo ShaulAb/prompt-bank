@@ -101,10 +101,6 @@ export class FileStorageProvider implements IStorageProvider {
         prompts = prompts.filter((p) => p.category === filter.category);
       }
 
-      if (filter.tags && filter.tags.length > 0) {
-        prompts = prompts.filter((p) => filter.tags!.every((tag) => p.tags.includes(tag)));
-      }
-
       if (filter.search) {
         const searchLower = filter.search.toLowerCase();
         prompts = prompts.filter(
