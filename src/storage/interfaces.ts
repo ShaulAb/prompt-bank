@@ -64,9 +64,6 @@ export interface PromptFilter {
   /** Search in title and content */
   search?: string;
 
-  /** Limit number of results */
-  limit?: number;
-
   /** Sort order */
   sortBy?: 'created' | 'modified' | 'title' | 'usageCount';
 
