@@ -44,6 +44,11 @@ export interface IStorageProvider {
    * Get storage statistics
    */
   getStats(): Promise<StorageStats>;
+
+  /**
+   * Get all categories
+   */
+  getAllCategories(): Promise<string[]>;
 }
 
 /**

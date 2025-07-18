@@ -216,7 +216,12 @@ export class FileStorageProvider implements IStorageProvider {
       health: 'healthy' // Could add more sophisticated health checks
     };
   }
-  
+
+  async getAllCategories(): Promise<string[]> {
+    const prompts = await this.list();
+    return [...new Set(prompts.map(p => p.category))];
+  }
+
   /**
    * Get the storage path for debugging
    */
