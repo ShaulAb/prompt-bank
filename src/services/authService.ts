@@ -19,9 +19,7 @@ export class AuthService implements vscode.UriHandler {
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
   private readonly EXPIRY_KEY = 'promptBank.supabase.access_token.expires_at';
 
-  /** Output channel for verbose logging */
-  private readonly debug = vscode.window.createOutputChannel('Prompt Bank Auth');
-  private verboseLoggingEnabled: boolean;
+
 
   private constructor(
     private context: vscode.ExtensionContext,
@@ -32,7 +30,6 @@ export class AuthService implements vscode.UriHandler {
     this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
     this.publisher = publisher;
     this.extensionName = extensionName;
-    this.verboseLoggingEnabled = cfg.get<boolean>('verboseAuthLogging', false);
   }
 
   /**
@@ -76,10 +73,6 @@ export class AuthService implements vscode.UriHandler {
    * vscode.UriHandler implementation – called when the browser redirects back to the vscode:// URI.
    */
   public async handleUri(uri: vscode.Uri): Promise<void> {
-    // Provide verbose diagnostics to aid troubleshooting
-    if (this.verboseLoggingEnabled) {
-      this.debug.appendLine(`[AuthService] handleUri invoked with: ${uri.toString()}`);
-    }
     try {
       // Supabase implicit flow returns parameters in the URL fragment (#...),
       // whereas VS Code's deep-link handler exposes the fragment via uri.fragment.
@@ -96,23 +89,11 @@ export class AuthService implements vscode.UriHandler {
       this.token = accessToken;
       this.expiresAt = Date.now() + Number(expiresIn) * 1000;
 
-      if (this.verboseLoggingEnabled) {
-        this.debug.appendLine(
-          `[AuthService] Received access_token of length ${accessToken.length}`
-        );
-        this.debug.appendLine(
-          `[AuthService] Expires in: ${expiresIn}s (epoch ms ${this.expiresAt})`
-        );
-      }
-
       await this.context.secrets.store(this.TOKEN_KEY, this.token);
       await this.context.secrets.store(this.EXPIRY_KEY, this.expiresAt.toString());
 
-      this.debug.appendLine('[AuthService] Token stored in SecretStorage');
-
       this.pendingAuth?.resolve(this.token);
     } catch (err) {
-      this.debug.appendLine(`[AuthService] Error during handleUri: ${String(err)}`);
       this.pendingAuth?.reject(err);
       vscode.window.showErrorMessage(`Prompt Bank: Authentication failed – ${err}`);
     } finally {
@@ -133,7 +114,6 @@ export class AuthService implements vscode.UriHandler {
   }
 
   private async beginAuthFlow(): Promise<string> {
-    this.debug.appendLine('[AuthService] Starting authentication flow');
     if (this.pendingAuth) {
       // Another auth flow already in progress – return its promise.
       return new Promise<string>((resolve, reject) => {
@@ -163,18 +143,7 @@ export class AuthService implements vscode.UriHandler {
       handlerUri.toString()
     )}`;
 
-    this.debug.appendLine(`[AuthService] Opening external auth URL: ${loginUrl}`);
-
     vscode.env.openExternal(vscode.Uri.parse(loginUrl));
-
-    // Only show the channel automatically if the user has enabled verbose auth logging
-    const verbose = vscode.workspace
-      .getConfiguration('promptBank')
-      .get<boolean>('verboseAuthLogging', false);
-
-    if (verbose) {
-      this.debug.show(true);
-    }
 
     return authPromise;
   }

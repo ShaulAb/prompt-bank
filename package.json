@@ -202,11 +202,6 @@
                     "type": "string",
                     "default": "https://prestissimo.ai/share/",
                     "description": "Base URL used to construct public share links"
-                },
-                "promptBank.verboseAuthLogging": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Show verbose authentication logs automatically when the OAuth callback is received"
                 }
             }
         }
