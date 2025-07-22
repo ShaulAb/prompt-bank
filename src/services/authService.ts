@@ -19,8 +19,6 @@ export class AuthService implements vscode.UriHandler {
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
   private readonly EXPIRY_KEY = 'promptBank.supabase.access_token.expires_at';
 
-
-
   private constructor(
     private context: vscode.ExtensionContext,
     publisher: string,
