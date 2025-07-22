@@ -213,12 +213,25 @@ export function registerCommands(
     }
   );
 
+  // Register share collection command
+  const shareCollectionCommand = vscode.commands.registerCommand(
+    'promptBank.shareCollection',
+    async () => {
+      try {
+        await promptService.shareCollection();
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error sharing collection: ${error}`);
+      }
+    }
+  );
+
   // Add all commands to context subscriptions
   context.subscriptions.push(
     savePromptCommand,
     insertPromptCommand,
     listPromptsCommand,
     showStatsCommand,
-    importPromptCommand
+    importPromptCommand,
+    shareCollectionCommand
   );
 }

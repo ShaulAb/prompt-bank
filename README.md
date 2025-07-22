@@ -27,14 +27,16 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 ## 🚀 Key Features
 
 - **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category using a simple keyboard shortcut (`Ctrl+Shift+S`).
-- **Sidebar View**: Browse and manage all your prompts in a hierarchical tree view right in the VS Code Explorer. Categories show prompt counts, and you can click any prompt to insert it instantly.
-- **Prompt Editor**: Create and edit prompts in a clean, two-column webview editor with a dynamic dropdown for selecting or creating categories on the fly.
-- **Share & Import Prompts**: Easily share your prompts with others via a public link and import prompts shared by other users.
-- **Powerful Search**: Find the exact prompt you need in seconds with a fuzzy search that scans titles, content, descriptions, and categories.
-- **Context Menu Support**: Right-click on any prompt or category in the tree view to access all actions: Edit, Insert, Delete, Duplicate, and Rename Category.
-- **Inline Actions**: Use the convenient inline icons in the tree view to insert or delete prompts with a single click.
-- **Usage Tracking**: Prompts are automatically sorted by usage, so your most frequently used templates are always at the top.
-- **Project-Specific & Global Storage**: Keep prompts specific to a project within its `.vscode` directory or store them globally to access them across all your projects.
+- **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
+- **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
+- **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
+- **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
+- **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
+- **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
+- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, and Rename Category.
+- **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
+- **Authentication**: Secure GitHub OAuth integration for sharing features.
+- **Persistence**: All data persists across VS Code sessions with atomic file operations.
 
 
 ## 🎯 Quick Start
@@ -49,34 +51,50 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
     - **With a Shortcut**: Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac) and select a prompt from the list. Start typing to search and filter prompts.
 
 3.  **Manage Prompts**:
-    - Right-click any item in the tree view to access all management options.
+    - Right-click any item in the tree view to see all management options.
 
-4. **Share a Prompt**:
-    - **From the Sidebar**: Right-click any item and get a share link.
+4. **Share Prompts**:
+    - **Single Prompt**: Right-click any prompt and select "Share" to get a public link.
+    - **Collection**: Use Command Palette (`Ctrl+Shift+P`) → "Prompt Bank: Share Collection" to share entire categories or the complete prompt bank.
 
-5.  **Import a Prompt**:
-    - Open the Command Palette (`Ctrl+Shift+P`), run "Prompt Bank: Import Prompt".
-    - Paste the share link into the input box and press Enter.
+5. **Import Prompts**:
+    - Command Palette → "Prompt Bank: Import Prompt" → paste share link.
+    - Automatic conflict resolution handles duplicate titles and categories.
 
 
 ## 🔧 Commands & Keybindings
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | `Ctrl+Shift+S` | Save the current selection as a new prompt.                       |
-| `promptBank.insertPrompt`  | `Ctrl+Shift+I` | Show a list of prompts to insert.                                 |
-| `promptBank.importPrompt`  | -              | Import a prompt from a share link.                                |
-| `promptBank.refreshTree`   | -              | Manually refresh the sidebar tree view.                           |
-| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Delete`, `Copy Content`, `Rename Category`, `Duplicate`, `Share`. |
+| `promptBank.savePrompt`    | `Ctrl+Shift+S` | Save current selection as a new prompt.                       |
+| `promptBank.insertPrompt`  | `Ctrl+Shift+I` | Insert prompt from the collection.                                 |
+| `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
+| `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
+| `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
+| `promptBank.refreshTree`   | -              | Manually refresh the tree view view.                                   |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Insert`, `Delete`, `Share`, `Rename Category`.           |
 
 ## 📁 Storage
 
-Prompts are stored locally on your machine:
+Prompts are stored locally on your machine using atomic file operations:
 
 - **Project-Specific**: `.vscode/prompt-bank/prompts.json` (for prompts tied to the current workspace)
 - **Global**: `~/.vscode-prompt-bank/prompts.json` (as a fallback for prompts available everywhere)
+- **Data Format**: JSON with metadata including creation/modification dates and usage tracking
 
+## 🔐 Authentication
+
+Sharing features require GitHub OAuth authentication:
+
+- **First Time**: When you first share a prompt, you'll be redirected to GitHub to authorize the extension
+- **Secure**: Only minimal permissions are requested (public profile access)
+- **Automatic**: Once authorized, sharing works seamlessly without further prompts
+- **Revocable**: You can revoke access anytime from your GitHub settings
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and new features. 

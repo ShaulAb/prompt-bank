@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to the Prompt Bank VS Code extension will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.5.5] - 2025-07-22
+
+### Added
+- **Sharing Functionality**: Share individual prompts and entire collections via public links
+- **Import Functionality**: Import prompts and collections from shared links
+- **Category Management**: Create, rename, and organize prompts into categories
+- **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface
+- **Tree View**: Hierarchical display of prompts organized by categories
+- **Context Menus**: Right-click actions for all prompt operations
+- **Search**: Find prompts quickly with integrated search functionality
+- **Webview Editor**: Modern Lit-based editor for creating and editing prompts
+- **Authentication**: GitHub OAuth integration for sharing features
+- **Persistence**: All data persists across VS Code sessions
+- **Empty State**: Helpful guidance when no prompts exist
+
+### Changed
+- **UI/UX**: Complete visual overhaul with modern, professional styling
+- **Architecture**: Refactored to use storage provider pattern for better maintainability
+- **Category Handling**: Centralized category management through `getAllCategories()` method
+
+### Fixed
+- **Security**: Removed debug logging that exposed JWT tokens in terminal output
+- **Command Registration**: Fixed missing `promptBank.shareCollection` command registration
+- **Type Safety**: Improved TypeScript types for sharing functionality
+- **Error Handling**: Enhanced error handling throughout the extension
+
+### Technical Details
+- **Storage**: File-based JSON storage with atomic operations
+- **Webview**: LitElement-based editor with VS Code theme integration
+- **Testing**: Comprehensive test suite with 32 passing tests
+- **Bundle Size**: Optimized extension bundle at 32.4kb
+- **Compatibility**: Supports VS Code 1.99.0 and later
+
+---
+
+## Previous Test Versions
+
+### [0.5.3 - 0.5.4] - Test Releases
+These versions were used for testing and development purposes. Version 0.5.5 represents the first production-ready release with all core features implemented and tested.
+
+---
+
+## [Unreleased]
+
+### Planned
+- Template variables support
+- Improved import UX
+- Cloud sync
+
+[0.5.5]: https://github.com/ShaulAb/prompt-bank/releases/tag/v0.5.5 

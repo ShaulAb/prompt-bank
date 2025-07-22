@@ -2,7 +2,7 @@
     "name": "prompt-bank",
     "displayName": "Prompt Bank",
     "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-    "version": "0.5.4",
+    "version": "0.5.5",
     "icon": "assets/logo.png",
     "publisher": "prestissimo",
     "repository": {
@@ -202,11 +202,6 @@
                     "type": "string",
                     "default": "https://prestissimo.ai/share/",
                     "description": "Base URL used to construct public share links"
-                },
-                "promptBank.verboseAuthLogging": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Show verbose authentication logs automatically when the OAuth callback is received"
                 }
             }
         }

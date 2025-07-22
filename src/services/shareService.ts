@@ -44,7 +44,7 @@ export function parseShareUrl(raw: string): { id: string } | null {
   return null;
 }
 
-export async function fetchShare(id: string): Promise<Prompt> {
+export async function fetchShare(id: string): Promise<Prompt | Prompt[]> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/get-share/${id}`);
 
   if (res.status === 404 || res.status === 410) {
@@ -62,7 +62,14 @@ export async function fetchShare(id: string): Promise<Prompt> {
   }
 
   const json = Buffer.from(data.payload, 'base64').toString('utf8');
-  return JSON.parse(json) as Prompt;
+  const parsed = JSON.parse(json);
+
+  // Check if it's a collection (has prompts property) or single prompt
+  if (parsed.prompts && Array.isArray(parsed.prompts)) {
+    return parsed.prompts as Prompt[];
+  } else {
+    return parsed as Prompt;
+  }
 }
 
 export async function createShare(prompt: Prompt, accessToken: string): Promise<ShareResult> {
