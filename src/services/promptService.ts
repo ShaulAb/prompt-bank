@@ -375,11 +375,13 @@ export class PromptService {
         let candidateCategoryName = originalPrompt.category;
         let counter = 1;
         // Ensure the new category name is unique within the existing prompt bank
-        let categoryExists = (await this.getCategoryNames()).includes(candidateCategoryName);
+        let categoryExists = (await this.storage.getAllCategories()).includes(
+          candidateCategoryName
+        );
 
         while (categoryExists) {
           candidateCategoryName = `${originalPrompt.category} - Imported${counter > 1 ? ` (${counter})` : ''}`;
-          categoryExists = (await this.getCategoryNames()).includes(candidateCategoryName);
+          categoryExists = (await this.storage.getAllCategories()).includes(candidateCategoryName);
           counter++;
         }
         newCategoryName = candidateCategoryName;
@@ -527,11 +529,6 @@ export class PromptService {
     }
 
     return selected.label;
-  }
-
-  private async getCategoryNames(): Promise<string[]> {
-    const prompts = await this.storage.list();
-    return [...new Set(prompts.map((p) => p.category))];
   }
 
   private detectProjectType(fileName: string): string | undefined {
