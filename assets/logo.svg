@@ -1,2 +1,17 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<svg baseProfile="full" height="120px" version="1.1" width="120px" xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink"><defs /><polyline fill="none" points="20,40 60,15 100,40 100,90 60,90 40,105 40,90 20,90 20,40" stroke="black" stroke-width="4" /><line stroke="black" stroke-width="4" x1="30" x2="90" y1="50" y2="50" /><line stroke="black" stroke-width="4" x1="30" x2="90" y1="70" y2="70" /></svg>
+<svg width="120" height="121" viewBox="0 0 120 121" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 40.5L60 15.5L100 40.5V90.5H60L40 105.5V90.5H20V40.5Z" fill="url(#paint0_linear_5_4)" fill-opacity="0.4" style="mix-blend-mode:hard-light"/>
+<path d="M20 40.5L60 15.5L100 40.5V90.5H60L40 105.5V90.5H20V40.5Z" stroke="#1F7244" stroke-width="4"/>
+<path d="M20 40.5L60 15.5L100 40.5V90.5H60L40 105.5V90.5H20V40.5Z" stroke="black" stroke-opacity="0.3" stroke-width="4"/>
+<path d="M30 50.5H90H30ZM30 70.5H90H30Z" fill="url(#paint1_linear_5_4)" style="mix-blend-mode:hard-light"/>
+<path d="M30 50.5H90M30 70.5H90" stroke="#195B36" stroke-width="4"/>
+<defs>
+<linearGradient id="paint0_linear_5_4" x1="60" y1="15.5" x2="60" y2="105.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#195B36"/>
+<stop offset="1" stop-color="#35C173"/>
+</linearGradient>
+<linearGradient id="paint1_linear_5_4" x1="60" y1="50.5" x2="60" y2="70.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#195B36"/>
+<stop offset="1" stop-color="#35C173"/>
+</linearGradient>
+</defs>
+</svg>
