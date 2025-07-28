@@ -1,7 +1,7 @@
 # Prompt Bank
 
 <p align="center">
-  <img src="./assets/logo.png" alt="Prompt Bank Logo" width="150">
+  <img src="./assets/logo_3x.png" alt="Prompt Bank Logo" width="150">
 </p>
 
 <p align="center">
@@ -66,8 +66,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | `Ctrl+Shift+S` | Save current selection as a new prompt.                       |
-| `promptBank.insertPrompt`  | `Ctrl+Shift+I` | Insert prompt from the collection.                                 |
+| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save current selection as a new prompt.                       |
+| `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Insert prompt from the collection.                                 |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
 | `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
@@ -95,6 +95,14 @@ Sharing features require GitHub OAuth authentication:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
+
+- Set up the development environment
+- Submit bug reports and feature requests  
+- Create pull requests
+
 ## 📋 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and new features. 
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and new features.
