@@ -180,14 +180,14 @@
         "keybindings": [
             {
                 "command": "promptBank.savePrompt",
-                "key": "ctrl+shift+s",
-                "mac": "cmd+shift+s",
+                "key": "ctrl+alt+p",
+                "mac": "cmd+alt+p",
                 "when": "editorHasSelection"
             },
             {
                 "command": "promptBank.insertPrompt",
-                "key": "ctrl+shift+i",
-                "mac": "cmd+shift+i"
+                "key": "ctrl+alt+i",
+                "mac": "cmd+alt+i"
             }
         ],
         "configuration": {
