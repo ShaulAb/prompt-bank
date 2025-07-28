@@ -49,6 +49,14 @@ These versions were used for testing and development purposes. Version 0.5.5 rep
 
 ## [Unreleased]
 
+### Added
+- **Contribution Documentation**: Comprehensive CONTRIBUTING.md with development setup, coding guidelines, and PR process
+
+### Changed
+- **Keyboard Shortcuts**: Updated to avoid conflicts with Cursor built-ins
+  - Save Prompt: `Ctrl+Alt+P` (Mac: `Cmd+Alt+P`)
+  - Insert Prompt: `Ctrl+Alt+I` (Mac: `Cmd+Alt+I`)
+
 ### Planned
 - Template variables support
 - Improved import UX
