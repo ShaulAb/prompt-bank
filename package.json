@@ -38,7 +38,7 @@
         "commands": [
             {
                 "command": "promptBank.savePrompt",
-                "title": "💾 Save Current Selection as Prompt",
+                "title": "💾 Save Prompt",
                 "category": "Prompt Bank"
             },
             {
@@ -181,8 +181,7 @@
             {
                 "command": "promptBank.savePrompt",
                 "key": "ctrl+alt+p",
-                "mac": "cmd+alt+p",
-                "when": "editorHasSelection"
+                "mac": "cmd+alt+p"
             },
             {
                 "command": "promptBank.insertPrompt",

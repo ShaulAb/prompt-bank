@@ -42,8 +42,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 ## 🎯 Quick Start
 
 1.  **Save a Prompt**:
-    - Select text in your editor.
-    - Press `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac).
+    - Select text in your editor OR copy text from anywhere to your clipboard.
+    - Press `Ctrl+Alt+P` (or `Cmd+Alt+P` on Mac).
     - Fill in the details in the prompt editor and save.
 
 2.  **Insert a Prompt**:
@@ -66,7 +66,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save current selection as a new prompt.                       |
+| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save text from selection or clipboard as a new prompt.        |
 | `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Insert prompt from the collection.                                 |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
