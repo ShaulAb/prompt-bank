@@ -14,7 +14,7 @@ export function registerCommands(
   // Register save prompt command
   const savePromptCommand = vscode.commands.registerCommand('promptBank.savePrompt', async () => {
     try {
-      await promptService.savePromptFromSelection();
+      await promptService.savePrompt();
     } catch (error) {
       vscode.window.showErrorMessage(`Error saving prompt: ${error}`);
     }
