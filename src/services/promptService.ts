@@ -137,11 +137,11 @@ export class PromptService {
     // Add file context for future smart suggestions
     const document = vscode.window.activeTextEditor?.document;
     const projectType = document ? this.detectProjectType(document.fileName) : undefined;
-    if (projectType) {
+    if (projectType && document) {
       prompt.metadata.context = {
         fileExtension: path.extname(document.fileName).slice(1),
         language: document.languageId,
-        projectType: projectType!,
+        projectType: projectType,
       };
     }
 

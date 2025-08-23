@@ -12,7 +12,10 @@ describe('FileStorageProvider - Data Persistence', () => {
 
   beforeEach(async () => {
     // Create a shared storage directory for both instances
-    sharedStorageDir = path.join(os.tmpdir(), `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    sharedStorageDir = path.join(
+      os.tmpdir(),
+      `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
     storageProvider1 = new FileStorageProvider({ storagePath: sharedStorageDir });
     await storageProvider1.initialize();
   });

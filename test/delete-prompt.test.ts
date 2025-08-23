@@ -29,7 +29,7 @@ describe('FileStorageProvider - Delete Prompt', () => {
     const deleted = await storageProvider.delete(prompt1.id);
     expect(deleted).toBe(true);
 
-    const prompts = await storageProvider.loadAllPrompts?.() ?? []; // Fallback if loadAllPrompts is not public
+    const prompts = (await storageProvider.loadAllPrompts?.()) ?? []; // Fallback if loadAllPrompts is not public
     expect(prompts).toHaveLength(1);
     expect(prompts[0].id).toBe(prompt2.id);
   });
@@ -41,7 +41,7 @@ describe('FileStorageProvider - Delete Prompt', () => {
     const deleted = await storageProvider.delete('non-existent-id');
     expect(deleted).toBe(false);
 
-    const prompts = await storageProvider.loadAllPrompts?.() ?? [];
+    const prompts = (await storageProvider.loadAllPrompts?.()) ?? [];
     expect(prompts).toHaveLength(1);
   });
 });
