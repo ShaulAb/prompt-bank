@@ -34,17 +34,20 @@ export class PromptService {
    * Get prompt content from editor selection or clipboard
    * Returns an object with content source and the actual text
    */
-  private async getPromptContent(): Promise<{ content: string; source: 'selection' | 'clipboard' } | null> {
+  private async getPromptContent(): Promise<{
+    content: string;
+    source: 'selection' | 'clipboard';
+  } | null> {
     // First, try to get content from active editor selection
     const editor = vscode.window.activeTextEditor;
     if (editor) {
       const selection = editor.selection;
       const selectedText = editor.document.getText(selection);
-      
+
       if (selectedText.trim()) {
         return {
           content: selectedText,
-          source: 'selection'
+          source: 'selection',
         };
       }
     }
@@ -55,7 +58,7 @@ export class PromptService {
       if (clipboardText.trim()) {
         return {
           content: clipboardText,
-          source: 'clipboard'
+          source: 'clipboard',
         };
       }
     } catch (error) {
@@ -74,7 +77,9 @@ export class PromptService {
 
     const contentSource = await this.getPromptContent();
     if (!contentSource) {
-      vscode.window.showErrorMessage('No text selected or available in clipboard to save as a prompt.');
+      vscode.window.showErrorMessage(
+        'No text selected or available in clipboard to save as a prompt.'
+      );
       return null;
     }
 
@@ -148,6 +153,37 @@ export class PromptService {
       vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
       return null;
     }
+  }
+
+  /**
+   * Save a prompt directly (used by the WebView editor)
+   */
+  async savePromptDirectly(prompt: Prompt): Promise<Prompt> {
+    await this.ensureInitialized();
+
+    // Assign order: place at end of category
+    const promptsInCategory = (await this.storage.list({ category: prompt.category })) || [];
+    const maxOrder = promptsInCategory.reduce(
+      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+      -1
+    );
+    prompt.order = maxOrder + 1;
+
+    // Add file context if available
+    const document = vscode.window.activeTextEditor?.document;
+    if (document) {
+      const projectType = this.detectProjectType(document.fileName);
+      if (projectType) {
+        prompt.metadata.context = {
+          fileExtension: path.extname(document.fileName).slice(1),
+          language: document.languageId,
+          projectType: projectType,
+        };
+      }
+    }
+
+    await this.storage.save(prompt);
+    return prompt;
   }
 
   /**

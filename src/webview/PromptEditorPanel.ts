@@ -3,13 +3,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
-import { Prompt } from '../models/prompt';
+import { Prompt, createPrompt } from '../models/prompt';
 
 export class PromptEditorPanel {
   public static currentPanel: PromptEditorPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
   private readonly promptData: Prompt | undefined;
+  private readonly initialContent: string | undefined;
   private readonly promptService: PromptService;
   private readonly treeProvider: PromptTreeProvider;
   private disposables: vscode.Disposable[] = [];
@@ -21,7 +22,8 @@ export class PromptEditorPanel {
     promptData: Prompt | undefined,
     promptService: PromptService,
     treeProvider: PromptTreeProvider,
-    categories: string[]
+    categories: string[],
+    initialContent?: string
   ) {
     this.panel = panel;
     this.extensionUri = extensionUri;
@@ -29,6 +31,7 @@ export class PromptEditorPanel {
     this.promptService = promptService;
     this.treeProvider = treeProvider;
     this.categories = categories;
+    this.initialContent = initialContent;
 
     // Set the webview's HTML content
     this.panel.webview.html = this.getHtmlForWebview();
@@ -98,10 +101,57 @@ export class PromptEditorPanel {
     );
   }
 
+  public static async showForNewPrompt(
+    context: vscode.ExtensionContext,
+    initialContent: string,
+    promptService: PromptService,
+    treeProvider: PromptTreeProvider
+  ) {
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
+    // Load existing categories
+    const prompts = await promptService.listPrompts();
+    const categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
+    const panel = vscode.window.createWebviewPanel(
+      'promptEditor',
+      'New Prompt',
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')],
+      }
+    );
+    PromptEditorPanel.currentPanel = new PromptEditorPanel(
+      panel,
+      context.extensionUri,
+      undefined, // No existing prompt data
+      promptService,
+      treeProvider,
+      categories,
+      initialContent
+    );
+  }
+
   private getHtmlForWebview(): string {
     const htmlPath = path.join(this.extensionUri.fsPath, 'media', 'promptEditorLit.html');
     let html = fs.readFileSync(htmlPath, 'utf-8');
-    const promptJson = this.promptData ? JSON.stringify(this.promptData) : 'null';
+
+    // If we have initial content but no promptData, create a temporary prompt object for the UI
+    let promptJson = 'null';
+    if (this.promptData) {
+      promptJson = JSON.stringify(this.promptData);
+    } else if (this.initialContent) {
+      // Create a temporary prompt object with the initial content
+      const tempPrompt = {
+        content: this.initialContent,
+        title: '',
+        description: '',
+        category: 'General',
+      };
+      promptJson = JSON.stringify(tempPrompt);
+    }
+
     html = html.replace('/*__PROMPT_DATA_INJECTION__*/ null', promptJson);
     html = html.replace('/*__PROMPT_CATEGORIES__*/ null', JSON.stringify(this.categories));
     return html;
@@ -114,25 +164,38 @@ export class PromptEditorPanel {
     category: string;
   }) {
     try {
-      if (!this.promptData) {
-        vscode.window.showErrorMessage('No prompt data available to save.');
-        return;
-      }
       const trimmedDescription = data.description.trim();
-      const updatedPrompt: Prompt = {
-        ...this.promptData,
-        title: data.title.trim(),
-        content: data.content,
-        category: data.category.trim(),
-        metadata: {
-          ...this.promptData.metadata,
-          modified: new Date(),
-        },
-        ...(trimmedDescription !== '' ? { description: trimmedDescription } : {}),
-      };
-      await this.promptService.editPromptById(updatedPrompt);
-      this.treeProvider.refresh();
-      vscode.window.showInformationMessage(`Updated prompt: "${updatedPrompt.title}"`);
+
+      if (this.promptData) {
+        // Edit existing prompt
+        const updatedPrompt: Prompt = {
+          ...this.promptData,
+          title: data.title.trim(),
+          content: data.content,
+          category: data.category.trim(),
+          metadata: {
+            ...this.promptData.metadata,
+            modified: new Date(),
+          },
+          ...(trimmedDescription !== '' ? { description: trimmedDescription } : {}),
+        };
+        await this.promptService.editPromptById(updatedPrompt);
+        this.treeProvider.refresh();
+        vscode.window.showInformationMessage(`Updated prompt: "${updatedPrompt.title}"`);
+      } else {
+        // Create new prompt
+        const newPrompt = createPrompt(
+          data.title.trim(),
+          data.content,
+          data.category.trim(),
+          trimmedDescription || undefined
+        );
+
+        // Save the new prompt
+        await this.promptService.savePromptDirectly(newPrompt);
+        this.treeProvider.refresh();
+        vscode.window.showInformationMessage(`Saved prompt: "${newPrompt.title}"`);
+      }
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
     } finally {
