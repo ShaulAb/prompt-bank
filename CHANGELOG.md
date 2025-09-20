@@ -17,8 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **WebView Editor**: Can now accept initial content when creating new prompts
 
 ### Fixed
-- **TypeScript Errors**: Fixed type checking issues in promptService
+- **Google OAuth Authentication**: Fixed extension ID mismatch issue preventing OAuth callbacks
+  - Updated Supabase Site URL configuration from old publisher ID to current
+  - Updated Supabase anon key to latest version
+- **TypeScript Errors**: Fixed type checking issues in authService and promptService
+  - Added proper type annotations for Supabase API responses
+  - Removed unused variables
 - **ESLint Configuration**: Fixed ESLint TypeScript plugin configuration
+- **Code Formatting**: Applied Prettier formatting to all source files
 
 ## [0.5.5] - 2025-07-22
 

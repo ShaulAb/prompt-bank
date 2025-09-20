@@ -25,6 +25,9 @@
     ],
     "main": "./dist/extension.js",
     "contributes": {
+        "uriHandler": {
+            "schemes": ["vscode"]
+        },
         "views": {
             "explorer": [
                 {
@@ -224,7 +227,8 @@
         }
     },
     "activationEvents": [
-        "onStartupFinished"
+        "onStartupFinished",
+        "onUri"
     ],
     "scripts": {
         "dev": "nodemon --exec tsx src/extension.ts",
@@ -256,5 +260,9 @@
         "tsx": "^4.7.0",
         "typescript": "^5.8.3",
         "vitest": "^3.2.4"
+    },
+    "dependencies": {
+        "@types/node-fetch": "^2.6.13",
+        "node-fetch": "^3.3.2"
     }
 }

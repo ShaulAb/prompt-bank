@@ -56,7 +56,7 @@ export class PromptTreeItem extends BaseTreeItem {
     }
 
     lines.push(
-      `Content: ${this.prompt.content.substring(0, 100)}${this.prompt.content.length > 100 ? '...' : ''}`
+      `Content: ${this.prompt.content?.substring(0, 100) || 'No content'}${(this.prompt.content?.length || 0) > 100 ? '...' : ''}`
     );
 
     return lines.join('\n');

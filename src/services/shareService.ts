@@ -7,9 +7,14 @@ import { Prompt } from '../models/prompt';
  */
 const cfg = vscode.workspace.getConfiguration('promptBank');
 const SUPABASE_URL = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
+const SUPABASE_ANON_KEY = cfg.get<string>(
+  'supabaseAnonKey',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM4ODU5MzQsImV4cCI6MjA0OTQ2MTkzNH0.YsBIzHdwCuHbOuTBwj5Tv6Sq1FJHPy-i8b1lOu6Qfuo'
+);
 const PUBLIC_VIEW_BASE = cfg.get<string>('publicShareBase', 'https://prestissimo.ai/share/');
 
 const CREATE_URL = `${SUPABASE_URL}/functions/v1/create-share`;
+const GET_URL_BASE = `${SUPABASE_URL}/functions/v1/get-share`;
 
 export interface ShareResult {
   url: string;
@@ -45,7 +50,11 @@ export function parseShareUrl(raw: string): { id: string } | null {
 }
 
 export async function fetchShare(id: string): Promise<Prompt | Prompt[]> {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/get-share/${id}`);
+  const res = await fetch(`${GET_URL_BASE}/${id}`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+    },
+  });
 
   if (res.status === 404 || res.status === 410) {
     throw new Error('Share has expired or does not exist');
@@ -76,18 +85,22 @@ export async function createShare(prompt: Prompt, accessToken: string): Promise<
   // Encode the full prompt object as base64 (UTF-8)
   const payload = Buffer.from(JSON.stringify(prompt), 'utf8').toString('base64');
 
+  // Use the proper JWT token from Google OAuth
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${accessToken}`,
+  };
+
   const res = await fetch(CREATE_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers,
     body: JSON.stringify({ payload }),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Supabase create-share failed: ${res.status} ${text}`);
+    throw new Error(`Failed to create share: ${res.status} ${text}`);
   }
 
   const data = (await res.json()) as { id?: string; expiresAt?: string };
@@ -106,18 +119,22 @@ export async function createShareMulti(
   // Encode the array of prompts as base64 (UTF-8)
   const payload = Buffer.from(JSON.stringify({ prompts }), 'utf8').toString('base64');
 
+  // Use the proper JWT token from Google OAuth
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${accessToken}`,
+  };
+
   const res = await fetch(CREATE_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers,
     body: JSON.stringify({ payload }),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Supabase create-share failed: ${res.status} ${text}`);
+    throw new Error(`Failed to create share: ${res.status} ${text}`);
   }
 
   const data = (await res.json()) as { id?: string; expiresAt?: string };

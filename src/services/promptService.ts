@@ -206,7 +206,7 @@ export class PromptService {
     const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: prompt.category,
-      detail: prompt.description || prompt.content.substring(0, 100) + '...',
+      detail: prompt.description || (prompt.content?.substring(0, 100) || 'No content') + '...',
       prompt,
     }));
 
@@ -262,7 +262,7 @@ export class PromptService {
     const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: `${prompt.category} • Used ${prompt.metadata.usageCount} times`,
-      detail: prompt.description || prompt.content.substring(0, 100) + '...',
+      detail: prompt.description || (prompt.content?.substring(0, 100) || 'No content') + '...',
       prompt,
     }));
 

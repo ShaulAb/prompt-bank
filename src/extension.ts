@@ -5,6 +5,7 @@ import { PromptTreeProvider, PromptDragAndDropController } from './views/promptT
 import { TreeCommands } from './commands/treeCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
 import { AuthService } from './services/authService';
+import { WebViewCache } from './webview/WebViewCache';
 
 /**
  * Extension activation function
@@ -22,9 +23,10 @@ export async function activate(context: vscode.ExtensionContext) {
     const publisher = extensionId.split('.')[0];
     const extensionName = extensionId.split('.')[1];
 
-    // Initialise authentication service and register URI handler
-    const authService = AuthService.initialize(context, publisher, extensionName);
-    context.subscriptions.push(vscode.window.registerUriHandler(authService));
+    console.log('[Extension] Activation details:', { extensionId, publisher, extensionName });
+
+    // Initialise authentication service
+    AuthService.initialize(context, publisher, extensionName);
 
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);
@@ -64,5 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * Called when the extension is deactivated
  */
 export function deactivate() {
+  // Clear WebView cache to free memory
+  WebViewCache.clear();
   console.log('Prompt Bank extension deactivated');
 }

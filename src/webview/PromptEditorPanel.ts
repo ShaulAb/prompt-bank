@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { Prompt, createPrompt } from '../models/prompt';
+import { WebViewCache } from './WebViewCache';
 
 export class PromptEditorPanel {
   public static currentPanel: PromptEditorPanel | undefined;
@@ -47,17 +46,21 @@ export class PromptEditorPanel {
             this.panel.dispose();
             break;
           case 'newCategory': {
-            const newCat = await vscode.window.showInputBox({
-              prompt: 'Enter new category name',
-              validateInput: (val) => (val.trim() ? null : 'Name required'),
-            });
-            if (newCat) {
-              this.categories = [...this.categories, newCat.trim()];
-              this.panel.webview.postMessage({
-                type: 'categories',
-                data: this.categories,
-                selected: newCat.trim(),
-              });
+            // Handle inline category creation from WebView
+            if (message.data && typeof message.data === 'string') {
+              const newCat = message.data.trim();
+              if (newCat && !this.categories.includes(newCat)) {
+                this.categories = [...this.categories, newCat];
+                // Update cache with new category
+                const allCategories = [...this.categories].sort();
+                WebViewCache.setCategoriesCache(allCategories);
+
+                this.panel.webview.postMessage({
+                  type: 'categories',
+                  data: allCategories,
+                  selected: newCat,
+                });
+              }
             }
             break;
           }
@@ -79,9 +82,17 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Load existing categories
-    const prompts = await promptService.listPrompts();
-    const categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
+    // Try to use cached categories first, otherwise load from service
+    let categories = WebViewCache.getCachedCategories();
+    if (!categories) {
+      const prompts = await promptService.listPrompts();
+      categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
+      // Ensure we always have at least one category
+      if (categories.length === 0) {
+        categories = ['General'];
+      }
+      WebViewCache.setCategoriesCache(categories);
+    }
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
       promptData ? 'Edit Prompt' : 'New Prompt',
@@ -110,9 +121,17 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Load existing categories
-    const prompts = await promptService.listPrompts();
-    const categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
+    // Try to use cached categories first, otherwise load from service
+    let categories = WebViewCache.getCachedCategories();
+    if (!categories) {
+      const prompts = await promptService.listPrompts();
+      categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
+      // Ensure we always have at least one category
+      if (categories.length === 0) {
+        categories = ['General'];
+      }
+      WebViewCache.setCategoriesCache(categories);
+    }
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
       'New Prompt',
@@ -134,8 +153,8 @@ export class PromptEditorPanel {
   }
 
   private getHtmlForWebview(): string {
-    const htmlPath = path.join(this.extensionUri.fsPath, 'media', 'promptEditorLit.html');
-    let html = fs.readFileSync(htmlPath, 'utf-8');
+    // Use cached HTML to avoid file I/O
+    let html = WebViewCache.getHtml(this.extensionUri);
 
     // If we have initial content but no promptData, create a temporary prompt object for the UI
     let promptJson = 'null';

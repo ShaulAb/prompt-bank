@@ -89,7 +89,7 @@ export function registerCommands(
       const promptItems = prompts.map((prompt) => ({
         label: prompt.title,
         description: `${prompt.category} • ${prompt.metadata.usageCount} uses`,
-        detail: `${prompt.description || prompt.content.substring(0, 150)}...`,
+        detail: `${prompt.description || prompt.content?.substring(0, 150) || 'No content'}...`,
         prompt,
       }));
 
@@ -136,7 +136,7 @@ export function registerCommands(
             `Created: ${prompt.metadata.created.toLocaleDateString()}`,
             `Used: ${prompt.metadata.usageCount} times`,
             prompt.description ? `Description: ${prompt.description}` : '',
-            `Content preview: ${prompt.content.substring(0, 200)}...`,
+            `Content preview: ${prompt.content?.substring(0, 200) || 'No content'}...`,
           ]
             .filter(Boolean)
             .join('\n');
