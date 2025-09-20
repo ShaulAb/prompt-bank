@@ -7,105 +7,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts. It provides a tree view in the explorer sidebar where users can save prompts organized by categories, and features drag-and-drop support, cloud sharing via GitHub OAuth, and a modern webview editor interface.
 
 ### Latest Status (feature/simplify-save-prompt-flow branch)
-**Core Features**: ✅ COMPLETE - Ready for PR
-- ✅ Added right-click context menu item "Save Selection as Prompt" in the editor
-- ✅ Improved UX: Users can now select text → right-click → save as prompt with prefilled content
-- ✅ WebView modal now supports both create and edit modes
-- ✅ Command is hidden from command palette (context menu only)
-- ✅ Handles multiple selections gracefully (uses first, notifies user)
-- ✅ Comprehensive test coverage: 60 tests passing (9 skipped due to static method limitations)
-- ✅ All quality checks passing: Tests, Formatting, Type checking, Build
-- ✅ Documentation updated: README.md and CHANGELOG.md
+**Status**: ✅ COMPLETE - Ready for PR to master
 
-**Authentication for Sharing**: 🔄 IN PROGRESS - OAuth callback issue
-- ✅ Google OAuth implementation complete (AuthService + ShareService)
-- ✅ Supabase Edge Functions updated for JWT validation
-- ✅ Extension builds and packages successfully
-- ❌ VS Code URI callback failing due to extension ID mismatch
+**Core Features**: ✅ COMPLETE
+- ✅ Right-click context menu "Save Selection as Prompt"
+- ✅ Optimized WebView with caching for fast loading
+- ✅ Fixed category system with inline creation
+- ✅ WebView supports both create and edit modes
+- ✅ Comprehensive test coverage: 60 tests passing (9 skipped)
+- ✅ All quality checks passing: Tests, Formatting, TypeScript, Build
 
-### 🚀 Authentication Flow Update (January 30, 2025)
-**Status**: ✅ RESOLVED - Switched to Google OAuth for simpler authentication
+**Authentication for Sharing**: ✅ COMPLETE
+- ✅ Google OAuth implementation working end-to-end
+- ✅ Fixed Supabase Site URL configuration issue
+- ✅ Updated API keys and resolved all authentication flows
+- ✅ Sharing functionality fully operational
 
-#### Previous Challenge:
-- Device Code Flow implementation hit JWT verification limitations in Supabase Edge Functions
-- All Edge Functions require real JWT tokens, blocking custom authentication methods
+### Recent Improvements (Latest Session)
 
-#### New Solution: Google OAuth
-1. **AuthService**: Completely rewritten to use Google OAuth with PKCE flow
-2. **ShareService**: Updated to use proper Supabase JWT tokens from Google OAuth
-3. **Edge Functions**: Updated create-share function to validate Google OAuth JWT tokens
-4. **Benefits**:
-   - ✅ Minimal friction - users likely already have Google accounts
-   - ✅ Native Supabase support - no custom JWT workarounds needed
-   - ✅ Proper JWT tokens work seamlessly with all Edge Functions
-   - ✅ Token refresh mechanism for long-lived sessions
+**Performance Optimizations**:
+- Added WebView caching system (`WebViewCache.ts`) for faster loading
+- HTML template caching reduces file I/O on subsequent opens
+- Categories caching with 1-minute expiration
+- DNS prefetching for CDN resources
 
-#### Implementation Details:
-- **OAuth Flow**: Using Supabase's built-in Google provider with PKCE for security
-- **Token Storage**: Access tokens, refresh tokens, and user info stored in VS Code secrets
-- **User Experience**: One-click Google sign-in opens browser, returns to VS Code automatically
-- **Share Function**: Works with standard Supabase JWT validation
+**Category System Fixes**:
+- Fixed empty categories dropdown on first use
+- Implemented inline category creation (no more command palette interruption)
+- Added keyboard support (Enter/Escape) for category input
+- Prevents duplicate and empty categories
+- Default "General" category when none exist
 
-#### Files Modified:
-- `src/services/authService.ts`: Complete rewrite for Google OAuth with PKCE
-- `src/services/shareService.ts`: Updated to use JWT tokens with proper headers
-- Edge Function `create-share`: Updated to validate Google OAuth tokens
-- Removed: `src/services/deviceAuthService.ts` (no longer needed)
-
-#### Current Status (February 13, 2025):
-**Problem**: Google OAuth authentication callback still failing with extension ID mismatch
-- ✅ Google OAuth configured in Supabase Dashboard
-- ✅ User successfully authenticates with Google and gives consent
-- ✅ Google redirects back to VS Code URI (`vscode://prestissimo.prompt-bank/auth-callback`)
-- ❌ VS Code shows error: "The extension 'ShaulAbergil.prompt-bank' cannot be installed because it was not found"
-
-#### Debugging Attempts This Session:
-1. **Cleared All VS Code Cache** (Feb 13):
-   - Uninstalled extension completely
-   - Removed from `~/.vscode/extensions/`
-   - Cleared cached VSIX files from `~/.config/Code/CachedExtensionVSIXs/`
-   - Cleared storage directories (`~/.vscode-prompt-bank`, `.vscode/prompt-bank`)
-   - Reinstalled fresh from VSIX
-   - **Result**: Same error persists - issue not related to caching
-
-2. **Verified Extension Configuration**:
-   - `package.json` correctly shows `"publisher": "prestissimo"` and `"name": "prompt-bank"`
-   - Extension correctly generates `prestissimo.prompt-bank` as ID
-   - AuthService correctly builds redirect URI as `vscode://prestissimo.prompt-bank/auth-callback`
-
-3. **Implemented Localhost Callback Alternative**:
-   - Created `authServiceLocalhost.ts` with HTTP server callback (ports 3000-8082)
-   - Uses `http://localhost:PORT/auth/callback` to avoid VS Code URI issues
-   - Handles OAuth flow in browser with auto-close on success
-   - **Status**: Implementation complete but not yet integrated
-
-#### Root Cause Analysis:
-- The error message mentioning `ShaulAbergil.prompt-bank` suggests either:
-  1. Supabase OAuth configuration has hardcoded redirect URI with old publisher ID
-  2. The extension was previously published under `ShaulAbergil` and something is cached server-side
-  3. There's a redirect/rewrite happening somewhere in the OAuth flow
-
-#### Next Session Priorities:
-1. **Check Supabase Dashboard OAuth Settings**:
-   - Login to Supabase Dashboard
-   - Navigate to Authentication > Providers > Google
-   - Check if redirect URIs are hardcoded there
-   - Update any references to `ShaulAbergil` to `prestissimo`
-
-2. **Test Localhost Authentication**:
-   - Swap `authService.ts` with `authServiceLocalhost.ts` 
-   - Update imports in extension.ts
-   - Test full OAuth flow with localhost callback
-
-3. **Alternative Solutions if Still Blocked**:
-   - Implement manual token entry (user copies token from browser)
-   - Use VS Code's built-in authentication API
-   - Consider publishing under original `ShaulAbergil` publisher ID
-
-4. **Create PR for Save Selection Feature**:
-   - Feature is complete and tested (60 tests passing)
-   - Ready to merge to master branch
-   - Can be done independently of auth fix
+**Authentication Resolution**:
+- Fixed Supabase Site URL configuration mismatch
+- Updated to latest Supabase anon key
+- Resolved OAuth callback extension ID issue
+- End-to-end sharing functionality now working
 
 ## Commands
 
@@ -146,8 +83,9 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 ### Core Services
 - **PromptService** (`src/services/promptService.ts`): Central business logic for managing prompts, handles CRUD operations and import/export
-- **AuthService** (`src/services/authService.ts`): GitHub OAuth authentication for sharing features
+- **AuthService** (`src/services/authService.ts`): Google OAuth authentication for sharing features via Supabase
 - **ShareService** (`src/services/shareService.ts`): Handles creating and fetching shared prompts via Supabase backend
+- **WebViewCache** (`src/webview/WebViewCache.ts`): Caching system for WebView HTML and categories
 
 ### Storage Layer
 - **FileStorageProvider** (`src/storage/fileStorage.ts`): Manages persistence to JSON files with atomic write operations
@@ -176,7 +114,7 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 6. **WebView Communication**: Uses message passing between extension and WebView for prompt editing
 
-7. **Authentication Flow**: Uses VS Code URI handler for GitHub OAuth callback, stores tokens securely in VS Code secrets
+7. **Authentication Flow**: Uses VS Code URI handler for Google OAuth callback, stores tokens securely in VS Code secrets
 
 8. **WebView Modal Modes**: `PromptEditorPanel` supports both edit mode (for existing prompts) and create mode (for new prompts with optional initial content)
 
@@ -195,19 +133,19 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 
 ### Feature Development
 - Successfully implemented "Save Selection as Prompt" context menu feature
-- Enhanced WebView editor to support both create and edit modes
-- Added `savePromptDirectly` method for programmatic prompt saving
+- Enhanced WebView editor with performance optimizations and caching
+- Fixed category management with inline creation and validation
+- Resolved Google OAuth authentication end-to-end
 
 ### Code Quality
 - Achieved 100% test pass rate (60 tests passing, 9 intentionally skipped)
-- Fixed all TypeScript compilation errors
-- Formatted entire codebase with Prettier
-- Optimized bundle size to 34.3kb minified
+- Fixed all TypeScript compilation errors and applied consistent formatting
+- Optimized WebView loading performance with caching system
+- Bundle size: 39.8kb minified
 
 ### Documentation
-- Updated README.md with new feature descriptions
-- Maintained comprehensive CHANGELOG.md
-- Created detailed CONTRIBUTING.md guide
+- Updated README.md, CHANGELOG.md with latest features
+- Maintained comprehensive CONTRIBUTING.md guide
 - Enhanced inline code documentation
 
 ## Next Steps / Potential Improvements

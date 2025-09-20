@@ -7,24 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-09-20
+
 ### Added
 - **Save from Selection Context Menu**: New right-click context menu item "Save Selection as Prompt" in the editor
-- **Improved WebView Modal**: Support for both create and edit modes with prefilled content
+- **WebView Performance Optimizations**: Caching system for faster prompt editor loading
+  - HTML template caching to avoid repeated file I/O
+  - Categories caching with 1-minute expiration
+  - DNS prefetching for CDN resources
+- **Inline Category Creation**: Improved UX for creating new categories directly in the form
 - **Enhanced Test Coverage**: Comprehensive tests for new features (60 tests passing)
 
 ### Changed
 - **Command Visibility**: `savePromptFromSelection` command is now hidden from command palette (context menu only)
-- **WebView Editor**: Can now accept initial content when creating new prompts
+- **WebView Editor**: Supports both create and edit modes with prefilled content
+- **Category Management**: Inline category creation replaces command palette interruption
+- **Default Categories**: Always shows at least "General" category when none exist
 
 ### Fixed
-- **Google OAuth Authentication**: Fixed extension ID mismatch issue preventing OAuth callbacks
+- **Google OAuth Authentication**: Resolved extension ID mismatch preventing OAuth callbacks
   - Updated Supabase Site URL configuration from old publisher ID to current
   - Updated Supabase anon key to latest version
+- **Category System Issues**: Fixed empty dropdown and validation problems
+  - Prevents saving prompts with empty categories
+  - Keyboard support (Enter/Escape) for category input
+  - Prevents duplicate categories
 - **TypeScript Errors**: Fixed type checking issues in authService and promptService
   - Added proper type annotations for Supabase API responses
   - Removed unused variables
-- **ESLint Configuration**: Fixed ESLint TypeScript plugin configuration
-- **Code Formatting**: Applied Prettier formatting to all source files
+- **Code Quality**: Applied consistent formatting and fixed ESLint configuration
 
 ## [0.5.5] - 2025-07-22
 
