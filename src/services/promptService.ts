@@ -31,19 +31,59 @@ export class PromptService {
   }
 
   /**
-   * Save a new prompt from current editor selection
+   * Get prompt content from editor selection or clipboard
+   * Returns an object with content source and the actual text
    */
-  async savePromptFromSelection(): Promise<Prompt | null> {
+  private async getPromptContent(): Promise<{
+    content: string;
+    source: 'selection' | 'clipboard';
+  } | null> {
+    // First, try to get content from active editor selection
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const selection = editor.selection;
+      const selectedText = editor.document.getText(selection);
+
+      if (selectedText.trim()) {
+        return {
+          content: selectedText,
+          source: 'selection',
+        };
+      }
+    }
+
+    // If no selection, try clipboard
+    try {
+      const clipboardText = await vscode.env.clipboard.readText();
+      if (clipboardText.trim()) {
+        return {
+          content: clipboardText,
+          source: 'clipboard',
+        };
+      }
+    } catch (error) {
+      // Clipboard access failed, fall through to show error message
+    }
+
+    // Neither source has content
+    return null;
+  }
+
+  /**
+   * Save a new prompt from current editor selection or clipboard
+   */
+  async savePrompt(): Promise<Prompt | null> {
     await this.ensureInitialized();
 
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('No active editor found');
+    const contentSource = await this.getPromptContent();
+    if (!contentSource) {
+      vscode.window.showErrorMessage(
+        'No text selected or available in clipboard to save as a prompt.'
+      );
       return null;
     }
 
-    const selection = editor.selection;
-    const selectedText = editor.document.getText(selection);
+    const selectedText = contentSource.content;
 
     if (!selectedText.trim()) {
       vscode.window.showErrorMessage('Please select some text to save as a prompt');
@@ -54,7 +94,7 @@ export class PromptService {
     const title = await vscode.window.showInputBox({
       prompt: 'Enter a title for this prompt',
       placeHolder: 'e.g., "Code Review Template"',
-      validateInput: (value) => {
+      validateInput: (value: string) => {
         if (!value.trim()) {
           return 'Title is required';
         }
@@ -95,13 +135,13 @@ export class PromptService {
     prompt.order = maxOrder + 1;
 
     // Add file context for future smart suggestions
-    const document = editor.document;
-    const projectType = this.detectProjectType(document.fileName);
-    if (projectType) {
+    const document = vscode.window.activeTextEditor?.document;
+    const projectType = document ? this.detectProjectType(document.fileName) : undefined;
+    if (projectType && document) {
       prompt.metadata.context = {
         fileExtension: path.extname(document.fileName).slice(1),
         language: document.languageId,
-        projectType: projectType!,
+        projectType: projectType,
       };
     }
 
@@ -113,6 +153,37 @@ export class PromptService {
       vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
       return null;
     }
+  }
+
+  /**
+   * Save a prompt directly (used by the WebView editor)
+   */
+  async savePromptDirectly(prompt: Prompt): Promise<Prompt> {
+    await this.ensureInitialized();
+
+    // Assign order: place at end of category
+    const promptsInCategory = (await this.storage.list({ category: prompt.category })) || [];
+    const maxOrder = promptsInCategory.reduce(
+      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
+      -1
+    );
+    prompt.order = maxOrder + 1;
+
+    // Add file context if available
+    const document = vscode.window.activeTextEditor?.document;
+    if (document) {
+      const projectType = this.detectProjectType(document.fileName);
+      if (projectType) {
+        prompt.metadata.context = {
+          fileExtension: path.extname(document.fileName).slice(1),
+          language: document.languageId,
+          projectType: projectType,
+        };
+      }
+    }
+
+    await this.storage.save(prompt);
+    return prompt;
   }
 
   /**
@@ -135,7 +206,7 @@ export class PromptService {
     const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: prompt.category,
-      detail: prompt.description || prompt.content.substring(0, 100) + '...',
+      detail: prompt.description || (prompt.content?.substring(0, 100) || 'No content') + '...',
       prompt,
     }));
 
@@ -191,7 +262,7 @@ export class PromptService {
     const items = prompts.map((prompt) => ({
       label: prompt.title,
       description: `${prompt.category} • Used ${prompt.metadata.usageCount} times`,
-      detail: prompt.description || prompt.content.substring(0, 100) + '...',
+      detail: prompt.description || (prompt.content?.substring(0, 100) || 'No content') + '...',
       prompt,
     }));
 

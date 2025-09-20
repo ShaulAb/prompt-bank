@@ -108,7 +108,7 @@
         this.description = d.description || '';
         this.content = d.content || '';
         this.category = d.category || '';
-        this.categories = window.promptCategories || [];
+        this.categories = window.promptCategories || ['General'];
         this._showNewCategoryInput = false;
         this._isNewCategory = false;
       }
@@ -181,11 +181,24 @@
 
       _save(e) {
         e.preventDefault();
+
+        // Validate required fields
+        if (!this.title?.trim() || !this.content?.trim() || !this.category?.trim()) {
+          vscode.postMessage({
+            type: 'error',
+            message: 'Please fill in all required fields'
+          });
+          return;
+        }
+
+        // Use General as fallback if somehow category is still empty
+        const categoryToSave = this.category?.trim() || 'General';
+
         vscode.postMessage({ type: 'save', data: {
           title: this.title.trim(),
           description: this.description.trim(),
           content: this.content,
-          category: this.category.trim()
+          category: categoryToSave
         }});
       }
 

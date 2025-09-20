@@ -11,7 +11,10 @@ describe('FileStorageProvider - Update Prompt', () => {
 
   beforeEach(async () => {
     // Create a unique test directory for each test
-    testStorageDir = path.join(os.tmpdir(), `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    testStorageDir = path.join(
+      os.tmpdir(),
+      `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
     storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
     await storageProvider.initialize();
   });
@@ -42,8 +45,9 @@ describe('FileStorageProvider - Update Prompt', () => {
     expect(updatedPrompt.content).toBe('Updated Content');
     expect(updatedPrompt.category).toBe('Category B');
     expect(updatedPrompt.metadata.usageCount).toBe(5);
-    expect(new Date(updatedPrompt.metadata.modified).getTime())
-      .toBeGreaterThanOrEqual(initialPrompt.metadata.modified.getTime());
+    expect(new Date(updatedPrompt.metadata.modified).getTime()).toBeGreaterThanOrEqual(
+      initialPrompt.metadata.modified.getTime()
+    );
   });
 
   it('should create a new prompt if update is called with a non-existent ID', async () => {

@@ -26,7 +26,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 ## 🚀 Key Features
 
-- **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category using a simple keyboard shortcut (`Ctrl+Shift+S`).
+- **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category using a simple keyboard shortcut (`Ctrl+Alt+P`).
+- **Save from Selection**: Right-click selected text in the editor and choose "Save Selection as Prompt" to quickly save with prefilled content.
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
 - **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
@@ -42,8 +43,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 ## 🎯 Quick Start
 
 1.  **Save a Prompt**:
-    - Select text in your editor.
-    - Press `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac).
+    - **Option 1**: Select text in your editor OR copy text from anywhere to your clipboard, then press `Ctrl+Alt+P` (or `Cmd+Alt+P` on Mac).
+    - **Option 2**: Select text in the editor, right-click, and choose "Save Selection as Prompt" from the context menu.
     - Fill in the details in the prompt editor and save.
 
 2.  **Insert a Prompt**:
@@ -66,12 +67,13 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save current selection as a new prompt.                       |
+| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save text from selection or clipboard as a new prompt.        |
+| `promptBank.savePromptFromSelection` | Right-click | Save selected text as prompt (editor context menu only).  |
 | `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Insert prompt from the collection.                                 |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
 | `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
-| `promptBank.refreshTree`   | -              | Manually refresh the tree view view.                                   |
+| `promptBank.refreshTree`   | -              | Manually refresh the tree view.                                   |
 | **Context Menu Actions**   | (Right-Click)  | `Edit`, `Insert`, `Delete`, `Share`, `Rename Category`.           |
 
 ## 📁 Storage

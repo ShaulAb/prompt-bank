@@ -14,11 +14,51 @@ export function registerCommands(
   // Register save prompt command
   const savePromptCommand = vscode.commands.registerCommand('promptBank.savePrompt', async () => {
     try {
-      await promptService.savePromptFromSelection();
+      await promptService.savePrompt();
     } catch (error) {
       vscode.window.showErrorMessage(`Error saving prompt: ${error}`);
     }
   });
+
+  // Register save prompt from selection command (context menu)
+  const savePromptFromSelectionCommand = vscode.commands.registerCommand(
+    'promptBank.savePromptFromSelection',
+    async () => {
+      try {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage('No active editor found');
+          return;
+        }
+
+        // Handle multiple selections - take the first one
+        const selection = editor.selection;
+        const selectedText = editor.document.getText(selection);
+
+        if (!selectedText.trim()) {
+          vscode.window.showErrorMessage('No text selected');
+          return;
+        }
+
+        // Warn if there are multiple selections
+        if (editor.selections.length > 1) {
+          vscode.window.showInformationMessage(
+            'Multiple selections detected. Using the first selection.'
+          );
+        }
+
+        // Open the prompt editor panel with the selected text as initial content
+        await PromptEditorPanel.showForNewPrompt(
+          context,
+          selectedText,
+          promptService,
+          treeProvider
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error saving prompt from selection: ${error}`);
+      }
+    }
+  );
 
   // Register insert prompt command
   const insertPromptCommand = vscode.commands.registerCommand(
@@ -49,7 +89,7 @@ export function registerCommands(
       const promptItems = prompts.map((prompt) => ({
         label: prompt.title,
         description: `${prompt.category} • ${prompt.metadata.usageCount} uses`,
-        detail: `${prompt.description || prompt.content.substring(0, 150)}...`,
+        detail: `${prompt.description || prompt.content?.substring(0, 150) || 'No content'}...`,
         prompt,
       }));
 
@@ -96,7 +136,7 @@ export function registerCommands(
             `Created: ${prompt.metadata.created.toLocaleDateString()}`,
             `Used: ${prompt.metadata.usageCount} times`,
             prompt.description ? `Description: ${prompt.description}` : '',
-            `Content preview: ${prompt.content.substring(0, 200)}...`,
+            `Content preview: ${prompt.content?.substring(0, 200) || 'No content'}...`,
           ]
             .filter(Boolean)
             .join('\n');
@@ -228,6 +268,7 @@ export function registerCommands(
   // Add all commands to context subscriptions
   context.subscriptions.push(
     savePromptCommand,
+    savePromptFromSelectionCommand,
     insertPromptCommand,
     listPromptsCommand,
     showStatsCommand,

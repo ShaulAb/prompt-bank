@@ -2,7 +2,7 @@
     "name": "prompt-bank",
     "displayName": "Prompt Bank",
     "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-    "version": "0.5.5",
+    "version": "0.6.0",
     "icon": "assets/logo.png",
     "publisher": "prestissimo",
     "repository": {
@@ -25,6 +25,9 @@
     ],
     "main": "./dist/extension.js",
     "contributes": {
+        "uriHandler": {
+            "schemes": ["vscode"]
+        },
         "views": {
             "explorer": [
                 {
@@ -38,7 +41,12 @@
         "commands": [
             {
                 "command": "promptBank.savePrompt",
-                "title": "💾 Save Current Selection as Prompt",
+                "title": "💾 Save Prompt",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.savePromptFromSelection",
+                "title": "Save Selection as Prompt",
                 "category": "Prompt Bank"
             },
             {
@@ -115,6 +123,19 @@
             }
         ],
         "menus": {
+            "commandPalette": [
+                {
+                    "command": "promptBank.savePromptFromSelection",
+                    "when": "false"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "promptBank.savePromptFromSelection",
+                    "when": "editorHasSelection",
+                    "group": "1_modification@5"
+                }
+            ],
             "view/title": [
                 {
                     "command": "promptBank.refreshTreeView",
@@ -181,8 +202,7 @@
             {
                 "command": "promptBank.savePrompt",
                 "key": "ctrl+alt+p",
-                "mac": "cmd+alt+p",
-                "when": "editorHasSelection"
+                "mac": "cmd+alt+p"
             },
             {
                 "command": "promptBank.insertPrompt",
@@ -207,7 +227,8 @@
         }
     },
     "activationEvents": [
-        "onStartupFinished"
+        "onStartupFinished",
+        "onUri"
     ],
     "scripts": {
         "dev": "nodemon --exec tsx src/extension.ts",
@@ -225,8 +246,8 @@
     "devDependencies": {
         "@types/node": "^24.0.15",
         "@types/vscode": "^1.99.0",
-        "@typescript-eslint/eslint-plugin": "^6.18.0",
-        "@typescript-eslint/parser": "^6.18.0",
+        "@typescript-eslint/eslint-plugin": "^6.21.0",
+        "@typescript-eslint/parser": "^6.21.0",
         "@vitest/ui": "^3.2.4",
         "@vscode/test-electron": "^2.3.0",
         "@vscode/vsce": "^3.6.0",
@@ -239,5 +260,9 @@
         "tsx": "^4.7.0",
         "typescript": "^5.8.3",
         "vitest": "^3.2.4"
+    },
+    "dependencies": {
+        "@types/node-fetch": "^2.6.13",
+        "node-fetch": "^3.3.2"
     }
 }

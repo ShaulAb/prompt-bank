@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prompt Editor</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline';" />
+  <script>
+    const vscode = acquireVsCodeApi();
+    window.promptData = /*__PROMPT_DATA_INJECTION__*/ null;
+    window.promptCategories = /*__PROMPT_CATEGORIES__*/ null;
+  </script>
+  <!-- Preconnect to CDN for faster loading -->
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+
+  <style>
+    /* Inline critical CSS to avoid FOUC */
+    body {
+      font-family: var(--vscode-font-family);
+      color: var(--vscode-editor-foreground);
+      margin: 0;
+      padding: 0;
+    }
+    .loading {
+      padding: 2em;
+      text-align: center;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="loading">Loading editor...</div>
+
+  <script type="module">
+    // Load Lit with explicit module resolution for better caching
+    import { LitElement, html, css } from 'https://unpkg.com/lit@2.2.7/index.js?module';
+
+    class PromptEditor extends LitElement {
+      static styles = css`
+        :host { font-family: var(--vscode-font-family); color: var(--vscode-editor-foreground); }
+        .container { padding: 1.5em; max-width: 900px; }
+        h2 { margin: 0 0 1.5em 0; font-size: 1.4em; }
+
+        .form-header {
+          display: grid;
+          grid-template-columns: 1fr 300px;
+          gap: 2em;
+          margin-bottom: 1.5em;
+        }
+
+        .left-column { display: flex; flex-direction: column; gap: 1em; }
+        .right-column { display: flex; flex-direction: column; gap: 1em; }
+
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 0.3em; font-size: 0.9em; opacity: 0.8; }
+
+        input, select, textarea {
+          background: var(--vscode-input-background);
+          color: var(--vscode-input-foreground);
+          border: 1px solid var(--vscode-input-border);
+          padding: 0.6em;
+          font-size: 13px;
+          font-family: var(--vscode-font-family);
+        }
+
+        input:focus, select:focus, textarea:focus {
+          outline: none;
+          border-color: var(--vscode-focusBorder);
+        }
+
+        textarea { min-height: 200px; resize: vertical; font-family: var(--vscode-editor-font-family); line-height: 1.5; }
+
+        .category-group { display: flex; gap: 0.5em; align-items: flex-end; }
+        .category-group select { flex: 1; }
+        .category-group button { padding: 0.6em 1em; }
+
+        .category-input-group {
+          display: flex;
+          gap: 0.5em;
+          align-items: stretch;
+        }
+        .category-input-group input { flex: 1; }
+        .category-input-group button { padding: 0.6em 1em; }
+
+        .char-count {
+          text-align: right;
+          font-size: 0.8em;
+          opacity: 0.6;
+          margin-top: 0.3em;
+        }
+
+        .buttons {
+          display: flex;
+          gap: 1em;
+          margin-top: 2em;
+          padding-top: 1.5em;
+          border-top: 1px solid var(--vscode-widget-border);
+        }
+
+        button {
+          padding: 0.7em 1.5em;
+          background: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+          border: none;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        button:hover { background: var(--vscode-button-hoverBackground); }
+        button.secondary {
+          background: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+        }
+        button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+        button.small {
+          padding: 0.4em 0.8em;
+          font-size: 12px;
+        }
+
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .info {
+          background: var(--vscode-editorInfo-background);
+          color: var(--vscode-editorInfo-foreground);
+          border: 1px solid var(--vscode-editorInfo-border);
+          padding: 0.8em;
+          margin-bottom: 1em;
+          font-size: 0.9em;
+          border-radius: 4px;
+        }
+      `;
+
+      static properties = {
+        title: { type: String },
+        description: { type: String },
+        content: { type: String },
+        category: { type: String },
+        tags: { type: String },
+        charCount: { type: Number },
+        categories: { type: Array },
+        editMode: { type: Boolean },
+        showNewCategory: { type: Boolean },
+        newCategoryName: { type: String }
+      };
+
+      constructor() {
+        super();
+        this.title = window.promptData?.title || '';
+        this.description = window.promptData?.description || '';
+        this.content = window.promptData?.content || '';
+        this.category = window.promptData?.category || '';
+        this.tags = window.promptData?.tags?.join(', ') || '';
+        this.categories = window.promptCategories || ['General'];
+        this.editMode = !!window.promptData;
+        this.charCount = this.content.length;
+        this.showNewCategory = false;
+        this.newCategoryName = '';
+
+        // Listen for category updates from extension
+        window.addEventListener('message', (event) => {
+          const message = event.data;
+          if (message.type === 'categories') {
+            this.categories = message.data;
+            if (message.selected) {
+              this.category = message.selected;
+            }
+            this.showNewCategory = false;
+            this.newCategoryName = '';
+            this.requestUpdate();
+          }
+        });
+      }
+
+      render() {
+        return html`
+          <div class="container">
+            <h2>${this.editMode ? 'Edit Prompt' : 'New Prompt'}</h2>
+
+            ${!this.editMode && this.content ? html`
+              <div class="info">
+                ✨ Your selected text has been added as the prompt content below.
+              </div>
+            ` : ''}
+
+            <div class="form-header">
+              <div class="left-column">
+                <div class="form-group">
+                  <label for="title">Title *</label>
+                  <input
+                    id="title"
+                    type="text"
+                    .value=${this.title}
+                    @input=${(e) => this.title = e.target.value}
+                    placeholder="Enter a descriptive title"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="description">Description</label>
+                  <input
+                    id="description"
+                    type="text"
+                    .value=${this.description}
+                    @input=${(e) => this.description = e.target.value}
+                    placeholder="Brief description (optional)"
+                  />
+                </div>
+              </div>
+
+              <div class="right-column">
+                <div class="form-group">
+                  <label for="category">Category *</label>
+                  ${this.showNewCategory ? html`
+                    <div class="category-input-group">
+                      <input
+                        id="newCategory"
+                        type="text"
+                        .value=${this.newCategoryName}
+                        @input=${(e) => this.newCategoryName = e.target.value}
+                        @keydown=${(e) => {
+                          if (e.key === 'Enter') this.saveNewCategory();
+                          if (e.key === 'Escape') this.cancelNewCategory();
+                        }}
+                        placeholder="New category name"
+                        autofocus
+                      />
+                      <button @click=${this.saveNewCategory} class="small" type="button">✓</button>
+                      <button @click=${this.cancelNewCategory} class="small secondary" type="button">✗</button>
+                    </div>
+                  ` : html`
+                    <div class="category-group">
+                      <select
+                        id="category"
+                        .value=${this.category}
+                        @change=${(e) => this.category = e.target.value}
+                        required
+                      >
+                        <option value="">Select category...</option>
+                        ${this.categories.map(cat => html`
+                          <option value=${cat} ?selected=${cat === this.category}>${cat}</option>
+                        `)}
+                      </select>
+                      <button @click=${this.showNewCategoryInput} type="button">New</button>
+                    </div>
+                  `}
+                </div>
+
+                <div class="form-group">
+                  <label for="tags">Tags</label>
+                  <input
+                    id="tags"
+                    type="text"
+                    .value=${this.tags}
+                    @input=${(e) => this.tags = e.target.value}
+                    placeholder="tag1, tag2, tag3"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="content">Prompt Content *</label>
+              <textarea
+                id="content"
+                .value=${this.content}
+                @input=${(e) => {
+                  this.content = e.target.value;
+                  this.charCount = e.target.value.length;
+                }}
+                placeholder="Enter your prompt content here..."
+                required
+              ></textarea>
+              <div class="char-count">${this.charCount} characters</div>
+            </div>
+
+            <div class="buttons">
+              <button @click=${this.handleSave} ?disabled=${!this.isValid()}>
+                ${this.editMode ? 'Save Changes' : 'Save Prompt'}
+              </button>
+              <button @click=${this.handleCancel} class="secondary">Cancel</button>
+            </div>
+          </div>
+        `;
+      }
+
+      isValid() {
+        return this.title?.trim() && this.category?.trim() && this.content?.trim();
+      }
+
+      handleSave() {
+        if (!this.isValid()) {
+          vscode.postMessage({
+            type: 'error',
+            message: 'Please fill in all required fields'
+          });
+          return;
+        }
+
+        // Use General as fallback if somehow category is still empty
+        const categoryToSave = this.category?.trim() || 'General';
+
+        const promptData = {
+          ...(window.promptData || {}),
+          title: this.title.trim(),
+          description: this.description.trim(),
+          content: this.content.trim(),
+          category: categoryToSave,
+          tags: this.tags.split(',').map(t => t.trim()).filter(t => t)
+        };
+
+        vscode.postMessage({ type: 'save', data: promptData });
+      }
+
+      handleCancel() {
+        vscode.postMessage({ type: 'cancel' });
+      }
+
+      showNewCategoryInput() {
+        this.showNewCategory = true;
+        this.newCategoryName = '';
+        // Focus will be set by autofocus attribute
+      }
+
+      saveNewCategory() {
+        const newCat = this.newCategoryName.trim();
+        if (newCat && !this.categories.includes(newCat)) {
+          this.categories = [...this.categories, newCat];
+          this.category = newCat;
+          this.showNewCategory = false;
+          this.newCategoryName = '';
+          // Notify extension about the new category
+          vscode.postMessage({ type: 'newCategory', data: newCat });
+        } else {
+          this.cancelNewCategory();
+        }
+      }
+
+      cancelNewCategory() {
+        this.showNewCategory = false;
+        this.newCategoryName = '';
+      }
+
+      firstUpdated() {
+        // Focus title field when component loads (if not showing new category input)
+        if (!this.showNewCategory) {
+          this.shadowRoot.querySelector('#title')?.focus();
+        }
+      }
+    }
+
+    customElements.define('prompt-editor', PromptEditor);
+
+    // Replace loading message with the editor
+    document.getElementById('app').innerHTML = '<prompt-editor></prompt-editor>';
+  </script>
+</body>
+</html>

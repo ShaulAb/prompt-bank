@@ -10,7 +10,10 @@ describe('FileStorageProvider Initialization', () => {
 
   beforeEach(async () => {
     // Create a unique test directory for each test
-    storageDir = path.join(os.tmpdir(), `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    storageDir = path.join(
+      os.tmpdir(),
+      `prompt-bank-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
     await fs.rm(storageDir, { recursive: true, force: true }).catch(() => {});
     storageProvider = new FileStorageProvider({ storagePath: storageDir });
   });

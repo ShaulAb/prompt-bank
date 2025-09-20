@@ -5,6 +5,38 @@ All notable changes to the Prompt Bank VS Code extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.6.0] - 2025-09-20
+
+### Added
+- **Save from Selection Context Menu**: New right-click context menu item "Save Selection as Prompt" in the editor
+- **WebView Performance Optimizations**: Caching system for faster prompt editor loading
+  - HTML template caching to avoid repeated file I/O
+  - Categories caching with 1-minute expiration
+  - DNS prefetching for CDN resources
+- **Inline Category Creation**: Improved UX for creating new categories directly in the form
+- **Enhanced Test Coverage**: Comprehensive tests for new features (60 tests passing)
+
+### Changed
+- **Command Visibility**: `savePromptFromSelection` command is now hidden from command palette (context menu only)
+- **WebView Editor**: Supports both create and edit modes with prefilled content
+- **Category Management**: Inline category creation replaces command palette interruption
+- **Default Categories**: Always shows at least "General" category when none exist
+
+### Fixed
+- **Google OAuth Authentication**: Resolved extension ID mismatch preventing OAuth callbacks
+  - Updated Supabase Site URL configuration from old publisher ID to current
+  - Updated Supabase anon key to latest version
+- **Category System Issues**: Fixed empty dropdown and validation problems
+  - Prevents saving prompts with empty categories
+  - Keyboard support (Enter/Escape) for category input
+  - Prevents duplicate categories
+- **TypeScript Errors**: Fixed type checking issues in authService and promptService
+  - Added proper type annotations for Supabase API responses
+  - Removed unused variables
+- **Code Quality**: Applied consistent formatting and fixed ESLint configuration
+
 ## [0.5.5] - 2025-07-22
 
 ### Added
@@ -46,8 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These versions were used for testing and development purposes. Version 0.5.5 represents the first production-ready release with all core features implemented and tested.
 
 ---
-
-## [Unreleased]
 
 ### Added
 - **Contribution Documentation**: Comprehensive CONTRIBUTING.md with development setup, coding guidelines, and PR process

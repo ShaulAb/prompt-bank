@@ -12,14 +12,18 @@ describe('PromptService - List Prompts', () => {
 
   beforeEach(async () => {
     // Initialize FileStorageProvider with the mocked workspace path
-    storageProvider = new FileStorageProvider({ storagePath: path.join(mockWorkspacePath, '.vscode', 'prompt-bank') });
+    storageProvider = new FileStorageProvider({
+      storagePath: path.join(mockWorkspacePath, '.vscode', 'prompt-bank'),
+    });
     promptService = new PromptService(storageProvider);
     await promptService.initialize();
   });
 
   afterEach(async () => {
     // Clean up the storage directory after each test
-    await fs.rm(path.join(mockWorkspacePath, '.vscode', 'prompt-bank'), { recursive: true, force: true }).catch(() => {});
+    await fs
+      .rm(path.join(mockWorkspacePath, '.vscode', 'prompt-bank'), { recursive: true, force: true })
+      .catch(() => {});
   });
 
   it('should return an empty array if no prompts exist', async () => {
@@ -35,7 +39,7 @@ describe('PromptService - List Prompts', () => {
 
     const prompts = await promptService.listPrompts();
     expect(prompts).toHaveLength(2);
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
+    expect(prompts.map((p) => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
   });
 
   it('should filter prompts by category', async () => {
@@ -48,12 +52,15 @@ describe('PromptService - List Prompts', () => {
 
     const prompts = await promptService.listPrompts({ category: 'Category A' });
     expect(prompts).toHaveLength(2);
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 3']);
+    expect(prompts.map((p) => p.title)).toEqual(['Prompt 1', 'Prompt 3']);
   });
 
-
   it('should filter prompts by search term (title, content, description)', async () => {
-    const prompt1 = createPrompt('My Awesome Prompt', 'This is some content about awesome things.', 'Category A');
+    const prompt1 = createPrompt(
+      'My Awesome Prompt',
+      'This is some content about awesome things.',
+      'Category A'
+    );
     prompt1.description = 'A prompt for awesome development.';
     const prompt2 = createPrompt('Another Prompt', 'Content for another prompt.', 'Category B');
     await storageProvider.save(prompt1);
@@ -80,7 +87,7 @@ describe('PromptService - List Prompts', () => {
     await savePrompts(prompt1, prompt2);
 
     const prompts = await promptService.listPrompts({ sortBy: 'created' });
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 2', 'Prompt 1']);
+    expect(prompts.map((p) => p.title)).toEqual(['Prompt 2', 'Prompt 1']);
   });
 
   // Helper function to save multiple prompts
@@ -98,7 +105,7 @@ describe('PromptService - List Prompts', () => {
     await savePrompts(prompt1, prompt2);
 
     const prompts = await promptService.listPrompts({ sortBy: 'created', sortOrder: 'asc' });
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
+    expect(prompts.map((p) => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
   });
 
   it('should sort prompts by usageCount (descending by default)', async () => {
@@ -110,8 +117,6 @@ describe('PromptService - List Prompts', () => {
     await storageProvider.save(prompt2);
 
     const prompts = await promptService.listPrompts({ sortBy: 'usageCount' });
-    expect(prompts.map(p => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
+    expect(prompts.map((p) => p.title)).toEqual(['Prompt 1', 'Prompt 2']);
   });
-
-
 });
