@@ -42,6 +42,7 @@ Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts
 - Fixed Supabase Site URL configuration mismatch
 - Updated to latest Supabase anon key
 - Resolved OAuth callback extension ID issue
+- **URI Scheme Detection Fix**: Replaced hacky editor detection with proper `vscode.env.uriScheme` API
 - End-to-end sharing functionality now working
 
 ## Commands
@@ -114,7 +115,7 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 6. **WebView Communication**: Uses message passing between extension and WebView for prompt editing
 
-7. **Authentication Flow**: Uses VS Code URI handler for Google OAuth callback, stores tokens securely in VS Code secrets
+7. **Authentication Flow**: Uses VS Code URI handler for Google OAuth callback, stores tokens securely in VS Code secrets. URI scheme detection uses `vscode.env.uriScheme` for cross-editor compatibility
 
 8. **WebView Modal Modes**: `PromptEditorPanel` supports both edit mode (for existing prompts) and create mode (for new prompts with optional initial content)
 
@@ -136,6 +137,7 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 - Enhanced WebView editor with performance optimizations and caching
 - Fixed category management with inline creation and validation
 - Resolved Google OAuth authentication end-to-end
+- Fixed cross-editor URI scheme compatibility using official VS Code API
 
 ### Code Quality
 - Achieved 100% test pass rate (60 tests passing, 9 intentionally skipped)
