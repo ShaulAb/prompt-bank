@@ -366,10 +366,42 @@ export class AuthService {
   }
 
   private async getRedirectUri(): Promise<string> {
-    // Use VS Code's URI handler
     const extensionId = `${this.publisher}.${this.extensionName}`;
+
+    // Detect editor type and use appropriate URI scheme
+    const uriScheme = this.detectEditorUriScheme();
+
     console.log('[AuthService] Using extension ID for redirect:', extensionId);
-    return `vscode://${extensionId}/auth-callback`;
+    console.log('[AuthService] Using URI scheme:', uriScheme);
+
+    return `${uriScheme}://${extensionId}/auth-callback`;
+  }
+
+  private detectEditorUriScheme(): string {
+    // PROPER SOLUTION: Use the official VS Code API to get URI scheme
+    // This works correctly in both VS Code and Cursor without system modifications
+    try {
+      if (vscode.env.uriScheme) {
+        console.log('[AuthService] Using official vscode.env.uriScheme:', vscode.env.uriScheme);
+        return vscode.env.uriScheme;
+      }
+    } catch (error) {
+      console.log('[AuthService] Could not access vscode.env.uriScheme:', error);
+    }
+
+    // Fallback: Check app name for debugging info, but still use vscode scheme
+    try {
+      if (vscode.env.appName) {
+        const appName = vscode.env.appName.toLowerCase();
+        console.log('[AuthService] Detected app name:', appName);
+      }
+    } catch (error) {
+      console.log('[AuthService] Could not access vscode.env.appName:', error);
+    }
+
+    // Safe fallback to vscode scheme
+    console.log('[AuthService] Falling back to vscode URI scheme');
+    return 'vscode';
   }
 
   private generateCodeVerifier(): string {

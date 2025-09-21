@@ -1,0 +1,62 @@
+# VS Code ignore file for packaging
+
+# Development files
+.vscode/
+.vscode-test/
+node_modules/
+src/
+test/
+test-workspace/
+test-cursor-workspace/
+
+# Build and config files
+tsconfig.json
+vitest.config.ts
+.eslintrc.js
+.prettierrc
+.husky/
+lint-staged.config.js
+
+# Environment and credentials
+.env
+.env.example
+.env.*
+
+# Testing files
+*.test.ts
+*.test.js
+test-*.js
+*-test.js
+coverage/
+
+# Documentation (keep essential ones)
+E2E_TESTING_GUIDE.md
+REAL_E2E_TEST.md
+CURSOR_SUPPORT.md
+test-*.md
+memory_update.md
+SUGGESTIONS.md
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Git files
+.git/
+.gitignore
+
+# NPM files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Assets not needed in package
+assets/supabase_urls.png
+device-auth-page.html
+device-auth-site/
+images/
+
+# Claude files
+.claude/
