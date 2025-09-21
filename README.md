@@ -101,9 +101,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
 
-- Set up the development environment
-- Submit bug reports and feature requests  
-- Create pull requests
+- Set up the development environment and run the test suite to ensure everything works as expected
+- Submit bug reports and feature requests
+- Create pull requests with automated CI/CD validation
 
 ## 📋 Changelog
 
