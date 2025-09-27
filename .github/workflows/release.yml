@@ -42,22 +42,64 @@ jobs:
           npm run build
 
       - name: Bump version
-        run: npm version ${{ github.event.inputs.version_type }}
+        id: version
+        run: |
+          echo "OLD_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+          echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
 
       - name: Package extension
         run: npm run package
 
-      - name: Publish to marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npm run deploy
+      - name: Commit version bump and changelog
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore(release): 🔖 v${{ steps.version.outputs.NEW_VERSION }}"
+          git tag v${{ steps.version.outputs.NEW_VERSION }}
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
+          git push origin v${{ steps.version.outputs.NEW_VERSION }}
 
       - name: Create GitHub release
         uses: actions/create-release@v1
+        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          release_name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.NEW_VERSION }}
+          release_name: Release v${{ steps.version.outputs.NEW_VERSION }}
+          body: |
+            ## 📦 Manual Testing Required
+
+            This release has been packaged and is ready for testing. The VSIX file is attached to this release.
+
+            ### 🧪 Testing Steps:
+            1. Download the VSIX file from this release
+            2. Install locally: `code --install-extension prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix`
+            3. Test the extension functionality
+            4. If everything works: publish manually with `vsce publish`
+
+            ### 📋 Changes:
+            See CHANGELOG.md for detailed changes.
+
+            ---
+            *This release was created automatically but requires manual publishing to marketplace.*
           draft: false
           prerelease: false
+
+      - name: Upload VSIX to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
+          asset_name: prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
+          asset_content_type: application/zip
