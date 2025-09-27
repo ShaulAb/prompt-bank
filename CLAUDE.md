@@ -74,6 +74,13 @@ npm run test:ui         # With UI
 npm run lint            # Check ESLint
 npm run format          # Format with Prettier
 
+# Version Management (NEW)
+npm run release         # Auto-detect version from commits
+npm run release:patch   # Force patch bump (0.0.x)
+npm run release:minor   # Force minor bump (0.x.0)
+npm run release:major   # Force major bump (x.0.0)
+npm run release:dry-run # Preview changes without committing
+
 # Package extension
 npm run package
 
@@ -123,6 +130,11 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 8. **WebView Modal Modes**: `PromptEditorPanel` supports both edit mode (for existing prompts) and create mode (for new prompts with optional initial content)
 
+9. **Commit Conventions**: Use conventional commits with emojis for automatic version management. See CONTRIBUTING.md for detailed guidelines. Examples:
+   - `feat(auth): ✨ add OAuth integration` (minor bump)
+   - `fix(editor): 🐛 resolve loading issue` (patch bump)
+   - `feat(api)!: ✨ redesign storage system` (major bump)
+
 ## Testing Approach
 
 Uses Vitest with behavior-based testing. Tests are isolated per feature (create, update, delete, etc.) in separate files under `test/` directory.
@@ -154,10 +166,38 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 - Maintained comprehensive CONTRIBUTING.md guide
 - Enhanced inline code documentation
 
+## Version Management & Release Process
+
+### Automated Version Bumping (Implemented)
+The project uses **standard-version** for semantic versioning based on conventional commits:
+
+1. **Commit Convention Impact**:
+   - `fix:` commits → Patch version (0.0.x)
+   - `feat:` commits → Minor version (0.x.0)
+   - `BREAKING CHANGE:` → Major version (x.0.0)
+
+2. **Release Workflows**:
+   - **version-bump.yml**: Manual trigger for version bumps, creates PR with changelog
+   - **release.yml**: Publishes to VS Code Marketplace after version bump
+
+3. **How to Release**:
+   ```bash
+   # Local testing
+   npm run release:dry-run  # Preview what will change
+
+   # GitHub Actions (Recommended)
+   # 1. Go to Actions tab → "Version Bump" workflow
+   # 2. Select version type (auto/patch/minor/major)
+   # 3. Review and merge the created PR
+   # 4. Use "Release" workflow to publish
+   ```
+
+4. **Important**: The system uses `.versionrc.json` configuration that recognizes emoji commits. DO NOT modify version numbers manually in package.json - always use the release scripts or workflows.
+
 ## Next Steps / Potential Improvements
 
 **Immediate Priority**:
-- **Issue #24**: Implement automated version bumping workflow for releases
+- ~~**Issue #24**: Implement automated version bumping workflow for releases~~ ✅ COMPLETED
 
 **Future Enhancements**:
 1. **Template Variables**: Support for template variables in prompts (e.g., `{{selection}}`, `{{clipboard}}`)
