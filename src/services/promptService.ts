@@ -439,8 +439,9 @@ export class PromptService {
       let newCategoryName: string;
 
       // Determine the unique category name for this imported prompt
-      if (categoryNameMap.has(originalPrompt.category)) {
-        newCategoryName = categoryNameMap.get(originalPrompt.category)!;
+      const existingCategoryName = categoryNameMap.get(originalPrompt.category);
+      if (existingCategoryName) {
+        newCategoryName = existingCategoryName;
       } else {
         // If it's the first prompt from this original category, generate a unique name
         let candidateCategoryName = originalPrompt.category;

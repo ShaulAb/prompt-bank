@@ -2,8 +2,27 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as vscode from 'vscode';
-import { Prompt } from '../models/prompt';
+import { Prompt, TemplateVariable, FileContext } from '../models/prompt';
 import { IStorageProvider, PromptFilter, StorageStats, StorageConfig } from './interfaces';
+
+// Interface for raw JSON data where dates are strings
+interface RawPromptData {
+  id: string;
+  title: string;
+  content: string;
+  description?: string;
+  category: string;
+  order?: number;
+  categoryOrder?: number;
+  variables: TemplateVariable[];
+  metadata: {
+    created: string;
+    modified: string;
+    usageCount: number;
+    lastUsed?: string;
+    context?: FileContext;
+  };
+}
 
 /**
  * File-based storage provider using JSON files
@@ -115,7 +134,7 @@ export class FileStorageProvider implements IStorageProvider {
       if (filter.sortBy) {
         const effectiveSortOrder = filter.sortOrder || 'desc'; // Default to 'desc' if not specified
         prompts.sort((a, b) => {
-          let aVal: any, bVal: any;
+          let aVal: string | number, bVal: string | number;
 
           switch (filter.sortBy) {
             case 'created':
@@ -239,7 +258,7 @@ export class FileStorageProvider implements IStorageProvider {
       const prompts = JSON.parse(data);
 
       // Convert date strings back to Date objects
-      return prompts.map((p: any) => ({
+      return prompts.map((p: RawPromptData) => ({
         ...p,
         metadata: {
           ...p.metadata,
