@@ -71,11 +71,11 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
         .map((name, idx) => {
           // Find a prompt in this category with categoryOrder
           const promptWithOrder = prompts.find(
-            (p) => p.category === name && (p as any).categoryOrder !== undefined
+            (p) => p.category === name && p.categoryOrder !== undefined
           );
           return {
             name,
-            order: promptWithOrder ? (promptWithOrder as any).categoryOrder : idx,
+            order: promptWithOrder?.categoryOrder ?? idx,
           };
         })
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
@@ -277,7 +277,7 @@ export class PromptDragAndDropController implements vscode.TreeDragAndDropContro
         for (const prompt of catPrompts) {
           prompt.order = prompt.order ?? 0; // fallback
           // Store category order in prompt metadata (or add a new property if needed)
-          (prompt as any).categoryOrder = i;
+          prompt.categoryOrder = i;
           await this.promptService.editPromptById(prompt);
         }
       }

@@ -1,0 +1,95 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Select version bump type (auto = detect from commits)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version-bump:
+    name: Bump Version and Generate Changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run version bump with standard-version
+        id: version
+        run: |
+          echo "OLD_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.release_type }}" = "auto" ]; then
+            echo "Running automatic version detection based on commits..."
+            npm run release
+          else
+            echo "Bumping ${{ github.event.inputs.release_type }} version..."
+            npm run release:${{ github.event.inputs.release_type }}
+          fi
+
+          echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(release): 🔖 v${{ steps.version.outputs.NEW_VERSION }}'
+          title: 'chore(release): 🔖 Release v${{ steps.version.outputs.NEW_VERSION }}'
+          body: |
+            ## 🚀 Release v${{ steps.version.outputs.NEW_VERSION }}
+
+            This PR contains the version bump from v${{ steps.version.outputs.OLD_VERSION }} to v${{ steps.version.outputs.NEW_VERSION }} and the updated CHANGELOG.
+
+            ### What's included:
+            - ✅ Version bump in package.json
+            - ✅ Updated CHANGELOG.md with all changes
+            - ✅ Git tag prepared for release
+
+            ### Next steps:
+            1. Review the CHANGELOG to ensure all changes are documented correctly
+            2. Merge this PR to trigger the release workflow
+            3. The release workflow will publish to VS Code Marketplace
+
+            ---
+            *This PR was automatically created by the Version Bump workflow.*
+          branch: release/v${{ steps.version.outputs.NEW_VERSION }}
+          delete-branch: true
+          labels: |
+            release
+            automated
+
+      - name: Summary
+        run: |
+          echo "## Version Bump Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Old Version:** v${{ steps.version.outputs.OLD_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New Version:** v${{ steps.version.outputs.NEW_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bump Type:** ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "A pull request has been created with the version bump and changelog updates." >> $GITHUB_STEP_SUMMARY

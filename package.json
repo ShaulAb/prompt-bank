@@ -247,7 +247,12 @@
         "lint": "eslint src --ext ts",
         "format": "prettier --write src",
         "package": "vsce package",
-        "deploy": "vsce publish"
+        "deploy": "vsce publish",
+        "release": "standard-version",
+        "release:patch": "standard-version --release-as patch",
+        "release:minor": "standard-version --release-as minor",
+        "release:major": "standard-version --release-as major",
+        "release:dry-run": "standard-version --dry-run"
     },
     "devDependencies": {
         "@types/node": "^24.0.15",
@@ -265,6 +270,7 @@
         "msw": "^2.0.0",
         "nodemon": "^3.0.0",
         "prettier": "^3.6.2",
+        "standard-version": "^9.5.0",
         "tsx": "^4.7.0",
         "typescript": "^5.8.3",
         "vitest": "^3.2.4"

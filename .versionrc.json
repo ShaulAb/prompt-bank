@@ -1,0 +1,28 @@
+{
+  "types": [
+    {"type": "feat", "section": "✨ Features", "hidden": false},
+    {"type": "fix", "section": "🐛 Bug Fixes", "hidden": false},
+    {"type": "docs", "section": "📝 Documentation", "hidden": false},
+    {"type": "style", "section": "💄 Styles", "hidden": false},
+    {"type": "refactor", "section": "♻️ Code Refactoring", "hidden": false},
+    {"type": "perf", "section": "⚡ Performance Improvements", "hidden": false},
+    {"type": "test", "section": "✅ Tests", "hidden": false},
+    {"type": "build", "section": "📦 Build System", "hidden": false},
+    {"type": "ci", "section": "👷 CI/CD", "hidden": false},
+    {"type": "chore", "section": "🔧 Chores", "hidden": false},
+    {"type": "revert", "section": "⏪ Reverts", "hidden": false}
+  ],
+  "commitUrlFormat": "https://github.com/ShaulAb/prompt-bank/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/ShaulAb/prompt-bank/compare/{{previousTag}}...{{currentTag}}",
+  "preMajor": false,
+  "releaseCommitMessageFormat": "chore(release): 🔖 {{currentTag}}",
+  "scripts": {
+    "postchangelog": "prettier --write CHANGELOG.md"
+  },
+  "skip": {
+    "bump": false,
+    "changelog": false,
+    "commit": false,
+    "tag": false
+  }
+}
