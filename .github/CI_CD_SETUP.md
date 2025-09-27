@@ -4,100 +4,123 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 
 ## 🏗️ Overview
 
-Our CI/CD pipeline consists of multiple workflows that ensure code quality, run tests, and automate releases:
+Our streamlined CI/CD pipeline consists of **2 core workflows** that ensure code quality and enable controlled releases:
 
-1. **Main CI Workflow** (`ci.yml`) - Core testing and validation
-2. **Code Quality Workflow** (`code-quality.yml`) - Additional quality checks
-3. **Dependency Updates** (`dependency-updates.yml`) - Automated dependency management
-4. **Dependabot** (`dependabot.yml`) - Security updates and dependency management
+1. **CI Workflow** (`main.yml`) - Automated testing and validation
+2. **Release Workflow** (`version-bump.yml`) - Consolidated version management and packaging
+
+## 🌳 Dev-Centered Branching Strategy
+
+```
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [Marketplace]
+```
+
+- **Feature branches**: Individual feature development
+- **dev branch**: Integration branch where all features are merged and tested
+- **main branch**: Stable/released code only, represents what users have
 
 ## 🔄 Workflows
 
-### 1. Main CI (`ci.yml`)
+### 1. CI Pipeline (`main.yml`)
 
-**Triggers:** Push to `main`/`develop`, Pull Requests to `main`/`develop`
-
-**What it does:**
-- Runs tests across Node.js versions 18.x, 20.x, and 22.x
-- Performs linting with ESLint
-- Builds the extension
-- Packages the extension as `.vsix`
-- Runs VS Code compatibility tests
-- Uploads build artifacts
-
-### 2. Code Quality (`code-quality.yml`)
-
-**Triggers:** Push to `main`/`develop`, Pull Requests to `main`/`develop`
+**Triggers:** Push to `dev`/`main`, Pull Requests to `dev`
 
 **What it does:**
-- TypeScript type checking
-- Code formatting validation with Prettier
-- Bundle size analysis
-- Test coverage reporting
-- Checks for TODO/FIXME comments
-- Dependency usage analysis
-- Performance measurements
+- ✅ **TypeScript compilation** - Ensures type safety
+- ✅ **ESLint validation** - Code quality and consistency
+- ✅ **Vitest testing** - 67 tests with comprehensive coverage
+- ✅ **Extension build** - Creates production bundle
+- ✅ **Multi-Node support** - Tests on Node.js 18.x and 20.x
 
-### 3. Dependency Updates (`dependency-updates.yml`)
+**Runtime:** ~30 seconds (optimized for speed)
 
-**Triggers:** Weekly schedule (Mondays 8:00 AM UTC), Manual trigger
+### 2. Release Workflow (`version-bump.yml`)
+
+**Name:** "Version Bump and Release"
+**Triggers:** Manual workflow dispatch (dev branch only)
 
 **What it does:**
-- Checks for outdated npm packages
-- Updates dependencies automatically
-- Runs tests after updates
-- Creates Pull Request with changes
-- Performs security audit
+- ✅ **Quality gates** - Full CI pipeline before packaging
+- ✅ **Version management** - Automatic or manual version bumping
+- ✅ **Changelog generation** - Uses conventional commits
+- ✅ **VSIX packaging** - Creates installable extension package
+- ✅ **GitHub release** - With downloadable VSIX for testing
+- ✅ **Dev branch updates** - Commits changes back to dev
 
-### 4. Dependabot (`dependabot.yml`)
+**Branch enforcement:** Only runs from `dev` branch (`if: github.ref == 'refs/heads/dev'`)
+
+### 3. Dependabot
+
+**Configuration:** `.github/dependabot.yml`
 
 **What it does:**
 - Automatically opens PRs for dependency updates
 - Handles both npm and GitHub Actions updates
-- Runs weekly on Mondays
+- Runs weekly security audits
 - Automatically assigns to maintainers
 
 ## 📊 Quality Gates
 
-All PRs must pass these quality gates:
+All PRs to `dev` must pass these automated quality gates:
 
-✅ **Tests** - All tests must pass  
-✅ **Linting** - Code must pass ESLint rules  
-✅ **Type Checking** - TypeScript compilation must succeed  
-✅ **Formatting** - Code must be formatted with Prettier   
-✅ **Build** - Extension must build successfully  
-✅ **Security** - No high/critical security vulnerabilities
+✅ **Tests** - All 67 tests must pass (Vitest)
+✅ **Linting** - Code must pass ESLint rules
+✅ **Type Checking** - TypeScript compilation must succeed
+✅ **Build** - Extension must build successfully
+
+**Additional Release Gates** (when creating releases):
+✅ **VSIX Creation** - Package must build without errors
+✅ **Local Testing** - Manual verification before main merge
 
 ## 🛠️ Local Development
 
-### Running Tests Locally
+### Quick Quality Check
 ```bash
-# Run tests once
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with UI
-npm run test:ui
+# Run all quality checks (same as CI)
+npm run lint && npx tsc --noEmit && npm test && npm run build
 ```
 
-### Code Quality Checks
+### Individual Commands
 ```bash
-# Run linter
-npm run lint
+# Testing
+npm test                 # Run tests once
+npm run test:watch       # Run tests in watch mode
+npm run test:ui          # Run tests with UI
 
-# Check formatting
-npx prettier --check src
+# Code Quality
+npm run lint             # ESLint validation
+npx tsc --noEmit         # TypeScript type checking
+npm run build            # Build extension
 
-# Type checking
-npx tsc --noEmit
+# Release Preparation
+npm run package          # Create VSIX package
+npm run release:dry-run  # Preview version changes
+```
 
-# Build extension
-npm run build
+## 🚀 Release Process
 
-# Package extension
-npm run package
+### 1. Create Release (from dev branch)
+```bash
+# Via GitHub Actions (Recommended)
+# 1. Go to Actions → "Version Bump and Release"
+# 2. Select version type (auto/patch/minor/major)
+# 3. Workflow creates VSIX and GitHub release
+```
+
+### 2. Local Testing
+```bash
+# Download VSIX from GitHub release
+code --install-extension prompt-bank-X.X.X.vsix
+# Test all functionality
+```
+
+### 3. Production Release
+```bash
+# Create PR: dev → main
+gh pr create --base main --head dev --title "Release vX.X.X"
+
+# After merge to main:
+vsce publish  # Manual marketplace publishing
 ```
 
 ## 📈 Monitoring & Maintenance
@@ -105,12 +128,33 @@ npm run package
 ### Workflow Status
 Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-bank/actions).
 
-### Dependency Updates
-- Dependabot PRs are created weekly
-- Review and merge dependency updates promptly
-- Monitor for breaking changes
+### Key Metrics
+- **CI Runtime**: ~30 seconds (optimized)
+- **Test Coverage**: 67 tests with comprehensive scenarios
+- **Bundle Size**: ~40KB (minified)
 
-### Security
-- Security audits run automatically
-- Address high/critical vulnerabilities immediately
-- Review Dependabot security updates
+### Dependency Management
+- **Dependabot**: Creates weekly PRs for updates
+- **Security**: Automatic vulnerability scanning
+- **Review Process**: All dependency updates reviewed before merge
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**"Workflow not visible in Actions"**
+- Workflows are discovered from the default branch (main)
+- Ensure workflow files are merged to main
+
+**"403 Permission Error in Workflow"**
+- Check workflow has proper `permissions: contents: write`
+- Verify workflow runs from correct branch
+
+**"Release Workflow Fails"**
+- Ensure running from `dev` branch only
+- Check all quality gates pass before packaging
+
+### Getting Help
+- Check [CLAUDE.md](../CLAUDE.md) for comprehensive development guide
+- Review workflow logs in GitHub Actions
+- Ensure conventional commit format for version detection
