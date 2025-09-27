@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Prompt } from '../models/prompt';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { PromptService } from '../services/promptService';
+import { PromptTreeItem } from '../views/promptTreeItem';
 
 /**
  * Tree-specific commands for the Prompt Bank tree view
@@ -25,13 +26,11 @@ export class TreeCommands {
     // Insert prompt from tree (when prompt is selected)
     const insertFromTreeCommand = vscode.commands.registerCommand(
       'promptBank.insertPromptFromTree',
-      (item: any) => {
-        let prompt;
-        if (item && item.prompt) {
-          prompt = item.prompt;
-        } else if (item && item.content && item.metadata) {
-          prompt = item;
-        } else {
+      (item: PromptTreeItem | Prompt) => {
+        // Type guard: detect if this is from tree view (PromptTreeItem) or direct usage (Prompt)
+        const prompt = 'prompt' in item ? item.prompt : item;
+
+        if (!prompt || !prompt.content || !prompt.metadata) {
           vscode.window.showErrorMessage('No prompt selected or invalid item.');
           return;
         }

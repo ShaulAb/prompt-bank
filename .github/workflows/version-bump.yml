@@ -1,0 +1,132 @@
+name: Version Bump and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Select version bump type (auto = detect from commits)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run from dev branch to ensure all features are merged
+    if: github.ref == 'refs/heads/dev'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all quality checks
+        run: |
+          npx tsc --noEmit
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Bump version and generate changelog
+        id: version
+        run: |
+          echo "OLD_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.version_type }}" = "auto" ]; then
+            echo "Running automatic version detection based on commits..."
+            npm run release
+          else
+            echo "Bumping ${{ github.event.inputs.version_type }} version..."
+            npm run release:${{ github.event.inputs.version_type }}
+          fi
+
+          echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Commit and push changes to dev
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore(release): 🔖 v${{ steps.version.outputs.NEW_VERSION }}"
+          git tag v${{ steps.version.outputs.NEW_VERSION }}
+          git push origin HEAD:dev
+          git push origin v${{ steps.version.outputs.NEW_VERSION }}
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.NEW_VERSION }}
+          release_name: Release v${{ steps.version.outputs.NEW_VERSION }}
+          body: |
+            ## 📦 Manual Testing Required
+
+            This release has been packaged and is ready for testing. The VSIX file is attached to this release.
+
+            ### 🧪 Testing Steps:
+            1. Download the VSIX file from this release
+            2. Install locally: `code --install-extension prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix`
+            3. Test the extension functionality
+            4. If everything works: merge dev → main and publish manually with `vsce publish`
+
+            ### 📋 Changes:
+            See CHANGELOG.md for detailed changes in this release.
+
+            ---
+            *This release was created automatically from dev branch but requires manual publishing to marketplace.*
+          draft: false
+          prerelease: false
+
+      - name: Upload VSIX to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
+          asset_name: prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
+          asset_content_type: application/zip
+
+      - name: Summary
+        run: |
+          echo "## 🚀 Release v${{ steps.version.outputs.NEW_VERSION }} Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Old Version:** v${{ steps.version.outputs.OLD_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New Version:** v${{ steps.version.outputs.NEW_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bump Type:** ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ What was created:" >> $GITHUB_STEP_SUMMARY
+          echo "- Version bump and changelog pushed to dev branch" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub release with VSIX package ready for testing" >> $GITHUB_STEP_SUMMARY
+          echo "- Git tag v${{ steps.version.outputs.NEW_VERSION }} created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🧪 Next steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download and test the VSIX package locally" >> $GITHUB_STEP_SUMMARY
+          echo "2. If testing passes, merge dev → main" >> $GITHUB_STEP_SUMMARY
+          echo "3. Publish to marketplace with \`vsce publish\`" >> $GITHUB_STEP_SUMMARY

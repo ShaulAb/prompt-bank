@@ -6,44 +6,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts. It provides a tree view in the explorer sidebar where users can save prompts organized by categories, and features drag-and-drop support, cloud sharing via GitHub OAuth, and a modern webview editor interface.
 
-### Latest Status (feature/simplify-save-prompt-flow branch)
-**Status**: ✅ COMPLETE - Ready for PR to master
+### Latest Status (dev branch - September 21, 2025)
+**Status**: ✅ All features merged to dev, ready for v0.6.1 release
 
-**Core Features**: ✅ COMPLETE
+**Testing Infrastructure**: ✅ COMPLETE
+- ✅ Migrated from custom OAuth provider to MSW (Mock Service Worker)
+- ✅ Achieved 80% code reduction (800+ lines → 200 lines)
+- ✅ Comprehensive E2E authentication testing: 67 tests passing
+- ✅ 7 OAuth test scenarios covering full lifecycle including PKCE
+- ✅ Zero dependency on external test users or Supabase instances
+
+**CI/CD Pipeline**: ✅ SIMPLIFIED
+- ✅ Reduced from 4 complex workflows to 2 streamlined ones
+- ✅ CI runtime reduced to ~30 seconds
+- ✅ Fixed branch naming issue (develop → dev)
+- ✅ Automated testing on all pushes/PRs to dev branch
+
+**Previous Session Features**: ✅ MERGED TO DEV
 - ✅ Right-click context menu "Save Selection as Prompt"
 - ✅ Optimized WebView with caching for fast loading
 - ✅ Fixed category system with inline creation
-- ✅ WebView supports both create and edit modes
-- ✅ Comprehensive test coverage: 60 tests passing (9 skipped)
-- ✅ All quality checks passing: Tests, Formatting, TypeScript, Build
+- ✅ Google OAuth authentication fully operational
+- ✅ Sharing functionality working end-to-end
 
-**Authentication for Sharing**: ✅ COMPLETE
-- ✅ Google OAuth implementation working end-to-end
-- ✅ Fixed Supabase Site URL configuration issue
-- ✅ Updated API keys and resolved all authentication flows
-- ✅ Sharing functionality fully operational
+### Recent Improvements (September 21, 2025 Session)
 
-### Recent Improvements (Latest Session)
+**MSW Testing Migration**:
+- Replaced 800+ lines of custom OAuth provider with 200 lines of MSW handlers
+- Implemented comprehensive E2E authentication testing with 7 scenarios
+- Added network-level request mocking for reliable, isolated testing
+- Removed dependencies: @types/glob, @types/mocha, glob, mocha (600+ KB)
+- Added lightweight msw dependency (200 KB)
 
-**Performance Optimizations**:
-- Added WebView caching system (`WebViewCache.ts`) for faster loading
-- HTML template caching reduces file I/O on subsequent opens
-- Categories caching with 1-minute expiration
-- DNS prefetching for CDN resources
+**CI/CD Simplification**:
+- Consolidated 4 workflows into 2: main.yml (CI) and release.yml (deployment)
+- Fixed branch naming configuration (develop → dev)
+- Reduced CI runtime from 10-15 minutes to ~30 seconds
+- All quality gates automated: TypeScript, linting, testing, building
 
-**Category System Fixes**:
-- Fixed empty categories dropdown on first use
-- Implemented inline category creation (no more command palette interruption)
-- Added keyboard support (Enter/Escape) for category input
-- Prevents duplicate and empty categories
-- Default "General" category when none exist
-
-**Authentication Resolution**:
-- Fixed Supabase Site URL configuration mismatch
-- Updated to latest Supabase anon key
-- Resolved OAuth callback extension ID issue
-- **URI Scheme Detection Fix**: Replaced hacky editor detection with proper `vscode.env.uriScheme` API
-- End-to-end sharing functionality now working
+**Documentation Updates**:
+- Updated CHANGELOG.md with v0.6.1 infrastructure improvements
+- Refined README.md Contributing section for clarity
+- Maintained comprehensive TEST_PLAN.md with MSW approach
 
 ## Commands
 
@@ -69,6 +73,13 @@ npm run test:ui         # With UI
 # Linting and formatting
 npm run lint            # Check ESLint
 npm run format          # Format with Prettier
+
+# Version Management (NEW)
+npm run release         # Auto-detect version from commits
+npm run release:patch   # Force patch bump (0.0.x)
+npm run release:minor   # Force minor bump (0.x.0)
+npm run release:major   # Force major bump (x.0.0)
+npm run release:dry-run # Preview changes without committing
 
 # Package extension
 npm run package
@@ -119,6 +130,11 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 8. **WebView Modal Modes**: `PromptEditorPanel` supports both edit mode (for existing prompts) and create mode (for new prompts with optional initial content)
 
+9. **Commit Conventions**: Use conventional commits with emojis for automatic version management. See CONTRIBUTING.md for detailed guidelines. Examples:
+   - `feat(auth): ✨ add OAuth integration` (minor bump)
+   - `fix(editor): 🐛 resolve loading issue` (patch bump)
+   - `feat(api)!: ✨ redesign storage system` (major bump)
+
 ## Testing Approach
 
 Uses Vitest with behavior-based testing. Tests are isolated per feature (create, update, delete, etc.) in separate files under `test/` directory.
@@ -150,8 +166,104 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 - Maintained comprehensive CONTRIBUTING.md guide
 - Enhanced inline code documentation
 
+## Version Management & Release Process
+
+### Dev-Centered Release Workflow (Consolidated)
+The project uses a **single consolidated workflow** with automated version bumping and manual publishing control:
+
+```
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [Marketplace]
+```
+
+#### **Branch Strategy**:
+- **Feature branches**: Development of individual features
+- **dev branch**: Integration branch where features are merged and releases are prepared
+- **main branch**: Stable/released code only, represents what users have
+
+#### **Release Philosophy**:
+- **Automated preparation**: Version bumping, changelog generation, VSIX packaging happen on `dev`
+- **Quality assurance**: All checks (TypeScript, linting, tests, build) run before packaging
+- **Manual verification**: Local testing of VSIX before committing to release
+- **Controlled publishing**: Manual marketplace publishing with full oversight
+
+#### **The Release Process**:
+1. **Feature Development**: Work in feature branches, PR to dev
+2. **Version Release**: Trigger "Version Bump and Release" workflow from dev branch only
+3. **Quality Assurance**: Workflow runs all checks automatically
+4. **Package Creation**: Creates version bump, changelog, and VSIX package
+5. **Dev Update**: Pushes changes back to dev branch with new version tag
+6. **GitHub Release**: Creates release with downloadable VSIX for testing
+7. **Local Testing**: Download and test VSIX locally: `code --install-extension prompt-bank-x.x.x.vsix`
+8. **Main Merge**: If testing passes, merge dev → main manually
+9. **Marketplace Publishing**: Manually publish with `vsce publish`
+
+### **Commit Convention Impact**:
+- `fix:` commits → Patch version (0.0.x)
+- `feat:` commits → Minor version (0.x.0)
+- `BREAKING CHANGE:` → Major version (x.0.0)
+
+### **Release Workflow**:
+- **version-bump.yml**: Consolidated workflow for version bumps, packaging, and release creation
+  - Runs only from dev branch (`if: github.ref == 'refs/heads/dev'`)
+  - Includes all quality checks (TypeScript, linting, tests, build)
+  - Creates version bump, changelog, VSIX package, and GitHub release
+  - No automatic marketplace publishing (manual control)
+
+### **Complete Release Process**:
+
+#### **Step 1: Create Release from Dev**
+```bash
+# Local testing (optional - preview changes)
+npm run release:dry-run  # Preview what will change
+
+# GitHub Actions (Recommended)
+# 1. Ensure you're on dev branch with all features merged
+# 2. Go to Actions tab → "Version Bump and Release" workflow
+# 3. Select version type (auto/patch/minor/major)
+# 4. Workflow automatically:
+#    - Runs all quality checks
+#    - Bumps version and generates changelog
+#    - Creates VSIX package
+#    - Pushes changes to dev
+#    - Creates GitHub release with VSIX
+```
+
+#### **Step 2: Local Testing**
+```bash
+# Download VSIX from GitHub release
+code --install-extension prompt-bank-X.X.X.vsix  # Test locally
+# Verify all functionality works as expected
+```
+
+#### **Step 3: Release to Production**
+```bash
+# Create PR from dev to main (after successful testing)
+gh pr create --base main --head dev --title "Release v0.X.Y"
+
+# After review and merge to main:
+vsce publish  # Publish to VS Code Marketplace
+# Optional: npx ovsx publish --pat <token>  # Publish to Open VSX
+```
+
+### **Benefits of This Workflow**:
+- **Safety**: Local testing before committing to release
+- **Quality**: PR review for all releases (dev → main)
+- **Control**: Manual marketplace publishing timing
+- **Clarity**: Clean separation between development and released code
+- **History**: Main branch represents actual release history
+
+### **Important Notes**:
+- The system uses `.versionrc.json` configuration that recognizes emoji commits
+- DO NOT modify version numbers manually in package.json - always use the release scripts or workflows
+- Git tags are created on dev during version bump, then pushed to main during release
+- All release artifacts (VSIX, changelog) are prepared on dev branch for testing
+
 ## Next Steps / Potential Improvements
 
+**Immediate Priority**:
+- ~~**Issue #24**: Implement automated version bumping workflow for releases~~ ✅ COMPLETED
+
+**Future Enhancements**:
 1. **Template Variables**: Support for template variables in prompts (e.g., `{{selection}}`, `{{clipboard}}`)
 2. **Export/Import**: Add JSON/CSV export functionality for backup and sharing
 3. **Prompt History**: Track prompt usage history and provide analytics
