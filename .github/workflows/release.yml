@@ -42,10 +42,30 @@ jobs:
           npm run build
 
       - name: Bump version
-        run: npm version ${{ github.event.inputs.version_type }}
+        id: version
+        run: |
+          echo "OLD_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+          echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
 
       - name: Package extension
         run: npm run package
+
+      - name: Commit version bump and changelog
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore(release): 🔖 v${{ steps.version.outputs.NEW_VERSION }}"
+          git tag v${{ steps.version.outputs.NEW_VERSION }}
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
+          git push origin v${{ steps.version.outputs.NEW_VERSION }}
 
       - name: Publish to marketplace
         env:
@@ -57,7 +77,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          release_name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.NEW_VERSION }}
+          release_name: Release v${{ steps.version.outputs.NEW_VERSION }}
           draft: false
           prerelease: false

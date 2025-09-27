@@ -153,21 +153,65 @@ npx prettier --check src
 
 ## 📝 Commit Guidelines
 
-We use [gitmoji](https://gitmoji.dev/):
+We follow [Conventional Commits](https://www.conventionalcommits.org/) with [gitmoji](https://gitmoji.dev/) for clear, semantic version management.
 
- - ✅ for tests 
- - 🔧 for settings/config changes
- - 🔖 for releases
- - ✨ for new features
- - 🐛 for bug fixes
-  
-and so on.
+### Commit Format
+
+```
+<type>(<scope>): <emoji> <description>
+```
+
+### Types and Their Impact on Versioning
+
+| Type | Emoji | Description | Version Bump |
+|------|--------|-------------|--------------|
+| `feat` | ✨ | New feature | **Minor** (0.x.0) |
+| `fix` | 🐛 | Bug fix | **Patch** (0.0.x) |
+| `docs` | 📝 | Documentation only | No bump |
+| `style` | 💄 | Code style changes | No bump |
+| `refactor` | ♻️ | Code refactoring | No bump |
+| `perf` | ⚡ | Performance improvements | **Patch** |
+| `test` | ✅ | Adding/updating tests | No bump |
+| `build` | 📦 | Build system changes | No bump |
+| `ci` | 👷 | CI/CD changes | No bump |
+| `chore` | 🔧 | Maintenance tasks | No bump |
+| `revert` | ⏪ | Revert previous commit | **Patch** |
+
+**Breaking Changes**: Add `BREAKING CHANGE:` in commit body or `!` after type → **Major** (x.0.0)
 
 ### Examples
 
-✨ add cloud sync functionality  
-🐛 fix drag and drop bug  
-✅ add tests for save prompt command  
+```bash
+# Features (Minor bump)
+feat(tree-view): ✨ add drag and drop support
+feat(auth): ✨ implement OAuth authentication
+
+# Bug fixes (Patch bump)
+fix(editor): 🐛 resolve WebView loading issue
+fix(sync): 🐛 fix data persistence bug
+
+# Breaking changes (Major bump)
+feat(api)!: ✨ redesign storage API
+# or with body:
+feat(api): ✨ new storage system
+
+BREAKING CHANGE: The storage API has been completely redesigned.
+Old methods are no longer available.
+
+# Other commits (No version bump)
+docs(readme): 📝 update installation guide
+test(service): ✅ add unit tests for PromptService
+chore(deps): 🔧 update dependencies
+```
+
+### Why This Matters
+
+Our CI/CD pipeline uses these conventions to:
+1. **Automatically determine version bumps** based on commit types
+2. **Generate changelogs** with organized sections
+3. **Create meaningful release notes** for users
+
+Use `npm run release:dry-run` to preview how your commits will affect the next version!  
 
 
 ## 🔄 Pull Request Process
