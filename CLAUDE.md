@@ -168,11 +168,11 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 
 ## Version Management & Release Process
 
-### Dev-Centered Release Workflow (Implemented)
-The project uses a **dev-centered workflow** with automated version bumping and manual publishing control:
+### Dev-Centered Release Workflow (Consolidated)
+The project uses a **single consolidated workflow** with automated version bumping and manual publishing control:
 
 ```
-Features → dev → [Version Bump] → [Local Test] → main → [Marketplace]
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [Marketplace]
 ```
 
 #### **Branch Strategy**:
@@ -182,30 +182,50 @@ Features → dev → [Version Bump] → [Local Test] → main → [Marketplace]
 
 #### **Release Philosophy**:
 - **Automated preparation**: Version bumping, changelog generation, VSIX packaging happen on `dev`
+- **Quality assurance**: All checks (TypeScript, linting, tests, build) run before packaging
 - **Manual verification**: Local testing of VSIX before committing to release
 - **Controlled publishing**: Manual marketplace publishing with full oversight
+
+#### **The Release Process**:
+1. **Feature Development**: Work in feature branches, PR to dev
+2. **Version Release**: Trigger "Version Bump and Release" workflow from dev branch only
+3. **Quality Assurance**: Workflow runs all checks automatically
+4. **Package Creation**: Creates version bump, changelog, and VSIX package
+5. **Dev Update**: Pushes changes back to dev branch with new version tag
+6. **GitHub Release**: Creates release with downloadable VSIX for testing
+7. **Local Testing**: Download and test VSIX locally: `code --install-extension prompt-bank-x.x.x.vsix`
+8. **Main Merge**: If testing passes, merge dev → main manually
+9. **Marketplace Publishing**: Manually publish with `vsce publish`
 
 ### **Commit Convention Impact**:
 - `fix:` commits → Patch version (0.0.x)
 - `feat:` commits → Minor version (0.x.0)
 - `BREAKING CHANGE:` → Major version (x.0.0)
 
-### **Release Workflows**:
-- **version-bump.yml**: Manual trigger for version bumps, creates PR with changelog to dev
-- **release.yml**: Creates GitHub release with VSIX file on dev branch (no auto-publishing)
+### **Release Workflow**:
+- **version-bump.yml**: Consolidated workflow for version bumps, packaging, and release creation
+  - Runs only from dev branch (`if: github.ref == 'refs/heads/dev'`)
+  - Includes all quality checks (TypeScript, linting, tests, build)
+  - Creates version bump, changelog, VSIX package, and GitHub release
+  - No automatic marketplace publishing (manual control)
 
 ### **Complete Release Process**:
 
-#### **Step 1: Prepare Release on Dev**
+#### **Step 1: Create Release from Dev**
 ```bash
-# Local testing (optional)
+# Local testing (optional - preview changes)
 npm run release:dry-run  # Preview what will change
 
 # GitHub Actions (Recommended)
-# 1. Go to Actions tab → "Version Bump" workflow
-# 2. Select version type (auto/patch/minor/major)
-# 3. Review and merge the created PR to dev
-# 4. Use "Release" workflow to create GitHub release with VSIX
+# 1. Ensure you're on dev branch with all features merged
+# 2. Go to Actions tab → "Version Bump and Release" workflow
+# 3. Select version type (auto/patch/minor/major)
+# 4. Workflow automatically:
+#    - Runs all quality checks
+#    - Bumps version and generates changelog
+#    - Creates VSIX package
+#    - Pushes changes to dev
+#    - Creates GitHub release with VSIX
 ```
 
 #### **Step 2: Local Testing**
@@ -217,7 +237,7 @@ code --install-extension prompt-bank-X.X.X.vsix  # Test locally
 
 #### **Step 3: Release to Production**
 ```bash
-# Create PR from dev to main
+# Create PR from dev to main (after successful testing)
 gh pr create --base main --head dev --title "Release v0.X.Y"
 
 # After review and merge to main:
