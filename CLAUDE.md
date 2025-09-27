@@ -168,8 +168,8 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 
 ## Version Management & Release Process
 
-### Automated Version Bumping (Implemented)
-The project uses **standard-version** for semantic versioning based on conventional commits:
+### Automated Version Bumping with Manual Publishing (Implemented)
+The project uses **standard-version** for semantic versioning with **manual control** over marketplace publishing:
 
 1. **Commit Convention Impact**:
    - `fix:` commits → Patch version (0.0.x)
@@ -178,7 +178,7 @@ The project uses **standard-version** for semantic versioning based on conventio
 
 2. **Release Workflows**:
    - **version-bump.yml**: Manual trigger for version bumps, creates PR with changelog
-   - **release.yml**: Publishes to VS Code Marketplace after version bump
+   - **release.yml**: Creates GitHub release with VSIX file for manual testing (no auto-publishing)
 
 3. **How to Release**:
    ```bash
@@ -189,10 +189,20 @@ The project uses **standard-version** for semantic versioning based on conventio
    # 1. Go to Actions tab → "Version Bump" workflow
    # 2. Select version type (auto/patch/minor/major)
    # 3. Review and merge the created PR
-   # 4. Use "Release" workflow to publish
+   # 4. Use "Release" workflow to create GitHub release with VSIX
+   # 5. Download VSIX from release, test locally
+   # 6. Publish manually when ready: vsce publish
    ```
 
-4. **Important**: The system uses `.versionrc.json` configuration that recognizes emoji commits. DO NOT modify version numbers manually in package.json - always use the release scripts or workflows.
+4. **Manual Publishing Process**:
+   ```bash
+   # After downloading and testing the VSIX file:
+   code --install-extension prompt-bank-X.X.X.vsix  # Test locally
+   vsce publish  # Publish to VS Code Marketplace when ready
+   # Optional: npx ovsx publish --pat <token>  # Publish to Open VSX
+   ```
+
+5. **Important**: The system uses `.versionrc.json` configuration that recognizes emoji commits. DO NOT modify version numbers manually in package.json - always use the release scripts or workflows.
 
 ## Next Steps / Potential Improvements
 
