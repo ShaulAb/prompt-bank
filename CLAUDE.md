@@ -168,41 +168,75 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 
 ## Version Management & Release Process
 
-### Automated Version Bumping with Manual Publishing (Implemented)
-The project uses **standard-version** for semantic versioning with **manual control** over marketplace publishing:
+### Dev-Centered Release Workflow (Implemented)
+The project uses a **dev-centered workflow** with automated version bumping and manual publishing control:
 
-1. **Commit Convention Impact**:
-   - `fix:` commits → Patch version (0.0.x)
-   - `feat:` commits → Minor version (0.x.0)
-   - `BREAKING CHANGE:` → Major version (x.0.0)
+```
+Features → dev → [Version Bump] → [Local Test] → main → [Marketplace]
+```
 
-2. **Release Workflows**:
-   - **version-bump.yml**: Manual trigger for version bumps, creates PR with changelog
-   - **release.yml**: Creates GitHub release with VSIX file for manual testing (no auto-publishing)
+#### **Branch Strategy**:
+- **Feature branches**: Development of individual features
+- **dev branch**: Integration branch where features are merged and releases are prepared
+- **main branch**: Stable/released code only, represents what users have
 
-3. **How to Release**:
-   ```bash
-   # Local testing
-   npm run release:dry-run  # Preview what will change
+#### **Release Philosophy**:
+- **Automated preparation**: Version bumping, changelog generation, VSIX packaging happen on `dev`
+- **Manual verification**: Local testing of VSIX before committing to release
+- **Controlled publishing**: Manual marketplace publishing with full oversight
 
-   # GitHub Actions (Recommended)
-   # 1. Go to Actions tab → "Version Bump" workflow
-   # 2. Select version type (auto/patch/minor/major)
-   # 3. Review and merge the created PR
-   # 4. Use "Release" workflow to create GitHub release with VSIX
-   # 5. Download VSIX from release, test locally
-   # 6. Publish manually when ready: vsce publish
-   ```
+### **Commit Convention Impact**:
+- `fix:` commits → Patch version (0.0.x)
+- `feat:` commits → Minor version (0.x.0)
+- `BREAKING CHANGE:` → Major version (x.0.0)
 
-4. **Manual Publishing Process**:
-   ```bash
-   # After downloading and testing the VSIX file:
-   code --install-extension prompt-bank-X.X.X.vsix  # Test locally
-   vsce publish  # Publish to VS Code Marketplace when ready
-   # Optional: npx ovsx publish --pat <token>  # Publish to Open VSX
-   ```
+### **Release Workflows**:
+- **version-bump.yml**: Manual trigger for version bumps, creates PR with changelog to dev
+- **release.yml**: Creates GitHub release with VSIX file on dev branch (no auto-publishing)
 
-5. **Important**: The system uses `.versionrc.json` configuration that recognizes emoji commits. DO NOT modify version numbers manually in package.json - always use the release scripts or workflows.
+### **Complete Release Process**:
+
+#### **Step 1: Prepare Release on Dev**
+```bash
+# Local testing (optional)
+npm run release:dry-run  # Preview what will change
+
+# GitHub Actions (Recommended)
+# 1. Go to Actions tab → "Version Bump" workflow
+# 2. Select version type (auto/patch/minor/major)
+# 3. Review and merge the created PR to dev
+# 4. Use "Release" workflow to create GitHub release with VSIX
+```
+
+#### **Step 2: Local Testing**
+```bash
+# Download VSIX from GitHub release
+code --install-extension prompt-bank-X.X.X.vsix  # Test locally
+# Verify all functionality works as expected
+```
+
+#### **Step 3: Release to Production**
+```bash
+# Create PR from dev to main
+gh pr create --base main --head dev --title "Release v0.X.Y"
+
+# After review and merge to main:
+vsce publish  # Publish to VS Code Marketplace
+# Optional: npx ovsx publish --pat <token>  # Publish to Open VSX
+```
+
+### **Benefits of This Workflow**:
+- **Safety**: Local testing before committing to release
+- **Quality**: PR review for all releases (dev → main)
+- **Control**: Manual marketplace publishing timing
+- **Clarity**: Clean separation between development and released code
+- **History**: Main branch represents actual release history
+
+### **Important Notes**:
+- The system uses `.versionrc.json` configuration that recognizes emoji commits
+- DO NOT modify version numbers manually in package.json - always use the release scripts or workflows
+- Git tags are created on dev during version bump, then pushed to main during release
+- All release artifacts (VSIX, changelog) are prepared on dev branch for testing
 
 ## Next Steps / Potential Improvements
 

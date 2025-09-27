@@ -64,7 +64,7 @@ jobs:
 
       - name: Push changes
         run: |
-          git push origin HEAD:main
+          git push origin HEAD:dev
           git push origin v${{ steps.version.outputs.NEW_VERSION }}
 
       - name: Create GitHub release
