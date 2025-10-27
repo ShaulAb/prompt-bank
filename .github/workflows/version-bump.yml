@@ -48,6 +48,11 @@ jobs:
           npm test
           npm run build
 
+      - name: Configure git identity
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
       - name: Bump version and generate changelog
         id: version
         run: |
@@ -66,13 +71,8 @@ jobs:
       - name: Package extension
         run: npm run package
 
-      - name: Commit and push changes to dev
+      - name: Push changes to dev
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add package.json package-lock.json CHANGELOG.md
-          git commit -m "chore(release): 🔖 v${{ steps.version.outputs.NEW_VERSION }}"
-          git tag v${{ steps.version.outputs.NEW_VERSION }}
           git push origin HEAD:dev
           git push origin v${{ steps.version.outputs.NEW_VERSION }}
 
