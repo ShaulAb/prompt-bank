@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file. See [standa
 - **sync:** ✨ add complete deletion support with soft-delete and restore
   - Deleted prompts tracked across all synced devices
   - 30-day retention period before permanent removal
-  - Automatic server-side garbage collection runs daily at 2 AM UTC
+  - Automatic server-side garbage collection runs daily
   - Delete-modify conflict resolution (modified version always preserved)
 
 ### 🔄 Changed
@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 - **4 New Edge Functions**: delete-prompt, restore-prompt, gc-deleted-prompts, get-user-prompts (updated)
 - **Schema Version**: Sync state now includes schema version for future migrations
-- **Quota Accuracy**: Soft-deleted prompts don't count toward 1,000 prompt limit
+- **Quota Accuracy**: Soft-deleted prompts don't count toward prompt limit
 - **Conflict Resolution**: Modified prompts always take precedence over deletions
 - **Data Models**: Extended PromptSyncInfo with isDeleted/deletedAt, SyncPlan with toDelete, SyncStats with deleted count
 
