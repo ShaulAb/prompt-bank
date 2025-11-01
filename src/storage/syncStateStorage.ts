@@ -261,6 +261,97 @@ export class SyncStateStorage {
     return null;
   }
 
+  /**
+   * Mark a prompt as deleted locally
+   *
+   * @param promptId - Local prompt ID
+   */
+  async markPromptAsDeleted(promptId: string): Promise<void> {
+    const state = await this.getSyncState();
+    if (!state) {
+      throw new Error('Cannot mark prompt as deleted: sync state not initialized');
+    }
+
+    const existingInfo = state.promptSyncMap[promptId];
+    if (!existingInfo) {
+      // Prompt not synced yet, nothing to mark
+      return;
+    }
+
+    const updated = updatePromptSync(state, promptId, {
+      ...existingInfo,
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+
+    await this.saveSyncState(updated);
+  }
+
+  /**
+   * Update sync info for a specific prompt (allows partial updates)
+   *
+   * @param promptId - Local prompt ID
+   * @param updates - Partial sync info to update
+   */
+  async updatePromptSyncInfo(
+    promptId: string,
+    updates: Partial<PromptSyncInfo>
+  ): Promise<void> {
+    const state = await this.getSyncState();
+    if (!state) {
+      throw new Error('Cannot update prompt sync info: sync state not initialized');
+    }
+
+    const existingInfo = state.promptSyncMap[promptId];
+    if (!existingInfo) {
+      throw new Error(`Cannot update sync info: prompt ${promptId} not synced`);
+    }
+
+    const updated = updatePromptSync(state, promptId, {
+      ...existingInfo,
+      ...updates,
+    } as PromptSyncInfo);
+
+    await this.saveSyncState(updated);
+  }
+
+  /**
+   * Get all deleted prompts (for restore feature)
+   *
+   * @returns Array of [promptId, syncInfo] entries for deleted prompts
+   */
+  async getDeletedPrompts(): Promise<
+    ReadonlyArray<{ promptId: string; info: PromptSyncInfo }>
+  > {
+    const state = await this.getSyncState();
+    if (!state) {
+      return [];
+    }
+
+    return Object.entries(state.promptSyncMap)
+      .filter(([_, info]) => info.isDeleted === true)
+      .map(([promptId, info]) => ({ promptId, info }));
+  }
+
+  /**
+   * Update sync state (allows partial updates)
+   *
+   * @param updates - Partial sync state to update
+   */
+  async updateSyncState(updates: Partial<SyncState>): Promise<void> {
+    const state = await this.getSyncState();
+    if (!state) {
+      throw new Error('Cannot update sync state: not initialized');
+    }
+
+    const updated = {
+      ...state,
+      ...updates,
+    };
+
+    await this.saveSyncState(updated);
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ────────────────────────────────────────────────────────────────────────────
@@ -278,6 +369,7 @@ export class SyncStateStorage {
           {
             ...info,
             lastSyncedAt: info.lastSyncedAt.toISOString(),
+            deletedAt: info.deletedAt?.toISOString(),
           },
         ])
       ),
@@ -291,13 +383,19 @@ export class SyncStateStorage {
     const result: SyncState = {
       ...parsed,
       promptSyncMap: Object.fromEntries(
-        Object.entries(parsed.promptSyncMap).map(([id, info]) => [
-          id,
-          {
+        Object.entries(parsed.promptSyncMap).map(([id, info]) => {
+          const deserialized: PromptSyncInfo = {
             ...info,
             lastSyncedAt: new Date(info.lastSyncedAt),
-          },
-        ])
+          };
+
+          // Only add deletedAt if it exists
+          if (info.deletedAt) {
+            deserialized.deletedAt = new Date(info.deletedAt);
+          }
+
+          return [id, deserialized];
+        })
       ),
     };
 

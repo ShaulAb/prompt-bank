@@ -143,6 +143,11 @@
                 "command": "promptBank.clearSyncState",
                 "title": "Clear Sync State",
                 "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.restoreDeletedPrompts",
+                "title": "♻️ Restore Deleted Prompts",
+                "category": "Prompt Bank"
             }
         ],
         "menus": {

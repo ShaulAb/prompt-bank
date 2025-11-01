@@ -37,6 +37,11 @@ export const registerSyncCommands = (
     vscode.commands.registerCommand('promptBank.clearSyncState', async () => {
       await clearSyncStateCommand(syncService);
     }),
+
+    // Command: Restore deleted prompts
+    vscode.commands.registerCommand('promptBank.restoreDeletedPrompts', async () => {
+      await restoreDeletedPromptsCommand(syncService, promptService);
+    }),
   ];
 };
 
@@ -67,6 +72,7 @@ async function syncPromptsCommand(
           `Sync completed! ` +
           `${result.stats.uploaded} uploaded, ` +
           `${result.stats.downloaded} downloaded, ` +
+          `${result.stats.deleted} deleted, ` +
           `${result.stats.conflicts} conflicts resolved`;
 
         void vscode.window.showInformationMessage(message);
@@ -149,5 +155,66 @@ async function clearSyncStateCommand(syncService: SyncService): Promise<void> {
     } catch (error: unknown) {
       void vscode.window.showErrorMessage('Failed to clear sync state');
     }
+  }
+}
+
+/**
+ * Restore deleted prompts command handler
+ */
+async function restoreDeletedPromptsCommand(
+  syncService: SyncService,
+  promptService: PromptService
+): Promise<void> {
+  try {
+    // Fetch deleted prompts
+    const deletedPrompts = await syncService.getDeletedPrompts();
+
+    if (deletedPrompts.length === 0) {
+      void vscode.window.showInformationMessage('No deleted prompts to restore');
+      return;
+    }
+
+    // Show quick pick with deleted prompts
+    const items = deletedPrompts.map((p) => ({
+      label: p.title,
+      description: `Deleted ${p.info.deletedAt?.toLocaleDateString() || 'recently'}`,
+      picked: false,
+      cloudId: p.info.cloudId,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: 'Select prompts to restore',
+      title: `Restore Deleted Prompts (${deletedPrompts.length} available)`,
+    });
+
+    if (!selected || selected.length === 0) {
+      return;
+    }
+
+    // Restore selected prompts
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Restoring prompts...',
+        cancellable: false,
+      },
+      async (progress) => {
+        const cloudIds = selected.map((s) => s.cloudId);
+        const restored = await syncService.restoreDeletedPrompts(cloudIds);
+
+        // Trigger a sync to download restored prompts
+        progress.report({ message: 'Syncing restored prompts...' });
+        const localPrompts = await promptService.listPrompts();
+        await syncService.performSync(localPrompts, promptService);
+
+        void vscode.window.showInformationMessage(
+          `Successfully restored ${restored} prompt(s)`
+        );
+      }
+    );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    void vscode.window.showErrorMessage(`Failed to restore prompts: ${errorMessage}`);
   }
 }

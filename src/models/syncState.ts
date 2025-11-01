@@ -24,6 +24,9 @@ export interface SyncState {
 
   /** Map: promptId → sync information for that prompt */
   promptSyncMap: Readonly<Record<string, PromptSyncInfo>>;
+
+  /** Schema version for future migrations (default: 2 with deletion support) */
+  schemaVersion?: number;
 }
 
 /**
@@ -42,6 +45,12 @@ export interface PromptSyncInfo {
 
   /** Version number from database (for optimistic locking) */
   readonly version: number;
+
+  /** Whether this prompt was deleted locally */
+  isDeleted?: boolean;
+
+  /** When the prompt was deleted locally */
+  deletedAt?: Date;
 }
 
 /**
@@ -66,6 +75,8 @@ export interface RemotePrompt {
   readonly content_hash: string;
   readonly created_at: string; // ISO timestamp
   readonly updated_at: string; // ISO timestamp
+  readonly deleted_at?: string | null; // ISO timestamp (soft delete)
+  readonly deleted_by_device_id?: string | null;
 }
 
 /**
@@ -88,6 +99,9 @@ export interface SyncPlan {
 
   /** Prompts to download from cloud */
   toDownload: RemotePrompt[];
+
+  /** Prompts to soft-delete in cloud */
+  toDelete: Array<{ cloudId: string }>;
 
   /** Prompts with conflicts (modified both locally and remotely) */
   conflicts: SyncConflict[];
@@ -115,6 +129,7 @@ export interface SyncResult {
 export interface SyncStats {
   uploaded: number;
   downloaded: number;
+  deleted: number;
   conflicts: number;
   duration: number; // milliseconds
 }

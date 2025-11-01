@@ -111,6 +111,7 @@ export class SyncService {
     const plan: SyncPlan = {
       toUpload: [] as Prompt[],
       toDownload: [] as RemotePrompt[],
+      toDelete: [] as Array<{ cloudId: string }>,
       conflicts: [] as SyncConflict[],
     };
 
@@ -118,9 +119,21 @@ export class SyncService {
     const localMap = new Map(local.map((p) => [p.id, p]));
     const remoteMap = new Map<string, RemotePrompt>();
 
-    // Map remote prompts by cloudId (from sync state)
+    // Map ACTIVE remote prompts only (exclude soft-deleted)
     for (const remotePrompt of remote) {
-      remoteMap.set(remotePrompt.cloud_id, remotePrompt);
+      if (!remotePrompt.deleted_at) {
+        remoteMap.set(remotePrompt.cloud_id, remotePrompt);
+      }
+    }
+
+    // Detect locally deleted prompts (exist in sync state but not in local)
+    const localIds = new Set(local.map((p) => p.id));
+    const deletedLocally = new Set<string>();
+
+    for (const [promptId, info] of Object.entries(promptSyncMap)) {
+      if (!localIds.has(promptId) && !info.isDeleted) {
+        deletedLocally.add(info.cloudId);
+      }
     }
 
     // Process local prompts
@@ -130,8 +143,19 @@ export class SyncService {
       const remotePrompt = cloudId ? remoteMap.get(cloudId) : undefined;
 
       if (!remotePrompt) {
-        // New local prompt - upload
-        plan.toUpload.push(prompt);
+        // Check if deleted remotely
+        const remoteDeleted = remote.find(
+          (r) => r.cloud_id === cloudId && r.deleted_at
+        );
+
+        if (remoteDeleted) {
+          // DELETE-MODIFY CONFLICT: Remote deleted, local modified
+          // RESOLUTION: Keep modified version (user preference)
+          plan.toUpload.push(prompt);
+        } else {
+          // New local prompt - upload
+          plan.toUpload.push(prompt);
+        }
         continue;
       }
 
@@ -176,11 +200,21 @@ export class SyncService {
       }
     }
 
-    // Find new remote prompts not in local
+    // Process deletions
+    for (const cloudId of deletedLocally) {
+      plan.toDelete.push({ cloudId });
+    }
+
+    // Find new remote prompts not in local (but not deleted locally)
     for (const remotePrompt of remote) {
+      if (remotePrompt.deleted_at) continue; // Skip deleted remote prompts
+
       const localPromptId = this.findLocalPromptId(remotePrompt.cloud_id, promptSyncMap);
       if (!localPromptId || !localMap.has(localPromptId)) {
-        plan.toDownload.push(remotePrompt);
+        // Check if this was deleted locally
+        if (!deletedLocally.has(remotePrompt.cloud_id)) {
+          plan.toDownload.push(remotePrompt);
+        }
       }
     }
 
@@ -397,18 +431,58 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Soft-delete a prompt in the cloud
+   *
+   * @param cloudId - Cloud ID of prompt to delete
+   */
+  private async deletePrompt(cloudId: string): Promise<void> {
+    const supabase = SupabaseClientManager.get();
+    const deviceInfo = await getDeviceInfo(this.context);
+
+    const { error } = await supabase.functions.invoke('delete-prompt', {
+      body: { cloudId, deviceId: deviceInfo.id },
+    });
+
+    if (error) {
+      throw new Error(`Failed to delete prompt: ${error.message}`);
+    }
+  }
+
+  /**
+   * Restore a soft-deleted prompt in the cloud
+   *
+   * @param cloudId - Cloud ID of prompt to restore
+   */
+  private async restorePrompt(cloudId: string): Promise<void> {
+    const supabase = SupabaseClientManager.get();
+
+    const { error } = await supabase.functions.invoke('restore-prompt', {
+      body: { cloudId },
+    });
+
+    if (error) {
+      throw new Error(`Failed to restore prompt: ${error.message}`);
+    }
+  }
+
+  /**
    * Fetch all remote prompts for the authenticated user
    *
    * @param since - Optional timestamp to fetch only prompts modified after this date
+   * @param includeDeleted - Whether to include soft-deleted prompts
    * @returns Array of remote prompts
    */
-  private async fetchRemotePrompts(since?: Date): Promise<readonly RemotePrompt[]> {
+  private async fetchRemotePrompts(
+    since?: Date,
+    includeDeleted = false
+  ): Promise<readonly RemotePrompt[]> {
     const supabase = SupabaseClientManager.get();
 
     try {
       const { data, error } = await supabase.functions.invoke('get-user-prompts', {
         body: {
           since: since?.toISOString(),
+          includeDeleted,
         },
       });
 
@@ -580,7 +654,7 @@ export class SyncService {
     promptService: any // Will be injected from command
   ): Promise<SyncResult> {
     const result: SyncResult = {
-      stats: { uploaded: 0, downloaded: 0, conflicts: 0, duration: 0 },
+      stats: { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, duration: 0 },
     };
 
     const startTime = Date.now();
@@ -617,25 +691,39 @@ export class SyncService {
         result.stats.conflicts++;
       }
 
-      // 2. Upload prompts
+      // 2. Process deletions
+      for (const { cloudId } of plan.toDelete) {
+        await this.deletePrompt(cloudId);
+
+        // Mark as deleted in sync state
+        const promptId = await this.syncStateStorage!.findLocalPromptId(cloudId);
+        if (promptId) {
+          await this.syncStateStorage!.markPromptAsDeleted(promptId);
+        }
+
+        result.stats.deleted++;
+      }
+
+      // 3. Upload prompts
       for (const promptUnknown of plan.toUpload) {
         const prompt = promptUnknown as Prompt;
         const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
         const uploaded = await this.uploadPrompt(prompt, syncInfo ?? undefined);
         const contentHash = computeContentHash(prompt);
 
-        // Update sync state
+        // Update sync state (clear deletion flag if re-uploading)
         await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
           cloudId: uploaded.cloudId,
           lastSyncedContentHash: contentHash,
           lastSyncedAt: new Date(),
           version: uploaded.version,
+          isDeleted: false,
         });
 
         result.stats.uploaded++;
       }
 
-      // 3. Download prompts
+      // 4. Download prompts
       for (const remotePrompt of plan.toDownload) {
         const localPrompt = this.convertRemoteToLocal(remotePrompt);
         await promptService.savePromptDirectly(localPrompt);
@@ -746,6 +834,66 @@ export class SyncService {
       lastSyncedAt: syncState.lastSyncedAt,
       syncedPromptCount: Object.keys(syncState.promptSyncMap).length,
     };
+  }
+
+  /**
+   * Get list of deleted prompts for restore feature
+   *
+   * @returns Array of deleted prompts with metadata
+   */
+  public async getDeletedPrompts(): Promise<
+    ReadonlyArray<{ promptId: string; info: PromptSyncInfo; title: string }>
+  > {
+    const deleted = await this.syncStateStorage!.getDeletedPrompts();
+
+    // Fetch remote prompt data to get titles
+    const remotePrompts = await this.fetchRemotePrompts(undefined, true);
+    const remoteMap = new Map(remotePrompts.map((p) => [p.cloud_id, p]));
+
+    return deleted.map(({ promptId, info }) => {
+      const remote = remoteMap.get(info.cloudId);
+      return {
+        promptId,
+        info,
+        title: remote?.title || 'Unknown',
+      };
+    });
+  }
+
+  /**
+   * Restore deleted prompts from cloud
+   *
+   * @param cloudIds - Array of cloud IDs to restore
+   * @returns Number of prompts restored
+   */
+  public async restoreDeletedPrompts(cloudIds: string[]): Promise<number> {
+    let restored = 0;
+
+    for (const cloudId of cloudIds) {
+      try {
+        await this.restorePrompt(cloudId);
+
+        // Clear deletion flag in sync state
+        const promptId = await this.syncStateStorage!.findLocalPromptId(cloudId);
+        if (promptId) {
+          const existingInfo = await this.syncStateStorage!.getPromptSyncInfo(promptId);
+          if (existingInfo) {
+            const { deletedAt, ...updates } = existingInfo;
+            await this.syncStateStorage!.setPromptSyncInfo(promptId, {
+              ...updates,
+              isDeleted: false,
+            });
+          }
+        }
+
+        restored++;
+      } catch (error) {
+        console.error(`Failed to restore prompt ${cloudId}:`, error);
+        // Continue with other prompts
+      }
+    }
+
+    return restored;
   }
 
   /**
