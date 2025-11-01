@@ -1,9 +1,33 @@
 # Personal Prompt Sync Feature - Technical Specification
 
-**Version:** 1.0
-**Status:** Draft
+**Version:** 1.2
+**Status:** Ready for Implementation
 **Author:** Shaul Abergil
 **Date:** October 27, 2025
+**Last Updated:** October 31, 2025 (Simplified approach)
+
+---
+
+## Changelog
+
+### Version 1.2 (October 31, 2025)
+**Simplified implementation approach - removed over-engineering:**
+
+1. **Simplified Sync Flow**: Removed complex batch operations, transaction logs, and retry logic. Simple sequential upload/download is sufficient for text prompts.
+2. **UI/UX Simplification**: Reduced to 2 icons (out-of-sync ⚠️, conflict ❌) instead of 5 states. No icon = synced.
+3. **Per-Prompt Sync**: Added ability to sync individual prompts by clicking their icon, not just "Sync All"
+4. **Progress Simplification**: Changed from detailed progress tracking to simple "Syncing..." spinner
+5. **Performance Approach**: Acknowledged prompts are just text - no need for complex batching or optimization
+6. **Kept Guardrails**: Maintained storage limits (1,000 prompts / 10 MB) and basic error handling
+
+### Version 1.1 (October 31, 2025)
+**Technical clarifications and implementation details added:**
+
+1. **Device Identification**: Fixed device ID generation to be stable across sessions by removing timestamp and storing in VS Code global state
+2. **First Sync Behavior**: Clarified that first sync merges all prompts with no conflicts (last-write-wins based on timestamp)
+3. **Data Models**: Removed unused fields (`syncVersion`, `contentHash`) from SyncMetadata to simplify implementation
+4. **Storage Limits**: Defined quota limits (1,000 prompts / 10 MB) with database triggers and client-side enforcement
+5. **Decision Log**: Added 5 new technical decisions documenting implementation choices
 
 ---
 
@@ -68,11 +92,13 @@ Implement a **personal sync feature** that automatically keeps prompts synchroni
 
 #### UC1: First-Time Sync Setup
 ```
-Given: User has prompts on Device A
+Given: User has prompts on Device A (no previous sync)
 When: User clicks "Sync" for the first time
 Then:
   - User is prompted to authenticate (if not already)
   - All local prompts are uploaded to cloud
+  - Any existing cloud prompts (from other devices) are downloaded
+  - No conflicts on first sync (merge everything)
   - Success notification shows "X prompts synced"
   - Last sync timestamp is displayed
 ```
@@ -249,11 +275,15 @@ for each prompt:
 
 #### 2. Device Identification
 ```typescript
-deviceId = hash(hostname + username + timestamp)
+// Generate stable device ID (persists across sessions)
+deviceId = hash(hostname + username + vscodeInstallPath)
 deviceName = auto-detect or user-provided
   - "MacBook Pro (Work)"
   - "ThinkPad (Home)"
   - "Desktop PC"
+
+// Store device ID in VS Code global state on first generation
+// This ensures the same device always has the same ID
 ```
 
 #### 3. Conflict Naming Convention
@@ -301,7 +331,7 @@ interface SyncMetadata {
   /** UUID for cloud storage (different from local id) */
   cloudId?: string;
 
-  /** Timestamp of last successful sync */
+  /** Timestamp of last successful sync for this prompt */
   lastSyncedAt?: Date;
 
   /** Device that created this prompt */
@@ -312,14 +342,8 @@ interface SyncMetadata {
   lastModifiedDeviceId: string;
   lastModifiedDeviceName: string;
 
-  /** Version number for conflict detection */
-  syncVersion: number;
-
   /** Flag indicating if prompt exists in cloud */
   isSynced: boolean;
-
-  /** Hash of content for change detection */
-  contentHash: string;
 }
 ```
 
@@ -413,29 +437,33 @@ CREATE POLICY user_prompts_delete_policy ON user_prompts
 
 ## Sync Algorithm
 
-### High-Level Sync Flow
+### High-Level Sync Flow (Simplified)
 
 ```typescript
-async function performSync(): Promise<SyncResult> {
+async function performSync(promptId?: string): Promise<SyncResult> {
   // 1. Pre-sync validation
   const user = await authService.getUser();
   if (!user) {
-    throw new Error('Authentication required');
+    throw new Error('Please sign in to sync');
   }
-
-  const localPrompts = await promptService.getAllPrompts();
-  const lastSyncTime = await getSyncState().lastSyncedAt;
 
   // 2. Fetch remote prompts
   const remotePrompts = await fetchRemotePrompts(user.email);
 
-  // 3. Three-way merge
+  // 3. Determine what to sync
+  const localPrompts = promptId
+    ? [await promptService.getPrompt(promptId)]  // Single prompt sync
+    : await promptService.getAllPrompts();        // Sync all
+
+  const lastSyncTime = await getSyncState().lastSyncedAt;
+
+  // 4. Three-way merge
   const syncPlan = computeSyncPlan(localPrompts, remotePrompts, lastSyncTime);
 
-  // 4. Execute sync plan
+  // 5. Execute sync (simple sequential operations)
   const result = await executeSyncPlan(syncPlan);
 
-  // 5. Update sync state
+  // 6. Update sync state
   await updateSyncState({
     lastSyncedAt: new Date(),
     lastSyncStats: result.stats
@@ -444,6 +472,12 @@ async function performSync(): Promise<SyncResult> {
   return result;
 }
 ```
+
+**Key Simplifications:**
+- Support for single prompt sync via optional `promptId` parameter
+- No complex error recovery or transaction logs
+- Sequential upload/download (prompts are small text files)
+- Simple try-catch error handling
 
 ### Detailed Sync Logic
 
@@ -478,10 +512,12 @@ pt = cloudId ? remoteMap.get(cloudId) : null;
       const remoteModified = new Date(remotePrompt.updated_at);
 
       if (lastSync === undefined) {
-        // First sync - upload if local is newer
+        // First sync - merge strategy (no conflicts)
+        // Upload local version if it's newer, otherwise keep remote
         if (localModified > remoteModified) {
           plan.toUpload.push(prompt);
         }
+        // Remote is newer - will be handled in download loop below
       } else {
         const localChangedSinceSync = localModified > lastSync;
         const remoteChangedSinceSync = remoteModified > lastSync;
@@ -523,6 +559,26 @@ pt = cloudId ? remoteMap.get(cloudId) : null;
 }
 ```
 
+### Understanding Sync States
+
+#### Out of Sync vs Conflict
+
+**Out of Sync (⚠️)**: One version is clearly newer
+- **Example**: Prompt edited on Device A yesterday, synced. Device B still has old version from last week.
+- **Resolution**: Simple update - newer version overwrites older version
+- **Result**: Prompt becomes synced, icon disappears
+
+**Conflict (❌)**: Both versions modified since last sync
+- **Example**: Prompt edited on Device A today AND on Device B today (after last sync)
+- **Resolution**: Keep both versions as separate prompts with device names
+- **Result**: Two prompts exist, user manually reviews/merges
+
+| Status | Icon | Meaning | Sync Action |
+|--------|------|---------|-------------|
+| Synced | (none) | Local = Remote | Nothing to do |
+| Out of Sync | ⚠️ | One is newer | Update to newer |
+| Conflict | ❌ | Both modified | Keep both |
+
 ### Conflict Resolution Strategy
 
 ```typescript
@@ -553,19 +609,87 @@ async function resolveConflict(
 }
 ```
 
+### Execute Sync Plan (Simplified)
+
+```typescript
+async function executeSyncPlan(plan: SyncPlan): Promise<SyncResult> {
+  const result: SyncResult = {
+    stats: { uploaded: 0, downloaded: 0, conflicts: 0, duration: 0 }
+  };
+
+  const startTime = Date.now();
+
+  try {
+    // 1. Handle conflicts first (create local duplicates)
+    for (const conflict of plan.conflicts) {
+      const [localCopy, remoteCopy] = await resolveConflict(
+        conflict.local,
+        conflict.remote
+      );
+      await promptService.savePromptDirectly(localCopy);
+      await promptService.savePromptDirectly(remoteCopy);
+      result.stats.conflicts++;
+    }
+
+    // 2. Upload prompts (simple sequential)
+    for (const prompt of plan.toUpload) {
+      const cloudId = await uploadPrompt(prompt);
+
+      // Update local prompt with cloud ID
+      prompt.syncMetadata = {
+        ...prompt.syncMetadata,
+        cloudId: cloudId,
+        isSynced: true,
+        lastSyncedAt: new Date()
+      };
+      await promptService.updatePrompt(prompt);
+      result.stats.uploaded++;
+    }
+
+    // 3. Download prompts (simple sequential)
+    for (const remotePrompt of plan.toDownload) {
+      const localPrompt = convertRemoteToLocal(remotePrompt);
+      await promptService.savePromptDirectly(localPrompt);
+      result.stats.downloaded++;
+    }
+
+    result.stats.duration = Date.now() - startTime;
+    return result;
+
+  } catch (error) {
+    // Simple error handling
+    if (error.message.includes('network') || error.message.includes('fetch')) {
+      throw new Error('Unable to sync - check your internet connection');
+    } else if (error.message.includes('auth') || error.message.includes('unauthorized')) {
+      throw new Error('Authentication expired - please sign in again');
+    } else if (error.message.includes('quota') || error.message.includes('limit')) {
+      throw new Error('Storage quota exceeded - delete some prompts');
+    }
+    throw error;
+  }
+}
+```
+
+**Simplicity Rationale:**
+- Prompts are small text files (typically <5KB)
+- Sequential operations complete in ~1 second for 50-100 prompts
+- No need for complex batching, parallelization, or transaction logs
+- Simple error messages for common failure cases
+
+
 ---
 
 ## UI/UX Specification
 
 ### Tree View Updates
 
-#### Sync Button
+#### Sync Button (Top-Level)
 **Location**: Toolbar of Prompt Bank tree view (next to refresh button)
 
 ```typescript
 {
-  "command": "promptBank.syncPrompts",
-  "title": "Sync Prompts",
+  "command": "promptBank.syncAll",
+  "title": "Sync All Prompts",
   "icon": "$(sync)",
   "group": "navigation@1"
 }
@@ -574,7 +698,37 @@ async function resolveConflict(
 **States:**
 - **Idle**: `$(sync)` icon, clickable
 - **Syncing**: `$(sync~spin)` animated icon, disabled
-- **Error**: `$(sync-ignored)` with red color, shows error on hover
+- **Error**: Brief error notification (no persistent icon)
+
+**Behavior:**
+- Click to sync all prompts
+- Shows simple "Syncing..." progress notification
+- Success/error notification on completion
+
+#### Per-Prompt Sync Icons
+**Location**: Inline with each prompt in tree view
+
+**Only 2 icon states shown:**
+1. **⚠️ Out of Sync** (yellow cloud) - Local and remote differ, one is newer
+   - Click to sync this specific prompt
+   - After sync: icon disappears (becomes synced)
+
+2. **❌ Conflict** (red cloud) - Both versions modified since last sync
+   - Click to resolve conflict (creates duplicates with device names)
+   - Shows conflict explanation notification
+
+**No icon = Synced** ✅
+- Default state, no visual clutter
+- Most prompts will have no icon
+
+**Visual Example:**
+```
+📁 Category Name
+  └─ My Prompt Title                    (no icon - synced)
+  └─ API Template              ⚠️       (out of sync - click to sync)
+  └─ Debug Helper              ❌       (conflict - needs attention)
+  └─ Another Prompt                     (no icon - synced)
+```
 
 #### Sync Status Indicator
 **Location**: Below tree view (status bar-like component)
@@ -594,43 +748,32 @@ Downloaded: 1 prompt
 Conflicts: 0
 ```
 
-### Sync Progress Notification
+### Sync Progress Notification (Simplified)
 
 **During sync:**
 ```
-┌───────────────────────────────────────┐
-│ Syncing Prompts...                    │
-│                                       │
-│ [=======>          ] 45%               │
-│                                       │
-│ Comparing local and remote prompts... │
-└───────────────────────────────────────┘
+Syncing prompts...
 ```
+Simple VS Code progress notification with spinner. No percentage, no detailed steps.
 
 **After success:**
 ```
-┌───────────────────────────────────────┐
-│ ✓ Sync Complete                       │
-│                                       │
-│ • 3 prompts uploaded                  │
-│ • 1 prompt downloaded                 │
-│ • 2 conflicts resolved                │
-│                                       │
-│ [ View Details ]                      │
-└───────────────────────────────────────┘
+✓ Sync complete - 5 prompts synced
+```
+Brief success message. If conflicts occurred:
+```
+✓ Sync complete - 5 prompts synced, 2 conflicts resolved
 ```
 
 **After error:**
 ```
-┌───────────────────────────────────────┐
-│ ✗ Sync Failed                         │
-│                                       │
-│ Unable to connect to sync server.     │
-│ Check your internet connection.       │
-│                                       │
-│ [ Retry ]  [ Dismiss ]                │
-└───────────────────────────────────────┘
+✗ Unable to sync - check your internet connection
 ```
+or
+```
+✗ Authentication expired - please sign in again
+```
+Simple error message with actionable guidance.
 
 ### First-Time Sync Experience
 
@@ -653,29 +796,31 @@ Conflicts: 0
 └───────────────────────────────────────┘
 ```
 
-### Conflict Resolution UI
+### Conflict Resolution UI (Simplified)
 
-**When conflicts are detected:**
+**When clicking a conflict icon (❌):**
 
+Simple information message:
 ```
-┌───────────────────────────────────────┐
-│ 2 Conflicts Detected                  │
-│                                       │
-│ The following prompts were edited on  │
-│ multiple devices. We've kept both     │
-│ versions so you don't lose any work:  │
-│                                       │
-│ • Debug React Components              │
-│   - MacBook Pro version (Oct 27 AM)   │
-│   - ThinkPad version (Oct 27 PM)      │
-│                                       │
-│ • API Request Template                │
-│   - Desktop PC version (Oct 26)       │
-│   - MacBook Pro version (Oct 27)      │
-│                                       │
-│ [ Show Conflicts ]  [ Got It ]        │
-└───────────────────────────────────────┘
+Conflict detected: This prompt was modified on both devices.
+
+We've kept both versions:
+• "Debug React Components (from MacBook Pro - Oct 31)"
+• "Debug React Components (from Desktop PC - Oct 31)"
+
+You can review and delete the version you don't need.
 ```
+
+**When conflicts occur during "Sync All":**
+
+Success notification mentions conflicts:
+```
+✓ Sync complete - 5 prompts synced, 2 conflicts resolved
+
+Conflicted prompts have been duplicated so no work was lost.
+```
+
+No complex UI needed - conflicts are rare and self-explanatory with duplicate naming.
 
 ---
 
@@ -683,28 +828,26 @@ Conflicts: 0
 
 ### Supabase Edge Functions
 
-#### Function: `sync-prompts`
+#### Function: `sync-prompt` (Singular)
 
-**Purpose**: Upload or update prompts to cloud storage
+**Purpose**: Upload or update a single prompt to cloud storage
 
-**Endpoint**: `POST /functions/v1/sync-prompts`
+**Endpoint**: `POST /functions/v1/sync-prompt`
 
 **Request:**
 ```typescript
 {
-  prompts: Array<{
-    cloudId?: string;
-    localId: string;
-    title: string;
-    content: string;
-    description?: string;
-    category: string;
-    order?: number;
-    categoryOrder?: number;
-    variables: TemplateVariable[];
-    metadata: PromptMetadata;
-    syncMetadata: SyncMetadata;
-  }>;
+  cloudId?: string;       // If updating existing
+  localId: string;
+  title: string;
+  content: string;
+  description?: string;
+  category: string;
+  order?: number;
+  categoryOrder?: number;
+  variables: TemplateVariable[];
+  metadata: PromptMetadata;
+  syncMetadata: SyncMetadata;
 }
 ```
 
@@ -712,16 +855,12 @@ Conflicts: 0
 ```typescript
 {
   success: boolean;
-  uploaded: Array<{
-    localId: string;
-    cloudId: string;
-  }>;
-  errors: Array<{
-    localId: string;
-    error: string;
-  }>;
+  cloudId: string;        // Cloud ID (new or existing)
+  error?: string;         // Only if success is false
 }
 ```
+
+**Note:** Simple single-prompt endpoint. For "Sync All", client calls this endpoint multiple times sequentially. No complex batching needed.
 
 #### Function: `get-user-prompts`
 
@@ -774,6 +913,96 @@ DO UPDATE SET
   metadata = EXCLUDED.metadata,
   sync_metadata = EXCLUDED.sync_metadata,
   updated_at = NOW();
+```
+
+### Storage Limits & Quota Management
+
+**Free Tier Limits (aligned with Supabase free tier):**
+- **Max prompts per user**: 1,000 prompts
+- **Max storage per user**: 10 MB total
+- **Max prompt size**: 50 KB per prompt
+- **API rate limit**: 100 requests per minute per user
+
+**Quota Enforcement:**
+
+```sql
+-- Add storage tracking table
+CREATE TABLE user_storage_quotas (
+  user_id TEXT PRIMARY KEY,
+  prompt_count INTEGER DEFAULT 0,
+  storage_bytes BIGINT DEFAULT 0,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Trigger to update quota on insert/update/delete
+CREATE OR REPLACE FUNCTION update_user_quota()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE user_storage_quotas
+    SET
+      prompt_count = prompt_count + 1,
+      storage_bytes = storage_bytes + length(NEW.content::text),
+      last_updated = NOW()
+    WHERE user_id = NEW.user_id;
+
+    -- Check limits
+    IF (SELECT prompt_count FROM user_storage_quotas WHERE user_id = NEW.user_id) > 1000 THEN
+      RAISE EXCEPTION 'Prompt limit exceeded (max 1000)';
+    END IF;
+
+    IF (SELECT storage_bytes FROM user_storage_quotas WHERE user_id = NEW.user_id) > 10485760 THEN
+      RAISE EXCEPTION 'Storage limit exceeded (max 10 MB)';
+    END IF;
+
+  ELSIF TG_OP = 'UPDATE' THEN
+    UPDATE user_storage_quotas
+    SET
+      storage_bytes = storage_bytes - length(OLD.content::text) + length(NEW.content::text),
+      last_updated = NOW()
+    WHERE user_id = NEW.user_id;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE user_storage_quotas
+    SET
+      prompt_count = prompt_count - 1,
+      storage_bytes = storage_bytes - length(OLD.content::text),
+      last_updated = NOW()
+    WHERE user_id = OLD.user_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER user_quota_trigger
+AFTER INSERT OR UPDATE OR DELETE ON user_prompts
+FOR EACH ROW EXECUTE FUNCTION update_user_quota();
+```
+
+**Client-Side Quota Checking:**
+
+```typescript
+interface UserQuota {
+  promptCount: number;
+  promptLimit: number;
+  storageBytes: number;
+  storageLimit: number;  // 10 MB = 10485760 bytes
+  percentageUsed: number;
+}
+
+async function checkQuotaBeforeSync(): Promise<UserQuota> {
+  const quota = await fetchUserQuota();
+
+  if (quota.percentageUsed > 90) {
+    vscode.window.showWarningMessage(
+      `You're using ${quota.percentageUsed}% of your storage quota. ` +
+      `Consider deleting old prompts.`
+    );
+  }
+
+  return quota;
+}
 ```
 
 ---
@@ -937,17 +1166,26 @@ const rateLimiter = new RateLimit({
 |---|----------|----------|-----------|------|
 | 1 | Manual vs Automatic sync? | Manual on-demand | User control and trust | Oct 27 |
 | 2 | Conflict strategy? | Keep both versions | Data safety over convenience | Oct 27 |
-| 3 | Selective vs Full sync? | Full sync (everything) | Simplicity for MVP | Oct 27 |
+| 3 | Selective vs Full sync? | Both - "Sync All" + per-prompt sync | User control and flexibility | Oct 31 |
 | 4 | Auth provider? | Google OAuth (reuse existing) | Already implemented | Oct 27 |
 | 5 | Storage backend? | Supabase (reuse existing) | Leverage existing infrastructure | Oct 27 |
+| 6 | Device ID generation? | hash(hostname + username + vscodeInstallPath) | Stable across sessions, unique per install | Oct 31 |
+| 7 | First sync behavior? | Merge everything (no conflicts) | User-friendly onboarding | Oct 31 |
+| 8 | Error recovery? | Simple try-catch with user-friendly messages | Prompts are small, no complex rollback needed | Oct 31 |
+| 9 | Storage limits? | 1,000 prompts / 10 MB per user | Align with Supabase free tier | Oct 31 |
+| 10 | Batch operations? | Sequential single-prompt uploads | Simplicity over complexity - prompts are tiny | Oct 31 |
+| 11 | Sync icons? | 2 icons only (out-of-sync ⚠️, conflict ❌) | Minimal visual clutter | Oct 31 |
+| 12 | Progress detail? | High-level "Syncing..." only | Fast operations don't need detailed progress | Oct 31 |
 
 ### Future Considerations
 
-1. **Storage Limits**: What if user has 10,000 prompts? Implement pagination?
-2. **Sync Conflicts UI**: Should we show visual diff for conflicts?
-3. **Device Limits**: Should there be a max number of synced devices?
-4. **Sync History**: Should we keep a log of all sync operations?
-5. **Data Export**: Should users be able to export all cloud data?
+1. ~~**Storage Limits**~~: ✅ **RESOLVED** - Implemented 1,000 prompt / 10 MB limit with quota tracking
+2. **Sync Conflicts UI**: Should we show visual diff for conflicts? (Phase 3)
+3. **Device Limits**: Consider max 10 synced devices per user for security
+4. **Sync History**: Keep log of all sync operations for debugging (Phase 2)
+5. **Data Export**: Provide "Download All Data" option for backup/migration (Phase 2)
+6. **Pagination**: If approaching limits, implement cursor-based pagination for large libraries
+7. **Compression**: Consider gzip compression for network transfer to improve performance
 
 ---
 
@@ -1018,6 +1256,16 @@ const rateLimiter = new RateLimit({
 
 ---
 
-**Document Status**: Draft
-**Last Updated**: October 27, 2025
-**Next Review**: After implementation Phase 1
+**Document Status**: Ready for Implementation
+**Last Updated**: October 31, 2025
+**Next Review**: After implementation Phase 1 completion
+
+### Review Sign-off
+
+- [x] Technical architecture reviewed and clarified
+- [x] Data models simplified (removed unused fields)
+- [x] Performance strategy defined (batch operations, error recovery)
+- [x] Storage limits and quotas specified
+- [x] All engineering decisions documented
+- [ ] Product/UX review (pending)
+- [ ] Security review (pending Phase 1 implementation)

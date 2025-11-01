@@ -31,12 +31,13 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
 - **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
+- **Multi-Device Sync**: Synchronize prompts across multiple devices with smart conflict detection. Never lose work when editing the same prompt on different machines.
 - **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
 - **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, and Rename Category.
 - **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
-- **Authentication**: Secure GitHub OAuth integration for sharing features.
+- **Authentication**: Secure Google OAuth integration for sharing and sync features.
 - **Persistence**: All data persists across VS Code sessions with atomic file operations.
 
 
@@ -62,6 +63,13 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
     - Command Palette → "Prompt Bank: Import Prompt" → paste share link.
     - Automatic conflict resolution handles duplicate titles and categories.
 
+6. **Sync Across Devices** (NEW):
+    - **First Time Setup**: Sign in with Google OAuth (same account used for sharing).
+    - **Manual Sync**: Command Palette → "Prompt Bank: Sync Prompts" to synchronize with cloud.
+    - **Auto-Sync**: Enable automatic synchronization in settings (`promptBank.sync.autoSync`).
+    - **View Status**: Check sync state with "Prompt Bank: View Sync Status" command.
+    - **Smart Conflict Resolution**: When same prompt is edited on multiple devices, both versions are preserved with device names and timestamps.
+
 
 ## 🔧 Commands & Keybindings
 
@@ -73,24 +81,36 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
 | `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
+| `promptBank.syncPrompts`   | -              | Manually sync prompts across devices.                             |
+| `promptBank.toggleAutoSync` | -             | Enable/disable automatic synchronization.                          |
+| `promptBank.viewSyncStatus` | -             | View current sync status (user, device, last sync time).          |
+| `promptBank.clearSyncState` | -             | Reset sync metadata for fresh start.                               |
 | `promptBank.refreshTree`   | -              | Manually refresh the tree view.                                   |
 | **Context Menu Actions**   | (Right-Click)  | `Edit`, `Insert`, `Delete`, `Share`, `Rename Category`.           |
 
 ## 📁 Storage
 
-Prompts are stored locally on your machine using atomic file operations:
+Prompts are stored both locally and in the cloud:
 
+**Local Storage** (atomic file operations):
 - **Project-Specific**: `.vscode/prompt-bank/prompts.json` (for prompts tied to the current workspace)
+- **Sync State**: `.vscode/prompt-bank/sync-state.json` (tracks sync metadata per device)
 - **Global**: `~/.vscode-prompt-bank/prompts.json` (as a fallback for prompts available everywhere)
 - **Data Format**: JSON with metadata including creation/modification dates and usage tracking
 
+**Cloud Storage** (when sync enabled):
+- **Backend**: Supabase with PostgreSQL and Row Level Security
+- **Quota**: 1,000 prompts and 10 MB per user
+- **Privacy**: Data isolated per user account - no sharing between users unless explicitly shared
+
 ## 🔐 Authentication
 
-Sharing features require GitHub OAuth authentication:
+Sharing and sync features require Google OAuth authentication:
 
-- **First Time**: When you first share a prompt, you'll be redirected to GitHub to authorize the extension
-- **Secure**: Only minimal permissions are requested (public profile access)
-- **Automatic**: Once authorized, sharing works seamlessly without further prompts
+- **First Time**: When you first share or sync, you'll be redirected to Google to authorize the extension
+- **Secure**: Only minimal permissions are requested (email and profile access)
+- **Automatic**: Once authorized, sharing and sync work seamlessly without further prompts
+- **Account Linking**: Same Google account is used for both sharing and sync features
 - **Revocable**: You can revoke access anytime from your GitHub settings
 
 ## 📄 License
