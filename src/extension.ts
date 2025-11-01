@@ -4,7 +4,9 @@ import { promptService } from './services/promptService';
 import { PromptTreeProvider, PromptDragAndDropController } from './views/promptTreeProvider';
 import { TreeCommands } from './commands/treeCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
+import { registerSyncCommands } from './commands/syncCommands';
 import { AuthService } from './services/authService';
+import { SyncService } from './services/syncService';
 import { WebViewCache } from './webview/WebViewCache';
 
 /**
@@ -28,6 +30,12 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialise authentication service
     AuthService.initialize(context, publisher, extensionName);
 
+    // Initialize sync service (requires workspace root)
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    if (workspaceRoot) {
+      SyncService.initialize(context, workspaceRoot);
+    }
+
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);
     const dndController = new PromptDragAndDropController(treeProvider, promptService);
@@ -47,6 +55,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register all other commands
     registerCommands(context, treeProvider);
+
+    // Register sync commands (if workspace available)
+    if (workspaceRoot) {
+      const syncCommands = registerSyncCommands(context, promptService);
+      context.subscriptions.push(...syncCommands);
+    }
 
     // Refresh tree when prompts change
     context.subscriptions.push(treeView);

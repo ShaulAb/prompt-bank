@@ -698,4 +698,37 @@ export class SyncService {
 
     return result;
   }
+
+  /**
+   * Get current sync state for UI display
+   *
+   * @returns Sync state information
+   */
+  public async getSyncStateInfo(): Promise<{
+    userId: string;
+    deviceName: string;
+    lastSyncedAt: Date | undefined;
+    syncedPromptCount: number;
+  }> {
+    const syncState = await this.syncStateStorage!.getSyncState();
+
+    if (!syncState) {
+      throw new Error('Not configured for sync - please sign in first');
+    }
+
+    return {
+      userId: syncState.userId,
+      deviceName: syncState.deviceName,
+      lastSyncedAt: syncState.lastSyncedAt,
+      syncedPromptCount: Object.keys(syncState.promptSyncMap).length,
+    };
+  }
+
+  /**
+   * Clear all sync state (for reset)
+   */
+  public async clearAllSyncState(): Promise<void> {
+    await this.syncStateStorage!.clearAllSyncState();
+    this.clearSyncStatusCache();
+  }
 }
