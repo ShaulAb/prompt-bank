@@ -49,9 +49,10 @@ export class SyncService {
 
   private constructor(
     private context: vscode.ExtensionContext,
-    private workspaceRoot: string
+    workspaceRoot: string
   ) {
     this.authService = AuthService.get();
+    this.syncStateStorage = new SyncStateStorage(workspaceRoot);
 
     // Reuse Supabase config from workspace settings
     const cfg = vscode.workspace.getConfiguration('promptBank');
@@ -60,8 +61,6 @@ export class SyncService {
       'supabaseAnonKey',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
     );
-
-    this.syncStateStorage = new SyncStateStorage(workspaceRoot);
   }
 
   /**
@@ -108,7 +107,7 @@ export class SyncService {
     lastSync: Date | undefined,
     promptSyncMap: Readonly<Record<string, PromptSyncInfo>>
   ): SyncPlan {
-    const plan = {
+    const plan: SyncPlan = {
       toUpload: [] as Prompt[],
       toDownload: [] as RemotePrompt[],
       conflicts: [] as SyncConflict[],
@@ -361,5 +360,342 @@ export class SyncService {
     }
 
     return { email, token };
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Supabase API Integration
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Fetch all remote prompts for the authenticated user
+   *
+   * @param token - Auth token
+   * @param since - Optional timestamp to fetch only prompts modified after this date
+   * @returns Array of remote prompts
+   */
+  private async fetchRemotePrompts(
+    token: string,
+    since?: Date
+  ): Promise<readonly RemotePrompt[]> {
+    const url = new URL(`${this.supabaseUrl}/functions/v1/get-user-prompts`);
+    if (since) {
+      url.searchParams.set('since', since.toISOString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        apikey: this.supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch remote prompts: ${response.status} ${errorText}`);
+    }
+
+    const data = (await response.json()) as { prompts: RemotePrompt[] };
+    return data.prompts;
+  }
+
+  /**
+   * Upload or update a single prompt to Supabase
+   *
+   * @param prompt - Prompt to upload
+   * @param token - Auth token
+   * @param syncInfo - Existing sync info (if updating)
+   * @returns Cloud ID and version
+   */
+  private async uploadPrompt(
+    prompt: Prompt,
+    token: string,
+    syncInfo?: PromptSyncInfo
+  ): Promise<{ cloudId: string; version: number }> {
+    const contentHash = computeContentHash(prompt);
+    const deviceInfo = await getDeviceInfo(this.context);
+
+    const body = {
+      cloudId: syncInfo?.cloudId,
+      expectedVersion: syncInfo?.version,
+      contentHash: contentHash,
+      local_id: prompt.id,
+      title: prompt.title,
+      content: prompt.content,
+      description: prompt.description || null,
+      category: prompt.category,
+      prompt_order: prompt.order || null,
+      category_order: prompt.categoryOrder || null,
+      variables: prompt.variables,
+      metadata: {
+        created: prompt.metadata.created.toISOString(),
+        modified: prompt.metadata.modified.toISOString(),
+        usageCount: prompt.metadata.usageCount,
+        lastUsed: prompt.metadata.lastUsed?.toISOString(),
+        context: prompt.metadata.context,
+      },
+      sync_metadata: {
+        lastModifiedDeviceId: deviceInfo.id,
+        lastModifiedDeviceName: deviceInfo.name,
+      },
+    };
+
+    const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-prompt`, {
+      method: 'POST',
+      headers: {
+        apikey: this.supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 409) {
+      // Conflict - optimistic lock failed
+      throw new Error('conflict');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to upload prompt: ${response.status} ${errorText}`);
+    }
+
+    const data = (await response.json()) as { cloudId: string; version: number };
+    return data;
+  }
+
+  /**
+   * Fetch user quota from Supabase
+   *
+   * @param token - Auth token
+   * @returns User quota information
+   */
+  private async fetchUserQuota(token: string): Promise<UserQuota> {
+    const response = await fetch(`${this.supabaseUrl}/functions/v1/get-user-quota`, {
+      method: 'GET',
+      headers: {
+        apikey: this.supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch user quota: ${response.status} ${errorText}`);
+    }
+
+    return (await response.json()) as UserQuota;
+  }
+
+  /**
+   * Pre-flight quota check to prevent partial sync failures
+   *
+   * CRITICAL: Checks if sync would exceed quota BEFORE uploading anything
+   * This ensures atomic all-or-nothing sync behavior
+   *
+   * @param plan - Sync plan
+   * @param token - Auth token
+   * @throws Error if sync would exceed quota
+   */
+  private async checkQuotaBeforeSync(plan: SyncPlan, token: string): Promise<void> {
+    const quota = await this.fetchUserQuota(token);
+
+    const promptsToUpload = plan.toUpload.length;
+    if (quota.promptCount + promptsToUpload > quota.promptLimit) {
+      const overage = promptsToUpload - (quota.promptLimit - quota.promptCount);
+      throw new Error(
+        `Cannot sync: would exceed limit by ${overage} prompts. ` +
+          `Delete ${overage} prompts and try again.`
+      );
+    }
+
+    const uploadSize = this.calculateUploadSize(plan.toUpload);
+    if (quota.storageBytes + uploadSize > quota.storageLimit) {
+      const overageMB = ((quota.storageBytes + uploadSize - quota.storageLimit) / 1048576).toFixed(
+        1
+      );
+      throw new Error(
+        `Cannot sync: would exceed 10 MB storage limit by ${overageMB} MB. ` +
+          `Delete some prompts and try again.`
+      );
+    }
+
+    // Optional warning if approaching limit
+    if (quota.percentageUsed > 90) {
+      void vscode.window.showWarningMessage(
+        `You're using ${quota.percentageUsed}% of your storage quota. ` +
+          `Consider deleting old prompts.`
+      );
+    }
+  }
+
+  /**
+   * Calculate total upload size for quota check
+   */
+  private calculateUploadSize(prompts: unknown[]): number {
+    return prompts.reduce((total: number, prompt) => {
+      // Approximate JSON size (title + content + metadata)
+      const size = Buffer.byteLength(JSON.stringify(prompt), 'utf8');
+      return total + size;
+    }, 0);
+  }
+
+  /**
+   * Execute sync plan with comprehensive error handling
+   *
+   * @param plan - Sync plan computed by three-way merge
+   * @param token - Auth token
+   * @param promptService - Prompt service for saving prompts
+   * @returns Sync result with statistics
+   */
+  private async executeSyncPlan(
+    plan: SyncPlan,
+    token: string,
+    promptService: any // Will be injected from command
+  ): Promise<SyncResult> {
+    const result: SyncResult = {
+      stats: { uploaded: 0, downloaded: 0, conflicts: 0, duration: 0 },
+    };
+
+    const startTime = Date.now();
+
+    try {
+      // 1. Handle conflicts first (create local duplicates)
+      for (const conflict of plan.conflicts) {
+        const localPrompt = conflict.local as Prompt;
+        const [localCopy, remoteCopy] = await this.resolveConflict(localPrompt, conflict.remote);
+
+        await promptService.savePromptDirectly(localCopy);
+        await promptService.savePromptDirectly(remoteCopy);
+
+        // Update sync state for both copies
+        const localHash = computeContentHash(localCopy);
+        const remoteHash = computeContentHash(remoteCopy);
+
+        const localCloudId = await this.uploadPrompt(localCopy, token);
+        const remoteSyncInfo = createPromptSyncInfo(
+          conflict.remote.cloud_id,
+          remoteHash,
+          conflict.remote.version
+        );
+
+        await this.syncStateStorage!.setPromptSyncInfo(localCopy.id, {
+          cloudId: localCloudId.cloudId,
+          lastSyncedContentHash: localHash,
+          lastSyncedAt: new Date(),
+          version: localCloudId.version,
+        });
+
+        await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, remoteSyncInfo);
+
+        result.stats.conflicts++;
+      }
+
+      // 2. Upload prompts
+      for (const promptUnknown of plan.toUpload) {
+        const prompt = promptUnknown as Prompt;
+        const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
+        const uploaded = await this.uploadPrompt(prompt, token, syncInfo ?? undefined);
+        const contentHash = computeContentHash(prompt);
+
+        // Update sync state
+        await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
+          cloudId: uploaded.cloudId,
+          lastSyncedContentHash: contentHash,
+          lastSyncedAt: new Date(),
+          version: uploaded.version,
+        });
+
+        result.stats.uploaded++;
+      }
+
+      // 3. Download prompts
+      for (const remotePrompt of plan.toDownload) {
+        const localPrompt = this.convertRemoteToLocal(remotePrompt);
+        await promptService.savePromptDirectly(localPrompt);
+
+        const contentHash = computeContentHash(localPrompt);
+        await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
+          cloudId: remotePrompt.cloud_id,
+          lastSyncedContentHash: contentHash,
+          lastSyncedAt: new Date(),
+          version: remotePrompt.version,
+        });
+
+        result.stats.downloaded++;
+      }
+
+      result.stats.duration = Date.now() - startTime;
+      return result;
+    } catch (error: unknown) {
+      // Categorize errors and provide user-friendly messages
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        throw new Error('Unable to sync - check your internet connection');
+      } else if (errorMessage.includes('auth') || errorMessage.includes('unauthorized')) {
+        throw new Error('Authentication expired - please sign in again');
+      } else if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
+        throw error; // Already user-friendly from checkQuotaBeforeSync
+      } else if (errorMessage.includes('conflict')) {
+        // Retry sync once if conflict detected (optimistic lock)
+        void vscode.window.showInformationMessage('Sync conflict detected - retrying...');
+        throw new Error('sync_conflict_retry');
+      }
+
+      // Unknown error - show generic message
+      throw new Error(`Sync failed: ${errorMessage}`);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Public API (will be called from commands)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Perform full sync operation
+   *
+   * This is the main entry point for syncing all prompts
+   *
+   * @param localPrompts - All local prompts
+   * @param promptService - Prompt service for saving prompts
+   * @returns Sync result
+   */
+  public async performSync(
+    localPrompts: readonly Prompt[],
+    promptService: any
+  ): Promise<SyncResult> {
+    // 1. Validate authentication
+    const { email, token } = await this.validateAuthentication();
+
+    // 2. Get or create sync state
+    const syncState = await this.getOrCreateSyncState(email);
+
+    // 3. Fetch remote prompts
+    const remotePrompts = await this.fetchRemotePrompts(token);
+
+    // 4. Compute sync plan (three-way merge)
+    const plan = this.computeSyncPlan(
+      localPrompts,
+      remotePrompts,
+      syncState.lastSyncedAt,
+      syncState.promptSyncMap
+    );
+
+    // 5. Pre-flight quota check (CRITICAL)
+    await this.checkQuotaBeforeSync(plan, token);
+
+    // 6. Execute sync plan
+    const result = await this.executeSyncPlan(plan, token, promptService);
+
+    // 7. Update last synced timestamp
+    await this.syncStateStorage!.updateLastSyncedAt();
+
+    // 8. Clear sync status cache
+    this.clearSyncStatusCache();
+
+    return result;
   }
 }

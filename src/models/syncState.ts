@@ -84,13 +84,13 @@ export interface UserQuota {
  */
 export interface SyncPlan {
   /** Prompts to upload to cloud */
-  readonly toUpload: ReadonlyArray<unknown>; // Array<Prompt>
+  toUpload: unknown[]; // Array<Prompt> - mutable for building plan
 
   /** Prompts to download from cloud */
-  readonly toDownload: ReadonlyArray<RemotePrompt>;
+  toDownload: RemotePrompt[];
 
   /** Prompts with conflicts (modified both locally and remotely) */
-  readonly conflicts: ReadonlyArray<SyncConflict>;
+  conflicts: SyncConflict[];
 }
 
 /**
@@ -113,10 +113,10 @@ export interface SyncResult {
  * Statistics from a sync operation
  */
 export interface SyncStats {
-  readonly uploaded: number;
-  readonly downloaded: number;
-  readonly conflicts: number;
-  readonly duration: number; // milliseconds
+  uploaded: number;
+  downloaded: number;
+  conflicts: number;
+  duration: number; // milliseconds
 }
 
 /**
