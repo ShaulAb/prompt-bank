@@ -25,6 +25,7 @@ import type {
 import { createPromptSyncInfo } from '../models/syncState';
 import { SyncStateStorage } from '../storage/syncStateStorage';
 import { AuthService } from './authService';
+import { SupabaseClientManager } from './supabaseClient';
 import { computeContentHash, matchesHash } from '../utils/contentHash';
 import { getDeviceInfo } from '../utils/deviceId';
 
@@ -362,6 +363,35 @@ export class SyncService {
     return { email, token };
   }
 
+  /**
+   * Validate authentication and set session on Supabase client
+   *
+   * This method gets the auth tokens from AuthService and sets them on the
+   * Supabase client so all subsequent API calls are authenticated.
+   */
+  private async validateAuthenticationAndSetSession(): Promise<{
+    email: string;
+    token: string;
+    refreshToken: string;
+  }> {
+    const token = await this.authService.getValidAccessToken();
+    const refreshToken = await this.authService.getRefreshToken();
+    const email = await this.authService.getUserEmail();
+
+    if (!email) {
+      throw new Error('No user email found. Please sign in again.');
+    }
+
+    if (!refreshToken) {
+      throw new Error('No refresh token found. Please sign in again.');
+    }
+
+    // Set the session on Supabase client for authenticated API calls
+    await SupabaseClientManager.setSession(token, refreshToken);
+
+    return { email, token, refreshToken };
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   // Supabase API Integration
   // ────────────────────────────────────────────────────────────────────────────
@@ -369,50 +399,44 @@ export class SyncService {
   /**
    * Fetch all remote prompts for the authenticated user
    *
-   * @param token - Auth token
    * @param since - Optional timestamp to fetch only prompts modified after this date
    * @returns Array of remote prompts
    */
-  private async fetchRemotePrompts(
-    token: string,
-    since?: Date
-  ): Promise<readonly RemotePrompt[]> {
-    const url = new URL(`${this.supabaseUrl}/functions/v1/get-user-prompts`);
-    if (since) {
-      url.searchParams.set('since', since.toISOString());
+  private async fetchRemotePrompts(since?: Date): Promise<readonly RemotePrompt[]> {
+    const supabase = SupabaseClientManager.get();
+
+    try {
+      const { data, error } = await supabase.functions.invoke('get-user-prompts', {
+        body: {
+          since: since?.toISOString(),
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data as { prompts: RemotePrompt[] }).prompts;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch remote prompts: ${error.message}`);
+      }
+      throw error;
     }
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        apikey: this.supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch remote prompts: ${response.status} ${errorText}`);
-    }
-
-    const data = (await response.json()) as { prompts: RemotePrompt[] };
-    return data.prompts;
   }
 
   /**
    * Upload or update a single prompt to Supabase
    *
    * @param prompt - Prompt to upload
-   * @param token - Auth token
    * @param syncInfo - Existing sync info (if updating)
    * @returns Cloud ID and version
    */
   private async uploadPrompt(
     prompt: Prompt,
-    token: string,
     syncInfo?: PromptSyncInfo
   ): Promise<{ cloudId: string; version: number }> {
+    const supabase = SupabaseClientManager.get();
     const contentHash = computeContentHash(prompt);
     const deviceInfo = await getDeviceInfo(this.context);
 
@@ -441,52 +465,55 @@ export class SyncService {
       },
     };
 
-    const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-prompt`, {
-      method: 'POST',
-      headers: {
-        apikey: this.supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-prompt', {
+        body: body,
+      });
 
-    if (response.status === 409) {
-      // Conflict - optimistic lock failed
-      throw new Error('conflict');
+      if (error) {
+        // Check for optimistic lock conflict
+        if (error.message?.includes('conflict') || (error as any).status === 409) {
+          throw new Error('conflict');
+        }
+        throw error;
+      }
+
+      return data as { cloudId: string; version: number };
+    } catch (error) {
+      if (error instanceof Error && error.message === 'conflict') {
+        throw error; // Re-throw conflict for higher-level handling
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to upload prompt: ${error.message}`);
+      }
+      throw error;
     }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to upload prompt: ${response.status} ${errorText}`);
-    }
-
-    const data = (await response.json()) as { cloudId: string; version: number };
-    return data;
   }
 
   /**
    * Fetch user quota from Supabase
    *
-   * @param token - Auth token
    * @returns User quota information
    */
-  private async fetchUserQuota(token: string): Promise<UserQuota> {
-    const response = await fetch(`${this.supabaseUrl}/functions/v1/get-user-quota`, {
-      method: 'GET',
-      headers: {
-        apikey: this.supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  private async fetchUserQuota(): Promise<UserQuota> {
+    const supabase = SupabaseClientManager.get();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch user quota: ${response.status} ${errorText}`);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-user-quota', {
+        body: {},
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data as UserQuota;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch user quota: ${error.message}`);
+      }
+      throw error;
     }
-
-    return (await response.json()) as UserQuota;
   }
 
   /**
@@ -496,11 +523,10 @@ export class SyncService {
    * This ensures atomic all-or-nothing sync behavior
    *
    * @param plan - Sync plan
-   * @param token - Auth token
    * @throws Error if sync would exceed quota
    */
-  private async checkQuotaBeforeSync(plan: SyncPlan, token: string): Promise<void> {
-    const quota = await this.fetchUserQuota(token);
+  private async checkQuotaBeforeSync(plan: SyncPlan): Promise<void> {
+    const quota = await this.fetchUserQuota();
 
     const promptsToUpload = plan.toUpload.length;
     if (quota.promptCount + promptsToUpload > quota.promptLimit) {
@@ -546,13 +572,11 @@ export class SyncService {
    * Execute sync plan with comprehensive error handling
    *
    * @param plan - Sync plan computed by three-way merge
-   * @param token - Auth token
    * @param promptService - Prompt service for saving prompts
    * @returns Sync result with statistics
    */
   private async executeSyncPlan(
     plan: SyncPlan,
-    token: string,
     promptService: any // Will be injected from command
   ): Promise<SyncResult> {
     const result: SyncResult = {
@@ -574,7 +598,7 @@ export class SyncService {
         const localHash = computeContentHash(localCopy);
         const remoteHash = computeContentHash(remoteCopy);
 
-        const localCloudId = await this.uploadPrompt(localCopy, token);
+        const localCloudId = await this.uploadPrompt(localCopy);
         const remoteSyncInfo = createPromptSyncInfo(
           conflict.remote.cloud_id,
           remoteHash,
@@ -597,7 +621,7 @@ export class SyncService {
       for (const promptUnknown of plan.toUpload) {
         const prompt = promptUnknown as Prompt;
         const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
-        const uploaded = await this.uploadPrompt(prompt, token, syncInfo ?? undefined);
+        const uploaded = await this.uploadPrompt(prompt, syncInfo ?? undefined);
         const contentHash = computeContentHash(prompt);
 
         // Update sync state
@@ -667,14 +691,14 @@ export class SyncService {
     localPrompts: readonly Prompt[],
     promptService: any
   ): Promise<SyncResult> {
-    // 1. Validate authentication
-    const { email, token } = await this.validateAuthentication();
+    // 1. Validate authentication and set session
+    const { email, token, refreshToken } = await this.validateAuthenticationAndSetSession();
 
     // 2. Get or create sync state
     const syncState = await this.getOrCreateSyncState(email);
 
     // 3. Fetch remote prompts
-    const remotePrompts = await this.fetchRemotePrompts(token);
+    const remotePrompts = await this.fetchRemotePrompts();
 
     // 4. Compute sync plan (three-way merge)
     const plan = this.computeSyncPlan(
@@ -685,10 +709,10 @@ export class SyncService {
     );
 
     // 5. Pre-flight quota check (CRITICAL)
-    await this.checkQuotaBeforeSync(plan, token);
+    await this.checkQuotaBeforeSync(plan);
 
     // 6. Execute sync plan
-    const result = await this.executeSyncPlan(plan, token, promptService);
+    const result = await this.executeSyncPlan(plan, promptService);
 
     // 7. Update last synced timestamp
     await this.syncStateStorage!.updateLastSyncedAt();

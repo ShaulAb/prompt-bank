@@ -113,6 +113,14 @@ export class AuthService {
   }
 
   /**
+   * Get the current refresh token if authenticated
+   */
+  public async getRefreshToken(): Promise<string | undefined> {
+    await this.loadFromSecretStorage();
+    return this.refreshToken;
+  }
+
+  /**
    * Sign out and clear stored credentials
    */
   public async signOut(): Promise<void> {
