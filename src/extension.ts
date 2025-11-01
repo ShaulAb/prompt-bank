@@ -7,6 +7,7 @@ import { ContextMenuCommands } from './commands/contextMenuCommands';
 import { registerSyncCommands } from './commands/syncCommands';
 import { AuthService } from './services/authService';
 import { SyncService } from './services/syncService';
+import { SupabaseClientManager } from './services/supabaseClient';
 import { WebViewCache } from './webview/WebViewCache';
 
 /**
@@ -26,6 +27,9 @@ export async function activate(context: vscode.ExtensionContext) {
     const extensionName = extensionId.split('.')[1];
 
     console.log('[Extension] Activation details:', { extensionId, publisher, extensionName });
+
+    // Initialize Supabase client (shared by Auth, Sync, and Share services)
+    SupabaseClientManager.initialize();
 
     // Initialise authentication service
     AuthService.initialize(context, publisher, extensionName);
