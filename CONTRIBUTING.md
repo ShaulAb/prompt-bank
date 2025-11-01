@@ -62,10 +62,10 @@ Thank you for your interest in contributing to Prompt Bank! This document provid
 ```
 prompt-bank/
 ├── src/                     # Source code
-│   ├── commands/           # VS Code commands
-│   ├── models/             # Data models and types
-│   ├── services/           # Business logic
-│   ├── storage/            # Data persistence
+│   ├── commands/           # VS Code commands (includes syncCommands.ts)
+│   ├── models/             # Data models and types (includes syncState.ts)
+│   ├── services/           # Business logic (includes syncService.ts)
+│   ├── storage/            # Data persistence (includes syncStateStorage.ts)
 │   ├── views/              # Tree view providers
 │   ├── webview/            # WebView components
 │   └── extension.ts        # Main extension entry point
@@ -322,6 +322,7 @@ The extension uses LitElement for the prompt editor:
 The extension supports multiple storage providers:
 
 - **FileStorageProvider** - Local JSON files (default)
+- **SyncStateStorage** - Sync metadata and deletion tracking
 - Extensible for future cloud providers
 
 ## 📦 Building and Packaging

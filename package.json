@@ -123,6 +123,31 @@
                 "command": "promptBank.shareCollectionFromTree",
                 "title": "Share Category",
                 "commandPalette": false
+            },
+            {
+                "command": "promptBank.syncPrompts",
+                "title": "🔄 Sync Prompts",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.toggleAutoSync",
+                "title": "Toggle Auto-Sync",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.viewSyncStatus",
+                "title": "View Sync Status",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.clearSyncState",
+                "title": "Clear Sync State",
+                "category": "Prompt Bank"
+            },
+            {
+                "command": "promptBank.restoreDeletedPrompts",
+                "title": "♻️ Restore Deleted Prompts",
+                "category": "Prompt Bank"
             }
         ],
         "menus": {
@@ -225,6 +250,16 @@
                     "type": "string",
                     "default": "https://prestissimo.ai/share/",
                     "description": "Base URL used to construct public share links"
+                },
+                "promptBank.sync.autoSync": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically sync prompts when changes are detected"
+                },
+                "promptBank.sync.syncInterval": {
+                    "type": "number",
+                    "default": 300000,
+                    "description": "Auto-sync interval in milliseconds (default: 5 minutes)"
                 }
             }
         }
@@ -276,6 +311,7 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
+        "@supabase/supabase-js": "^2.78.0",
         "@types/node-fetch": "^2.6.13",
         "node-fetch": "^3.3.2"
     }
