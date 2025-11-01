@@ -12,7 +12,7 @@ import { SyncService } from '../services/syncService';
  * Register sync commands with VS Code
  */
 export const registerSyncCommands = (
-  context: vscode.ExtensionContext,
+  _context: vscode.ExtensionContext,
   promptService: PromptService
 ): vscode.Disposable[] => {
   const syncService = SyncService.get();
@@ -118,9 +118,7 @@ async function viewSyncStatusCommand(syncService: SyncService): Promise<void> {
       },
       {
         label: '$(clock) Last Synced',
-        description: status.lastSyncedAt
-          ? new Date(status.lastSyncedAt).toLocaleString()
-          : 'Never',
+        description: status.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : 'Never',
       },
       {
         label: '$(database) Synced Prompts',
@@ -208,9 +206,7 @@ async function restoreDeletedPromptsCommand(
         const localPrompts = await promptService.listPrompts();
         await syncService.performSync(localPrompts, promptService);
 
-        void vscode.window.showInformationMessage(
-          `Successfully restored ${restored} prompt(s)`
-        );
+        void vscode.window.showInformationMessage(`Successfully restored ${restored} prompt(s)`);
       }
     );
   } catch (error: unknown) {

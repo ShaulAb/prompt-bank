@@ -10,11 +10,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import type {
-  SyncState,
-  PromptSyncInfo,
-  DeviceInfo,
-} from '../models/syncState';
+import type { SyncState, PromptSyncInfo, DeviceInfo } from '../models/syncState';
 import {
   createEmptySyncState,
   updatePromptSync,
@@ -68,15 +64,8 @@ export class SyncStateStorage {
    * @param userId - User email from OAuth
    * @param deviceInfo - Device information
    */
-  async initializeSyncState(
-    userId: string,
-    deviceInfo: DeviceInfo
-  ): Promise<SyncState> {
-    const emptyState = createEmptySyncState(
-      userId,
-      deviceInfo.id,
-      deviceInfo.name
-    );
+  async initializeSyncState(userId: string, deviceInfo: DeviceInfo): Promise<SyncState> {
+    const emptyState = createEmptySyncState(userId, deviceInfo.id, deviceInfo.name);
 
     await this.saveSyncState(emptyState);
     return emptyState;
@@ -132,15 +121,10 @@ export class SyncStateStorage {
    * @param promptId - Local prompt ID
    * @param info - Sync information
    */
-  async setPromptSyncInfo(
-    promptId: string,
-    info: PromptSyncInfo
-  ): Promise<void> {
+  async setPromptSyncInfo(promptId: string, info: PromptSyncInfo): Promise<void> {
     let state = await this.getSyncState();
     if (!state) {
-      throw new Error(
-        'Cannot set prompt sync info: sync state not initialized'
-      );
+      throw new Error('Cannot set prompt sync info: sync state not initialized');
     }
 
     state = updatePromptSync(state, promptId, info);
@@ -154,14 +138,10 @@ export class SyncStateStorage {
    *
    * @param updates - Map of promptId → syncInfo
    */
-  async batchUpdatePromptSyncInfo(
-    updates: ReadonlyMap<string, PromptSyncInfo>
-  ): Promise<void> {
+  async batchUpdatePromptSyncInfo(updates: ReadonlyMap<string, PromptSyncInfo>): Promise<void> {
     let state = await this.getSyncState();
     if (!state) {
-      throw new Error(
-        'Cannot batch update sync info: sync state not initialized'
-      );
+      throw new Error('Cannot batch update sync info: sync state not initialized');
     }
 
     for (const [promptId, info] of updates) {
@@ -191,9 +171,7 @@ export class SyncStateStorage {
    *
    * @param promptIds - Array of local prompt IDs
    */
-  async batchRemovePromptSyncInfo(
-    promptIds: ReadonlyArray<string>
-  ): Promise<void> {
+  async batchRemovePromptSyncInfo(promptIds: ReadonlyArray<string>): Promise<void> {
     let state = await this.getSyncState();
     if (!state) {
       return;
@@ -227,9 +205,7 @@ export class SyncStateStorage {
    *
    * @returns Array of [promptId, syncInfo] entries
    */
-  async getAllSyncedPrompts(): Promise<
-    ReadonlyArray<readonly [string, PromptSyncInfo]>
-  > {
+  async getAllSyncedPrompts(): Promise<ReadonlyArray<readonly [string, PromptSyncInfo]>> {
     const state = await this.getSyncState();
     if (!state) {
       return [];
@@ -293,10 +269,7 @@ export class SyncStateStorage {
    * @param promptId - Local prompt ID
    * @param updates - Partial sync info to update
    */
-  async updatePromptSyncInfo(
-    promptId: string,
-    updates: Partial<PromptSyncInfo>
-  ): Promise<void> {
+  async updatePromptSyncInfo(promptId: string, updates: Partial<PromptSyncInfo>): Promise<void> {
     const state = await this.getSyncState();
     if (!state) {
       throw new Error('Cannot update prompt sync info: sync state not initialized');
@@ -320,9 +293,7 @@ export class SyncStateStorage {
    *
    * @returns Array of [promptId, syncInfo] entries for deleted prompts
    */
-  async getDeletedPrompts(): Promise<
-    ReadonlyArray<{ promptId: string; info: PromptSyncInfo }>
-  > {
+  async getDeletedPrompts(): Promise<ReadonlyArray<{ promptId: string; info: PromptSyncInfo }>> {
     const state = await this.getSyncState();
     if (!state) {
       return [];
@@ -415,10 +386,7 @@ export class SyncStateStorage {
    */
   private isFileNotFoundError(error: unknown): boolean {
     return (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === 'ENOENT'
+      typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
     );
   }
 }

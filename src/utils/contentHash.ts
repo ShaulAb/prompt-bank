@@ -97,9 +97,7 @@ export const matchesHash = (prompt: Prompt, expectedHash: string): boolean => {
  * const hash = hashes.get(promptId);
  * ```
  */
-export const computeContentHashes = (
-  prompts: readonly Prompt[]
-): ReadonlyMap<string, string> => {
+export const computeContentHashes = (prompts: readonly Prompt[]): ReadonlyMap<string, string> => {
   const hashMap = new Map<string, string>();
 
   for (const prompt of prompts) {

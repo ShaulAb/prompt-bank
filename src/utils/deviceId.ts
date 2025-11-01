@@ -79,9 +79,7 @@ export const getDeviceName = (): string => {
  * @param context - VS Code extension context for global state storage
  * @returns Custom or auto-detected device name
  */
-export const getOrCreateDeviceName = async (
-  context: vscode.ExtensionContext
-): Promise<string> => {
+export const getOrCreateDeviceName = async (context: vscode.ExtensionContext): Promise<string> => {
   // Check if user has set a custom device name
   const customName = context.globalState.get<string>(DEVICE_NAME_KEY);
   if (customName) {
@@ -114,9 +112,7 @@ export const setDeviceName = async (
  * @param context - VS Code extension context
  * @returns Device info including ID, name, platform, and hostname
  */
-export const getDeviceInfo = async (
-  context: vscode.ExtensionContext
-): Promise<DeviceInfo> => {
+export const getDeviceInfo = async (context: vscode.ExtensionContext): Promise<DeviceInfo> => {
   const id = generateDeviceId(context);
   const name = await getOrCreateDeviceName(context);
   const platform = os.platform() as 'win32' | 'darwin' | 'linux';
@@ -135,9 +131,7 @@ export const getDeviceInfo = async (
  *
  * @param context - VS Code extension context
  */
-export const clearDeviceInfo = async (
-  context: vscode.ExtensionContext
-): Promise<void> => {
+export const clearDeviceInfo = async (context: vscode.ExtensionContext): Promise<void> => {
   await context.globalState.update(DEVICE_ID_KEY, undefined);
   await context.globalState.update(DEVICE_NAME_KEY, undefined);
 };

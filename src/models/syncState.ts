@@ -198,10 +198,7 @@ export const updatePromptSync = (
 /**
  * Remove prompt sync info from sync state
  */
-export const removePromptSync = (
-  state: SyncState,
-  promptId: string
-): SyncState => {
+export const removePromptSync = (state: SyncState, promptId: string): SyncState => {
   const { [promptId]: _, ...rest } = state.promptSyncMap;
   return {
     ...state,

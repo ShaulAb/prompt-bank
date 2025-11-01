@@ -66,18 +66,14 @@ class SupabaseClientManager {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
       );
 
-      SupabaseClientManager.instance = createClient<Database>(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          auth: {
-            // Disable auto-refresh since we handle tokens manually in AuthService
-            autoRefreshToken: false,
-            // Don't persist session in browser storage (we use VS Code secrets)
-            persistSession: false,
-          },
-        }
-      );
+      SupabaseClientManager.instance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          // Disable auto-refresh since we handle tokens manually in AuthService
+          autoRefreshToken: false,
+          // Don't persist session in browser storage (we use VS Code secrets)
+          persistSession: false,
+        },
+      });
     }
 
     return SupabaseClientManager.instance;

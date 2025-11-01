@@ -41,10 +41,6 @@ export class SyncService {
   private syncStateStorage: SyncStateStorage | undefined;
   private authService: AuthService;
 
-  // Supabase configuration (reuse from AuthService)
-  private readonly supabaseUrl: string;
-  private readonly supabaseAnonKey: string;
-
   // In-memory sync status cache (for tree view icons)
   private syncStatusCache = new Map<string, 'synced' | 'out-of-sync' | 'conflict'>();
 
@@ -54,23 +50,12 @@ export class SyncService {
   ) {
     this.authService = AuthService.get();
     this.syncStateStorage = new SyncStateStorage(workspaceRoot);
-
-    // Reuse Supabase config from workspace settings
-    const cfg = vscode.workspace.getConfiguration('promptBank');
-    this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
-    this.supabaseAnonKey = cfg.get<string>(
-      'supabaseAnonKey',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
-    );
   }
 
   /**
    * Initialize the singleton
    */
-  public static initialize(
-    context: vscode.ExtensionContext,
-    workspaceRoot: string
-  ): SyncService {
+  public static initialize(context: vscode.ExtensionContext, workspaceRoot: string): SyncService {
     if (!SyncService.instance) {
       SyncService.instance = new SyncService(context, workspaceRoot);
     }
@@ -144,9 +129,7 @@ export class SyncService {
 
       if (!remotePrompt) {
         // Check if deleted remotely
-        const remoteDeleted = remote.find(
-          (r) => r.cloud_id === cloudId && r.deleted_at
-        );
+        const remoteDeleted = remote.find((r) => r.cloud_id === cloudId && r.deleted_at);
 
         if (remoteDeleted) {
           // DELETE-MODIFY CONFLICT: Remote deleted, local modified
@@ -268,7 +251,20 @@ export class SyncService {
 
     // Format dates for suffix
     const formatDate = (date: Date): string => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       return `${months[date.getMonth()]} ${date.getDate()}`;
     };
 
@@ -349,13 +345,15 @@ export class SyncService {
 
   /**
    * Update sync status cache (called during sync operations)
+   *
+   * Note: Currently unused but kept for future tree view icon support
    */
-  private updateSyncStatusCache(
-    promptId: string,
-    status: 'synced' | 'out-of-sync' | 'conflict'
-  ): void {
-    this.syncStatusCache.set(promptId, status);
-  }
+  // private updateSyncStatusCache(
+  //   promptId: string,
+  //   status: 'synced' | 'out-of-sync' | 'conflict'
+  // ): void {
+  //   this.syncStatusCache.set(promptId, status);
+  // }
 
   /**
    * Clear sync status cache (called after successful sync)
@@ -385,17 +383,19 @@ export class SyncService {
 
   /**
    * Validate user is authenticated
+   *
+   * Note: Currently unused but kept for potential future use
    */
-  private async validateAuthentication(): Promise<{ email: string; token: string }> {
-    const token = await this.authService.getValidAccessToken();
-    const email = await this.authService.getUserEmail();
+  // private async validateAuthentication(): Promise<{ email: string; token: string }> {
+  //   const token = await this.authService.getValidAccessToken();
+  //   const email = await this.authService.getUserEmail();
 
-    if (!email) {
-      throw new Error('No user email found. Please sign in again.');
-    }
+  //   if (!email) {
+  //     throw new Error('No user email found. Please sign in again.');
+  //   }
 
-    return { email, token };
-  }
+  //   return { email, token };
+  // }
 
   /**
    * Validate authentication and set session on Supabase client
@@ -780,7 +780,7 @@ export class SyncService {
     promptService: any
   ): Promise<SyncResult> {
     // 1. Validate authentication and set session
-    const { email, token, refreshToken } = await this.validateAuthenticationAndSetSession();
+    const { email } = await this.validateAuthenticationAndSetSession();
 
     // 2. Get or create sync state
     const syncState = await this.getOrCreateSyncState(email);
