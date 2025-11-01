@@ -31,7 +31,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
 - **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
-- **Multi-Device Sync**: Synchronize prompts across multiple devices with smart conflict detection. Never lose work when editing the same prompt on different machines.
+- **Multi-Device Sync**: Synchronize prompts across multiple devices with smart conflict detection, deletion tracking, and restore capabilities. Never lose work when editing the same prompt on different machines.
 - **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
@@ -69,6 +69,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
     - **Auto-Sync**: Enable automatic synchronization in settings (`promptBank.sync.autoSync`).
     - **View Status**: Check sync state with "Prompt Bank: View Sync Status" command.
     - **Smart Conflict Resolution**: When same prompt is edited on multiple devices, both versions are preserved with device names and timestamps.
+    - **Deletion Support**: Deleted prompts are tracked and synced across devices. Soft-deleted prompts are retained for 30 days before permanent removal.
 
 
 ## 🔧 Commands & Keybindings
@@ -94,7 +95,7 @@ Prompts are stored both locally and in the cloud:
 
 **Local Storage** (atomic file operations):
 - **Project-Specific**: `.vscode/prompt-bank/prompts.json` (for prompts tied to the current workspace)
-- **Sync State**: `.vscode/prompt-bank/sync-state.json` (tracks sync metadata per device)
+- **Sync State**: `.vscode/prompt-bank/sync-state.json` (tracks sync metadata, deletion tombstones per device)
 - **Global**: `~/.vscode-prompt-bank/prompts.json` (as a fallback for prompts available everywhere)
 - **Data Format**: JSON with metadata including creation/modification dates and usage tracking
 
@@ -102,6 +103,8 @@ Prompts are stored both locally and in the cloud:
 - **Backend**: Supabase with PostgreSQL and Row Level Security
 - **Quota**: 1,000 prompts and 10 MB per user
 - **Privacy**: Data isolated per user account - no sharing between users unless explicitly shared
+- **Deletion**: Soft-delete with 30-day retention period before automatic permanent removal
+- **Garbage Collection**: Server-side automatic cleanup runs daily
 
 ## 🔐 Authentication
 
