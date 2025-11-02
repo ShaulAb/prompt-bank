@@ -38,6 +38,9 @@ vi.mock('vscode', () => {
         readText: vi.fn(),
         writeText: vi.fn(),
       },
+      uriScheme: 'vscode',
+      openExternal: vi.fn().mockResolvedValue(true),
+      appName: 'Code - Test',
     },
     workspace: {
       get workspaceFolders() {
@@ -69,6 +72,18 @@ vi.mock('vscode', () => {
       joinPath: vi.fn((uri, ...paths) => ({
         fsPath: require('path').join(uri.fsPath, ...paths.join('/')),
       })),
+      parse: vi.fn((value: string) => {
+        const url = new URL(value);
+        return {
+          scheme: url.protocol.replace(':', ''),
+          authority: url.host,
+          path: url.pathname,
+          query: url.search.substring(1),
+          fragment: url.hash.substring(1),
+          fsPath: url.pathname,
+          toString: () => value,
+        };
+      }),
     },
   };
 });

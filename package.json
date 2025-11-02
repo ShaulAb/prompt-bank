@@ -313,6 +313,7 @@
     "dependencies": {
         "@supabase/supabase-js": "^2.78.0",
         "@types/node-fetch": "^2.6.13",
+        "jose": "^6.1.0",
         "node-fetch": "^3.3.2"
     }
 }

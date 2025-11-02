@@ -1,8 +1,9 @@
 import { setupServer } from 'msw/node';
 import { oauthHandlers, oauthTestHelpers } from './oauth-handlers';
+import { jwksHandler, jwksTestHelpers } from './jwks-handlers';
 
-// Create MSW server with OAuth handlers
-export const server = setupServer(...oauthHandlers);
+// Create MSW server with OAuth and JWKS handlers
+export const server = setupServer(...oauthHandlers, jwksHandler);
 
 // Enhanced server with helper methods
 export const mswTestServer = {
@@ -12,6 +13,8 @@ export const mswTestServer = {
    * Start server and reset to clean state
    */
   async startClean() {
+    // Initialize JWKS test keys before starting server
+    await jwksTestHelpers.initialize();
     server.listen({ onUnhandledRequest: 'warn' });
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
@@ -55,5 +58,11 @@ export const mswTestServer = {
   },
 
   // Re-export helpers for convenience
-  helpers: oauthTestHelpers,
+  helpers: {
+    oauth: oauthTestHelpers,
+    jwks: jwksTestHelpers,
+  },
 };
+
+// Export individual helpers for direct import
+export { oauthTestHelpers, jwksTestHelpers };

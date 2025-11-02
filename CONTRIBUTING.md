@@ -309,6 +309,45 @@ For feature requests, please describe:
 
 ## 🔧 Advanced Development
 
+### Authentication Architecture
+
+The extension uses **JWKS-based JWT verification** for secure authentication:
+
+**Overview:**
+- **OAuth Provider**: Google OAuth via Supabase Auth
+- **Token Type**: JWT (JSON Web Token) signed with ECC (P-256) asymmetric keys
+- **Verification**: Public-key cryptography using JWKS endpoint
+- **Library**: [`jose`](https://github.com/panva/jose) for industry-standard JWT verification
+
+**How It Works:**
+1. User authenticates via Google OAuth (PKCE flow)
+2. Supabase Auth issues JWT signed with **ECC P-256 private key**
+3. AuthService verifies JWT using **public key** from JWKS endpoint
+4. Tokens cached with 5-minute offline grace period
+
+**JWKS Endpoint:**
+```
+https://xlqtowactrzmslpkzliq.supabase.co/auth/v1/.well-known/jwks.json
+```
+
+**Testing Strategy:**
+- **Unit Tests**: Mock JWKS responses (MSW)
+- **Integration Tests**: Full auth flow with test keys (CI/CD)
+- **Manual Validation**: Real Supabase endpoint verification
+- **Script**: Run `npx tsx scripts/test-real-jwks.ts` to verify JWKS endpoint
+
+**Key Benefits:**
+- ✅ Zero-downtime key rotation
+- ✅ No shared secrets exposed
+- ✅ Fast local JWT verification
+- ✅ Offline-capable with grace period
+
+**For Developers:**
+- AuthService (`src/services/authService.ts`) handles all verification
+- JWKS keys cached for 10 minutes (Supabase Edge cache)
+- Tokens auto-refresh when expired
+- See `test/auth-jwks-verification.test.ts` for test examples
+
 ### WebView Development
 
 The extension uses LitElement for the prompt editor:
