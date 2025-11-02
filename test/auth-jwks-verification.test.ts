@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { server as mswServer } from './e2e/helpers/msw-setup';
 import { jwksTestHelpers, jwksNetworkFailureHandler } from './e2e/helpers/jwks-handlers';
 import { AuthService } from '../src/services/authService';
@@ -14,6 +14,8 @@ import * as vscode from 'vscode';
 describe('AuthService - JWKS Verification', () => {
   let context: vscode.ExtensionContext;
   let authService: AuthService;
+  let globalStateUpdateSpy: ReturnType<typeof vi.fn>;
+  let globalStateGetSpy: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     // Initialize JWKS test keys
@@ -24,6 +26,9 @@ describe('AuthService - JWKS Verification', () => {
   });
 
   beforeEach(() => {
+    // Reset AuthService singleton to ensure fresh instance for each test
+    (AuthService as any).instance = undefined;
+
     // Mock VS Code workspace configuration
     const mockConfig = {
       get: vi.fn((key: string, defaultValue?: any) => {
@@ -38,6 +43,10 @@ describe('AuthService - JWKS Verification', () => {
 
     vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue(mockConfig as any);
 
+    // Create spies for globalState methods to track calls
+    globalStateUpdateSpy = vi.fn().mockResolvedValue(undefined);
+    globalStateGetSpy = vi.fn().mockReturnValue(undefined);
+
     // Create mock VS Code extension context
     context = {
       subscriptions: [],
@@ -48,8 +57,8 @@ describe('AuthService - JWKS Verification', () => {
         onDidChange: vi.fn(),
       },
       globalState: {
-        get: vi.fn().mockReturnValue(undefined),
-        update: vi.fn().mockResolvedValue(undefined),
+        get: globalStateGetSpy,
+        update: globalStateUpdateSpy,
         setKeysForSync: vi.fn(),
         keys: vi.fn().mockReturnValue([]),
       },
@@ -73,6 +82,11 @@ describe('AuthService - JWKS Verification', () => {
 
     // Initialize AuthService
     authService = AuthService.initialize(context, 'test-publisher', 'test-extension');
+  });
+
+  afterEach(() => {
+    // Reset MSW handlers to default state
+    mswServer.resetHandlers();
   });
 
   afterAll(() => {
@@ -131,7 +145,7 @@ describe('AuthService - JWKS Verification', () => {
       await authService.verifyToken(validToken);
 
       // Check that last verification was stored in globalState
-      expect(context.globalState.update).toHaveBeenCalledWith(
+      expect(globalStateUpdateSpy).toHaveBeenCalledWith(
         'promptBank.lastTokenVerification',
         expect.any(Number)
       );
@@ -142,13 +156,18 @@ describe('AuthService - JWKS Verification', () => {
     it('should allow recently verified token during network failure', async () => {
       const validToken = await jwksTestHelpers.generateValidJWT('test-user-001');
 
-      // First, verify successfully
+      // First, verify successfully - this will set the timestamp
       const firstVerification = await authService.verifyToken(validToken);
       expect(firstVerification).toBe(true);
 
-      // Mock recent verification timestamp (2 minutes ago)
-      const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
-      vi.mocked(context.globalState.get).mockReturnValue(twoMinutesAgo);
+      // Get the timestamp that was saved (from the update call)
+      const updateCalls = globalStateUpdateSpy.mock.calls;
+      const savedTimestamp = updateCalls[updateCalls.length - 1]?.[1];
+      expect(savedTimestamp).toBeDefined();
+
+      // Mock recent verification timestamp (use the timestamp from first verification)
+      // It should be within the last 5 minutes (grace period)
+      globalStateGetSpy.mockReturnValue(savedTimestamp);
 
       // Simulate network failure by replacing JWKS handler
       mswServer.use(jwksNetworkFailureHandler);
@@ -163,7 +182,7 @@ describe('AuthService - JWKS Verification', () => {
 
       // Mock old verification timestamp (10 minutes ago, beyond grace period)
       const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
-      vi.mocked(context.globalState.get).mockReturnValue(tenMinutesAgo);
+      globalStateGetSpy.mockReturnValue(tenMinutesAgo);
 
       // Simulate network failure
       mswServer.use(jwksNetworkFailureHandler);
@@ -179,13 +198,30 @@ describe('AuthService - JWKS Verification', () => {
       // Generate valid JWT
       const validToken = await jwksTestHelpers.generateValidJWT('test-user-001');
 
+      // Calculate expiry (1 hour from now)
+      const expiresAt = Date.now() + 3600 * 1000;
+
       // Mock SecretStorage to return the token
       vi.mocked(context.secrets.get).mockImplementation(async (key: string) => {
         if (key === 'promptBank.supabase.access_token') return validToken;
-        if (key === 'promptBank.supabase.expires_at')
-          return String(Date.now() + 3600 * 1000); // 1 hour from now
+        if (key === 'promptBank.supabase.expires_at') return String(expiresAt);
         return undefined;
       });
+
+      // Mock vscode.Uri.parse to prevent errors during auth flow
+      vi.spyOn(vscode.Uri, 'parse').mockImplementation((value: string) => {
+        const url = new URL(value);
+        return {
+          scheme: url.protocol.replace(':', ''),
+          path: url.pathname,
+          query: url.search.substring(1),
+          fsPath: url.pathname,
+          toString: () => value,
+        } as vscode.Uri;
+      });
+
+      // Mock vscode.env.openExternal to prevent browser opening
+      vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
       // Get valid access token (should verify internally)
       const token = await authService.getValidAccessToken();
@@ -221,17 +257,20 @@ describe('AuthService - JWKS Verification', () => {
   describe('JWKS Caching', () => {
     it('should cache JWKS keys for performance', async () => {
       // Verify multiple tokens to test caching
+      // Both should succeed, and the second should use cached JWKS
       const token1 = await jwksTestHelpers.generateValidJWT('test-user-001');
       const token2 = await jwksTestHelpers.generateValidJWT('test-user-002');
 
       const isValid1 = await authService.verifyToken(token1);
-      const isValid2 = await authService.verifyToken(token2);
-
       expect(isValid1).toBe(true);
+
+      // Second verification should also work (cached JWKS or fresh fetch)
+      const isValid2 = await authService.verifyToken(token2);
       expect(isValid2).toBe(true);
 
       // jose library handles caching internally, so we just verify both worked
       // The actual performance benefit would be visible in timing tests
+      // Both tokens verified successfully = caching working (or at least not breaking)
     });
   });
 
@@ -240,14 +279,16 @@ describe('AuthService - JWKS Verification', () => {
       // Generate token with specific expiry (1 hour)
       const validToken = await jwksTestHelpers.generateValidJWT('test-user-001');
 
-      // Verify token
-      await authService.verifyToken(validToken);
+      // First verification - extracts expiry from JWT
+      const isValid1 = await authService.verifyToken(validToken);
+      expect(isValid1).toBe(true);
 
-      // The expiry should be extracted from the JWT payload
-      // We can't directly access private fields, but we verified it's set
-      // by checking that the token is considered valid
-      const isValid = await authService.verifyToken(validToken);
-      expect(isValid).toBe(true);
+      // Second verification - should still be valid (expiry extracted correctly)
+      // If expiry wasn't extracted properly, this would fail or token would be considered expired
+      const isValid2 = await authService.verifyToken(validToken);
+      expect(isValid2).toBe(true);
+
+      // Both verifications succeeded = expiry extraction working correctly
     });
   });
 });
