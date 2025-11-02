@@ -4,3 +4,4 @@ dist/
 .vscode/
 checklists
 *.vsix
+reset-vscode-view.sh
