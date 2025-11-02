@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 
 // Supabase API response types
 interface TokenResponse {
@@ -14,6 +15,18 @@ interface TokenResponse {
 interface UserResponse {
   id: string;
   email: string;
+}
+
+// Supabase JWT payload structure
+interface SupabaseJWTPayload extends JWTPayload {
+  sub: string;
+  email?: string;
+  email_verified?: string;
+  phone?: string;
+  aud: string;
+  role: string;
+  aal?: string;
+  session_id?: string;
 }
 
 export class AuthService {
@@ -37,6 +50,11 @@ export class AuthService {
   private readonly EXPIRY_KEY = 'promptBank.supabase.expires_at';
   private readonly USER_ID_KEY = 'promptBank.supabase.user_id';
   private readonly USER_EMAIL_KEY = 'promptBank.supabase.user_email';
+
+  // JWKS verification settings
+  private readonly JWKS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes (matches Supabase Edge cache)
+  private readonly LAST_VERIFICATION_KEY = 'promptBank.lastTokenVerification';
+  private readonly OFFLINE_GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes for offline scenarios
 
   private constructor(
     private context: vscode.ExtensionContext,
@@ -79,20 +97,28 @@ export class AuthService {
 
   /**
    * Return a valid access token, triggering sign-in if required.
+   * Now includes JWKS verification for enhanced security.
    */
   public async getValidAccessToken(): Promise<string> {
     await this.loadFromSecretStorage();
 
-    // Check if token is valid and not expired
-    if (this.token && this.expiresAt && Date.now() < this.expiresAt) {
-      return this.token;
+    // Check if token exists and verify via JWKS
+    if (this.token) {
+      const isValid = await this.verifyToken(this.token);
+
+      // Token is verified and not expired
+      if (isValid && this.expiresAt && Date.now() < this.expiresAt) {
+        return this.token;
+      }
     }
 
-    // Try to refresh if we have a refresh token
+    // Token invalid or expired, try refresh
     if (this.refreshToken) {
       try {
         await this.refreshAccessToken();
-        if (this.token) {
+
+        // Verify refreshed token
+        if (this.token && (await this.verifyToken(this.token))) {
           return this.token;
         }
       } catch (error) {
@@ -102,6 +128,66 @@ export class AuthService {
 
     // Start new auth flow
     return this.beginGoogleAuthFlow();
+  }
+
+  /**
+   * Verify JWT token via JWKS endpoint
+   *
+   * Uses jose library with built-in JWKS caching for performance.
+   * Implements offline grace period for network failures.
+   *
+   * @param token - JWT access token to verify
+   * @returns true if token is valid and verified
+   */
+  public async verifyToken(token: string): Promise<boolean> {
+    try {
+      // Use jose's createRemoteJWKSet with built-in caching
+      const JWKS = createRemoteJWKSet(
+        new URL(`${this.supabaseUrl}/auth/v1/.well-known/jwks.json`),
+        {
+          cacheMaxAge: this.JWKS_CACHE_TTL, // 10 minutes
+          timeoutDuration: 5000, // 5 second timeout for network requests
+        }
+      );
+
+      // Verify JWT signature and claims
+      const { payload } = await jwtVerify<SupabaseJWTPayload>(token, JWKS, {
+        issuer: `${this.supabaseUrl}/auth/v1`,
+        audience: 'authenticated',
+        clockTolerance: 60, // Allow 1 minute clock skew
+      });
+
+      // Extract and cache user info from verified token
+      // This is more reliable than stored values
+      this.userId = payload.sub;
+      this.userEmail = (payload.email || payload.email_verified) as string;
+      this.expiresAt = (payload.exp as number) * 1000; // Convert to milliseconds
+
+      // Track last successful verification for offline scenarios
+      await this.context.globalState.update(this.LAST_VERIFICATION_KEY, Date.now());
+
+      console.log(
+        `[AuthService] JWT verified successfully for user: ${this.userEmail} (expires: ${new Date(this.expiresAt).toISOString()})`
+      );
+
+      return true;
+    } catch (error) {
+      console.error('[AuthService] JWT verification failed:', error);
+
+      // Offline/network failure handling: Check for recent verification
+      const lastVerification = this.context.globalState.get<number>(this.LAST_VERIFICATION_KEY);
+
+      if (lastVerification && Date.now() - lastVerification < this.OFFLINE_GRACE_PERIOD) {
+        // Token was recently verified successfully, allow offline use
+        console.warn(
+          '[AuthService] Network failure during verification, but token was recently verified. Allowing offline use.'
+        );
+        return true;
+      }
+
+      // Verification failed and no recent verification - token is invalid
+      return false;
+    }
   }
 
   /**

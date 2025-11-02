@@ -108,13 +108,14 @@ Prompts are stored both locally and in the cloud:
 
 ## 🔐 Authentication
 
-Sharing and sync features require Google OAuth authentication:
+Sharing and sync features require Google OAuth authentication via Supabase Auth:
 
 - **First Time**: When you first share or sync, you'll be redirected to Google to authorize the extension
-- **Secure**: Only minimal permissions are requested (email and profile access)
+- **Secure**: Modern JWKS-based JWT verification with ECC (P-256) asymmetric keys for enhanced security
 - **Automatic**: Once authorized, sharing and sync work seamlessly without further prompts
 - **Account Linking**: Same Google account is used for both sharing and sync features
-- **Revocable**: You can revoke access anytime from your GitHub settings
+- **Token Verification**: All API requests are verified using public-key cryptography with zero-downtime key rotation support
+- **Offline Grace Period**: Tokens cached locally with 5-minute grace period for offline scenarios
 
 ## 📄 License
 
