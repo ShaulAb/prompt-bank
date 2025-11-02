@@ -21,12 +21,14 @@ interface UserResponse {
 interface SupabaseJWTPayload extends JWTPayload {
   sub: string;
   email?: string;
-  email_verified?: string;
+  email_verified?: boolean;
   phone?: string;
   aud: string;
   role: string;
   aal?: string;
   session_id?: string;
+  user_metadata?: Record<string, any>; // Additional user metadata
+  app_metadata?: Record<string, any>; // Application metadata
 }
 
 export class AuthService {
@@ -160,7 +162,11 @@ export class AuthService {
       // Extract and cache user info from verified token
       // This is more reliable than stored values
       this.userId = payload.sub;
-      this.userEmail = (payload.email || payload.email_verified) as string;
+      // Extract email - could be in payload.email or user_metadata
+      this.userEmail =
+        (payload.email as string) ||
+        (payload.user_metadata?.email as string | undefined) ||
+        undefined;
       this.expiresAt = (payload.exp as number) * 1000; // Convert to milliseconds
 
       // Track last successful verification for offline scenarios
@@ -172,7 +178,18 @@ export class AuthService {
 
       return true;
     } catch (error) {
-      console.error('[AuthService] JWT verification failed:', error);
+      // More descriptive error logging for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AuthService] JWT verification failed:', errorMessage);
+
+      // Log specific error types for easier debugging
+      if (errorMessage.includes('expired')) {
+        console.warn('[AuthService] Token has expired');
+      } else if (errorMessage.includes('signature')) {
+        console.error('[AuthService] Token signature verification failed - possible key rotation');
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        console.warn('[AuthService] Network error during JWKS fetch');
+      }
 
       // Offline/network failure handling: Check for recent verification
       const lastVerification = this.context.globalState.get<number>(this.LAST_VERIFICATION_KEY);
@@ -194,6 +211,11 @@ export class AuthService {
    * Get the current user's email if authenticated
    */
   public async getUserEmail(): Promise<string | undefined> {
+    // If email is already in memory (e.g., from verifyToken), return it
+    if (this.userEmail) {
+      return this.userEmail;
+    }
+    // Otherwise, load from storage
     await this.loadFromSecretStorage();
     return this.userEmail;
   }
@@ -238,6 +260,9 @@ export class AuthService {
     await this.context.secrets.delete(this.EXPIRY_KEY);
     await this.context.secrets.delete(this.USER_ID_KEY);
     await this.context.secrets.delete(this.USER_EMAIL_KEY);
+
+    // Clear last verification timestamp to avoid stale state
+    await this.context.globalState.update(this.LAST_VERIFICATION_KEY, undefined);
 
     vscode.window.showInformationMessage('Signed out successfully');
   }
@@ -302,6 +327,13 @@ export class AuthService {
     this.refreshToken = data.refresh_token;
     this.expiresAt = Date.now() + data.expires_in * 1000;
 
+    // Verify the refreshed token immediately
+    const isValid = await this.verifyToken(data.access_token);
+    if (!isValid) {
+      throw new Error('Refreshed token verification failed');
+    }
+
+    // User info is now extracted by verifyToken, but keep fallback
     if (data.user) {
       this.userId = data.user.id;
       this.userEmail = data.user.email;
@@ -388,7 +420,13 @@ export class AuthService {
     this.refreshToken = refreshToken || undefined;
     this.expiresAt = expiresIn ? Date.now() + parseInt(expiresIn) * 1000 : undefined;
 
-    // Get user info
+    // Verify the token immediately after obtaining it
+    const isValid = await this.verifyToken(accessToken);
+    if (!isValid) {
+      throw new Error('Token verification failed after authentication');
+    }
+
+    // Get user info (this might be redundant now that verifyToken extracts it)
     await this.fetchUserInfo();
 
     // Save everything
@@ -426,6 +464,13 @@ export class AuthService {
     this.refreshToken = data.refresh_token;
     this.expiresAt = Date.now() + data.expires_in * 1000;
 
+    // Verify the token immediately after obtaining it
+    const isValid = await this.verifyToken(data.access_token);
+    if (!isValid) {
+      throw new Error('Token verification failed after code exchange');
+    }
+
+    // User info is now extracted by verifyToken, but keep fallback
     if (data.user) {
       this.userId = data.user.id;
       this.userEmail = data.user.email;
