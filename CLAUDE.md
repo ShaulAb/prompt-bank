@@ -6,13 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts. It provides a tree view in the explorer sidebar where users can save prompts organized by categories, and features drag-and-drop support, cloud sharing via Google OAuth, and a modern webview editor interface.
 
-### Latest Status (dev branch - September 21, 2025)
-**Status**: ✅ All features merged to dev, ready for v0.6.1 release
+### Latest Status (dev branch - November 3, 2025)
+**Status**: ✅ Authentication migration complete, ready for release
+
+**Authentication Infrastructure**: ✅ MIGRATED TO ECC P-256
+- ✅ Migrated JWT signing from HS256 to ECC P-256 (ES256) with JWKS
+- ✅ Industry-standard public key cryptography for enhanced security
+- ✅ Automatic token recovery on invalid JWT errors (no manual sign-out)
+- ✅ Edge Functions compatible with ES256 tokens
+- ✅ Type safety improvements across sync/share services
 
 **Testing Infrastructure**: ✅ COMPLETE
 - ✅ Migrated from custom OAuth provider to MSW (Mock Service Worker)
 - ✅ Achieved 80% code reduction (800+ lines → 200 lines)
-- ✅ Comprehensive E2E authentication testing: 67 tests passing
+- ✅ Comprehensive E2E authentication testing: 78 tests passing
 - ✅ 7 OAuth test scenarios covering full lifecycle including PKCE
 - ✅ Zero dependency on external test users or Supabase instances
 
@@ -29,7 +36,30 @@ Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts
 - ✅ Google OAuth authentication fully operational
 - ✅ Sharing functionality working end-to-end
 
-### Recent Improvements (September 21, 2025 Session)
+### Recent Improvements (November 3, 2025 Session)
+
+**JWT Migration to ECC P-256**:
+- Migrated from symmetric HS256 to asymmetric ES256 (Elliptic Curve) signing
+- Implemented JWKS (JSON Web Key Set) endpoint for public key distribution
+- Enhanced security: Private keys stay server-side, only public keys distributed
+- Automatic token recovery: Extension detects invalid JWTs and prompts re-authentication
+- Zero user disruption: Seamless transition with automatic fallback
+
+**Edge Function Updates**:
+- Redeployed all 5 Edge Functions for ES256 compatibility
+- Fixed `get-user-prompts` to accept both GET and POST methods (was 405 error)
+- Disabled `verify_jwt` setting (Supabase's automatic verification incompatible with ES256)
+- All functions use manual `auth.getUser()` for proper ES256 validation
+- Cross-platform testing confirmed working on Mac and Windows
+
+**Code Quality Improvements**:
+- Eliminated all 7 'any' types with proper type definitions
+- Added `MetadataJSON` interface for type-safe JSON conversions
+- Reduced ESLint warnings from 28 to 17 (39% reduction)
+- Fixed unused variable warnings and type assertion issues
+- Enhanced error context with proper type checking
+
+### Previous Improvements (September 21, 2025 Session)
 
 **MSW Testing Migration**:
 - Replaced 800+ lines of custom OAuth provider with 200 lines of MSW handlers
@@ -130,7 +160,9 @@ Press `F5` to launch Extension Development Host for testing changes.
 
 8. **WebView Modal Modes**: `PromptEditorPanel` supports both edit mode (for existing prompts) and create mode (for new prompts with optional initial content)
 
-9. **Commit Conventions**: Use conventional commits with emojis for automatic version management. See CONTRIBUTING.md for detailed guidelines. Examples:
+9. **Automatic Token Recovery**: Services detect invalid JWT errors (401 + "invalid jwt" message) and automatically call `AuthService.clearInvalidTokens()`, prompting users to re-authenticate without manual sign-out. Implemented in ShareService and SyncService for seamless recovery from authentication issues.
+
+10. **Commit Conventions**: Use conventional commits with emojis for automatic version management. See CONTRIBUTING.md for detailed guidelines. Examples:
    - `feat(auth): ✨ add OAuth integration` (minor bump)
    - `fix(editor): 🐛 resolve loading issue` (patch bump)
    - `feat(api)!: ✨ redesign storage system` (major bump)
@@ -148,6 +180,13 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 
 ## Recent Achievements
 
+### Authentication & Security
+- Migrated JWT signing from HS256 to ECC P-256 (ES256) for industry-standard security
+- Implemented JWKS endpoint for public key distribution
+- Built automatic token recovery system for seamless user experience
+- Resolved Edge Function compatibility with ES256 tokens
+- Cross-platform authentication verified on Mac and Windows
+
 ### Feature Development
 - Successfully implemented "Save Selection as Prompt" context menu feature
 - Enhanced WebView editor with performance optimizations and caching
@@ -156,7 +195,9 @@ Uses Vitest with behavior-based testing. Tests are isolated per feature (create,
 - Fixed cross-editor URI scheme compatibility using official VS Code API
 
 ### Code Quality
-- Achieved 100% test pass rate (60 tests passing, 9 intentionally skipped)
+- Achieved 100% test pass rate (78 tests passing, 9 intentionally skipped)
+- Eliminated all 'any' types with proper type definitions and interfaces
+- Reduced ESLint warnings by 39% (28 → 17)
 - Fixed all TypeScript compilation errors and applied consistent formatting
 - Optimized WebView loading performance with caching system
 - Bundle size: 39.8kb minified
@@ -272,3 +313,4 @@ vsce publish  # Publish to VS Code Marketplace
 6. **Search Improvements**: Add fuzzy search and regex support
 7. **Prompt Versioning**: Track changes to prompts over time
 8. **Team Sharing**: Enhanced sharing features for team collaboration
+- to memorize

@@ -2,43 +2,6 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [0.7.0] - TBD
-
-### ✨ Features
-
-- **sync:** ✨ add complete deletion support with soft-delete and restore
-  - Deleted prompts tracked across all synced devices
-  - 30-day retention period before permanent removal
-  - Automatic server-side garbage collection runs daily
-  - Delete-modify conflict resolution (modified version always preserved)
-
-### 🔄 Changed
-
-- **Sync Algorithm**: Enhanced three-way merge to handle deletion tracking
-  - Detects locally deleted prompts and propagates deletions to cloud
-  - Filters out soft-deleted prompts from remote sync
-  - Preserves tombstone records to prevent re-downloading deleted prompts
-- **Database Schema**: Extended user_prompts table with deletion tracking columns
-  - Added `deleted_at` timestamp for soft-delete tracking
-  - Added `deleted_by_device_id` for tracking which device initiated deletion
-  - Updated quota triggers to exclude soft-deleted prompts from limits
-  - Created indexes for efficient deleted prompt queries
-
-### 🐛 Bug Fixes
-
-- **Deletion Sync Bug**: Previously deleted prompts would incorrectly re-download after sync
-- **Tombstone Tracking**: Proper tracking prevents deleted prompts from being treated as new
-
-### 📊 Technical Details
-
-- **4 New Edge Functions**: delete-prompt, restore-prompt, gc-deleted-prompts, get-user-prompts (updated)
-- **Schema Version**: Sync state now includes schema version for future migrations
-- **Quota Accuracy**: Soft-deleted prompts don't count toward prompt limit
-- **Conflict Resolution**: Modified prompts always take precedence over deletions
-- **Data Models**: Extended PromptSyncInfo with isDeleted/deletedAt, SyncPlan with toDelete, SyncStats with deleted count
-
----
-
 ### [0.6.1](https://github.com/ShaulAb/prompt-bank/compare/v0.6.0...v0.6.1) (2025-09-27)
 
 ### ✨ Features
