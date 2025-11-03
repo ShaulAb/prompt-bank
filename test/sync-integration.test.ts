@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { SyncService } from '../src/services/syncService';
+import { AuthService } from '../src/services/authService';
+import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { createPrompt } from '../src/models/prompt';
@@ -58,20 +60,17 @@ describe('SyncService - Integration', () => {
       asAbsolutePath: (relativePath: string) => path.join(testStorageDir, relativePath),
     } as unknown as vscode.ExtensionContext;
 
+    // Initialize services (required by SyncService)
+    AuthService.initialize(context, 'test-publisher', 'test-extension');
+    SupabaseClientManager.initialize();
+
     // Initialize sync service
     syncService = SyncService.initialize(context, testStorageDir);
 
     // Mock authentication
-    const AuthService = await import('../src/services/authService');
-    vi.spyOn(AuthService.AuthService.get(), 'getValidAccessToken').mockResolvedValue(
-      'mock-access-token'
-    );
-    vi.spyOn(AuthService.AuthService.get(), 'getRefreshToken').mockResolvedValue(
-      'mock-refresh-token'
-    );
-    vi.spyOn(AuthService.AuthService.get(), 'getUserEmail').mockResolvedValue(
-      'test-user@promptbank.test'
-    );
+    vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
+    vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+    vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
   });
 
   afterEach(async () => {
