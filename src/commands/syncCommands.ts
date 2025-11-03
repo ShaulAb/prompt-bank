@@ -62,10 +62,31 @@ async function syncPromptsCommand(
     async (progress) => {
       try {
         progress.report({ message: 'Fetching local prompts...' });
-        const localPrompts = await promptService.listPrompts();
+        let localPrompts = await promptService.listPrompts();
 
         progress.report({ message: 'Comparing with cloud...' });
-        const result = await syncService.performSync(localPrompts, promptService);
+
+        // Retry logic: Allow one retry on conflict
+        let result;
+        try {
+          result = await syncService.performSync(localPrompts, promptService);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          // Check if this is a retryable conflict error
+          if (errorMessage === 'sync_conflict_retry') {
+            progress.report({ message: 'Conflict detected - retrying...' });
+
+            // Re-fetch local prompts (may have changed during conflict resolution)
+            localPrompts = await promptService.listPrompts();
+
+            // Retry sync once
+            result = await syncService.performSync(localPrompts, promptService);
+          } else {
+            // Re-throw non-retry errors
+            throw error;
+          }
+        }
 
         // Show success message with stats
         const message =
