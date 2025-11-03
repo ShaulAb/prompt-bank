@@ -487,12 +487,32 @@ export class SyncService {
       });
 
       if (error) {
+        // Check for 401/invalid JWT errors
+        const errorMessage = error.message || String(error);
+        const errorContext = (error as any).context;
+
+        if (
+          errorContext?.status === 401 ||
+          errorMessage.toLowerCase().includes('invalid jwt') ||
+          errorMessage.toLowerCase().includes('unauthorized')
+        ) {
+          console.warn('[SyncService] Detected invalid JWT error. Clearing tokens...');
+          await this.authService.clearInvalidTokens();
+          throw new Error(
+            'Your session has expired. Please try syncing again to sign in with a new session.'
+          );
+        }
+
         throw error;
       }
 
       return (data as { prompts: RemotePrompt[] }).prompts;
     } catch (error) {
       if (error instanceof Error) {
+        // If it's already our user-friendly error, don't wrap it
+        if (error.message.includes('session has expired')) {
+          throw error;
+        }
         throw new Error(`Failed to fetch remote prompts: ${error.message}`);
       }
       throw error;
@@ -545,6 +565,24 @@ export class SyncService {
       });
 
       if (error) {
+        // Check for 401/invalid JWT errors first
+        const errorMessage = error.message || String(error);
+        const errorContext = (error as any).context;
+
+        if (
+          errorContext?.status === 401 ||
+          errorMessage.toLowerCase().includes('invalid jwt') ||
+          errorMessage.toLowerCase().includes('unauthorized')
+        ) {
+          console.warn(
+            '[SyncService] Detected invalid JWT error during upload. Clearing tokens...'
+          );
+          await this.authService.clearInvalidTokens();
+          throw new Error(
+            'Your session has expired. Please try syncing again to sign in with a new session.'
+          );
+        }
+
         // Check for optimistic lock conflict
         if (error.message?.includes('conflict') || (error as any).status === 409) {
           throw new Error('conflict');
@@ -558,6 +596,10 @@ export class SyncService {
         throw error; // Re-throw conflict for higher-level handling
       }
       if (error instanceof Error) {
+        // If it's already our user-friendly error, don't wrap it
+        if (error.message.includes('session has expired')) {
+          throw error;
+        }
         throw new Error(`Failed to upload prompt: ${error.message}`);
       }
       throw error;
