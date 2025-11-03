@@ -12,7 +12,7 @@
  */
 
 import * as vscode from 'vscode';
-import type { Prompt } from '../models/prompt';
+import type { Prompt, TemplateVariable, FileContext } from '../models/prompt';
 import type {
   SyncState,
   SyncPlan,
@@ -28,6 +28,7 @@ import { AuthService } from './authService';
 import { SupabaseClientManager } from './supabaseClient';
 import { computeContentHash, matchesHash } from '../utils/contentHash';
 import { getDeviceInfo } from '../utils/deviceId';
+import type { PromptService } from './promptService';
 
 /**
  * Sync service singleton
@@ -286,8 +287,16 @@ export class SyncService {
    * Convert remote prompt to local Prompt format
    */
   private convertRemoteToLocal(remote: RemotePrompt): Prompt {
-    const metadata = remote.metadata as any;
-    const variables = (remote.variables as any[]) || [];
+    // Type assertion for metadata from JSON
+    interface MetadataJSON {
+      created: string | number | Date;
+      modified: string | number | Date;
+      usageCount: number;
+      lastUsed?: string | number | Date;
+      context?: FileContext;
+    }
+    const metadata = remote.metadata as MetadataJSON;
+    const variables = (remote.variables as TemplateVariable[]) || [];
 
     const prompt: Prompt = {
       id: remote.local_id,
@@ -489,7 +498,7 @@ export class SyncService {
       if (error) {
         // Check for 401/invalid JWT errors
         const errorMessage = error.message || String(error);
-        const errorContext = (error as any).context;
+        const errorContext = (error as { context?: { status?: number } }).context;
 
         if (
           errorContext?.status === 401 ||
@@ -567,7 +576,7 @@ export class SyncService {
       if (error) {
         // Check for 401/invalid JWT errors first
         const errorMessage = error.message || String(error);
-        const errorContext = (error as any).context;
+        const errorContext = (error as { context?: { status?: number } }).context;
 
         if (
           errorContext?.status === 401 ||
@@ -584,7 +593,7 @@ export class SyncService {
         }
 
         // Check for optimistic lock conflict
-        if (error.message?.includes('conflict') || (error as any).status === 409) {
+        if (error.message?.includes('conflict') || (error as { status?: number }).status === 409) {
           throw new Error('conflict');
         }
         throw error;
@@ -691,10 +700,7 @@ export class SyncService {
    * @param promptService - Prompt service for saving prompts
    * @returns Sync result with statistics
    */
-  private async executeSyncPlan(
-    plan: SyncPlan,
-    promptService: any // Will be injected from command
-  ): Promise<SyncResult> {
+  private async executeSyncPlan(plan: SyncPlan, promptService: PromptService): Promise<SyncResult> {
     const result: SyncResult = {
       stats: { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, duration: 0 },
     };
@@ -819,7 +825,7 @@ export class SyncService {
    */
   public async performSync(
     localPrompts: readonly Prompt[],
-    promptService: any
+    promptService: PromptService
   ): Promise<SyncResult> {
     // 1. Validate authentication and set session
     const { email } = await this.validateAuthenticationAndSetSession();
