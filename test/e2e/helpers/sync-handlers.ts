@@ -249,9 +249,11 @@ export const syncTestHelpers = {
   /**
    * Add a prompt to the cloud database
    */
-  addCloudPrompt(prompt: Omit<RemotePrompt, 'cloud_id' | 'version' | 'created_at' | 'updated_at'>): RemotePrompt {
+  addCloudPrompt(prompt: Omit<RemotePrompt, 'id' | 'user_id' | 'cloud_id' | 'version' | 'created_at' | 'updated_at'>): RemotePrompt {
     const cloudId = generateCloudId();
     const fullPrompt: RemotePrompt = {
+      id: cloudId, // Database record ID (same as cloud_id for simplicity in tests)
+      user_id: 'test-user@promptbank.test', // Mock user ID
       cloud_id: cloudId,
       version: 1,
       created_at: new Date().toISOString(),

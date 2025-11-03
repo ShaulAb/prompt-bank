@@ -6,6 +6,7 @@ import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
+import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -78,6 +79,12 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     server.resetHandlers();
     vi.clearAllMocks();
+
+    // CRITICAL: Reset singleton instances to ensure test isolation
+    // TypeScript doesn't allow accessing private static fields, so we use type assertion
+    (SyncService as any).instance = undefined;
+    (AuthService as any).instance = undefined;
+    (SupabaseClientManager as any).instance = undefined;
   });
 
   afterAll(() => {
@@ -120,16 +127,19 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
     });
 
     it('should download all cloud prompts when local is empty', async () => {
-      // Arrange - Add prompts to cloud
-      syncTestHelpers.addCloudPrompt({
-        local_id: 'prompt-1',
+      // Arrange - Add prompts to cloud with correct content hashes
+      const prompt1Data = {
         title: 'Cloud Prompt 1',
         content: 'Cloud Content 1',
         category: 'Cloud Category',
+      };
+      const prompt1 = syncTestHelpers.addCloudPrompt({
+        local_id: 'prompt-1',
+        ...prompt1Data,
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'hash1',
+        content_hash: computeContentHash(prompt1Data as any),
         variables: [],
         metadata: {
           created: new Date().toISOString(),
@@ -140,15 +150,18 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         deleted_at: null,
       });
 
-      syncTestHelpers.addCloudPrompt({
-        local_id: 'prompt-2',
+      const prompt2Data = {
         title: 'Cloud Prompt 2',
         content: 'Cloud Content 2',
         category: 'Cloud Category',
+      };
+      const prompt2 = syncTestHelpers.addCloudPrompt({
+        local_id: 'prompt-2',
+        ...prompt2Data,
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'hash2',
+        content_hash: computeContentHash(prompt2Data as any),
         variables: [],
         metadata: {
           created: new Date().toISOString(),
@@ -183,6 +196,9 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      // Compute correct hash for same content
+      const hash = computeContentHash(prompt);
+
       // Add same prompt to cloud (simulating previous sync)
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
@@ -192,7 +208,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'computed-hash',
+        content_hash: hash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -212,7 +228,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'computed-hash',
+        lastSyncedContentHash: hash,
         lastSyncedAt: new Date(),
         version: 1,
       });
@@ -237,15 +253,18 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       await promptService.savePromptDirectly(prompt);
 
       // Add different content to cloud with same title
-      syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
+      const cloudData = {
         title: 'Prompt Title',
         content: 'Different Cloud Content', // Different content
         category: 'Category',
+      };
+      syncTestHelpers.addCloudPrompt({
+        local_id: prompt.id,
+        ...cloudData,
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'different-hash',
+        content_hash: computeContentHash(cloudData as any),
         variables: [],
         metadata: {
           created: new Date().toISOString(),
@@ -280,6 +299,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const originalHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Original Title',
@@ -288,7 +309,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'original-hash',
+        content_hash: originalHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -308,7 +329,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(),
         version: 1,
       });
@@ -341,6 +362,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const originalHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Original Title',
@@ -349,7 +372,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'original-hash',
+        content_hash: originalHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -369,15 +392,20 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(),
         version: 1,
       });
 
-      // Modify cloud prompt
+      // Modify cloud prompt with correct hash
+      const modifiedHash = computeContentHash({
+        title: 'Original Title',
+        content: 'Modified Cloud Content',
+        category: 'Category',
+      } as any);
       syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, {
         content: 'Modified Cloud Content',
-        content_hash: 'modified-hash',
+        content_hash: modifiedHash,
       });
 
       // Act
@@ -403,6 +431,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const unchangedHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Unchanged Title',
@@ -411,7 +441,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'unchanged-hash',
+        content_hash: unchangedHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -431,7 +461,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'unchanged-hash',
+        lastSyncedContentHash: unchangedHash,
         lastSyncedAt: new Date(),
         version: 1,
       });
@@ -451,10 +481,12 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       // Arrange - Setup previous sync state
       const prompt = createPrompt({
         title: 'Title',
-        content: 'Same Content',
+        content: 'Old Content',
         category: 'Category',
       });
       await promptService.savePromptDirectly(prompt);
+
+      const oldHash = computeContentHash(prompt);
 
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
@@ -464,7 +496,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'old-hash',
+        content_hash: oldHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -484,7 +516,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'old-hash',
+        lastSyncedContentHash: oldHash,
         lastSyncedAt: new Date(Date.now() - 2000),
         version: 1,
       });
@@ -494,9 +526,10 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       prompt.metadata.modified = new Date();
       await promptService.savePromptDirectly(prompt);
 
+      const sameHash = computeContentHash(prompt);
       syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, {
         content: 'Same Content',
-        content_hash: 'same-hash',
+        content_hash: sameHash,
       });
 
       // Act
@@ -516,6 +549,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const originalHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Title',
@@ -524,7 +559,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'original-hash',
+        content_hash: originalHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -544,7 +579,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });
@@ -554,9 +589,14 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       prompt.metadata.modified = new Date();
       await promptService.savePromptDirectly(prompt);
 
+      const cloudHash = computeContentHash({
+        title: 'Title',
+        content: 'Cloud Modified Content',
+        category: 'Category',
+      } as any);
       syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, {
         content: 'Cloud Modified Content',
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
       });
 
       // Act
@@ -588,6 +628,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const hash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'To Delete',
@@ -596,7 +638,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'hash',
+        content_hash: hash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -616,7 +658,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'hash',
+        lastSyncedContentHash: hash,
         lastSyncedAt: new Date(),
         version: 1,
       });
@@ -645,6 +687,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const originalHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Conflicted',
@@ -653,7 +697,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'original-hash',
+        content_hash: originalHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -673,7 +717,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });
@@ -712,6 +756,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       prompt.metadata.modified = now;
       await promptService.savePromptDirectly(prompt);
 
+      const originalHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Same Second Edit',
@@ -720,7 +766,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'original-hash',
+        content_hash: originalHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -740,7 +786,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(now.getTime() - 5000),
         version: 1,
       });
@@ -750,12 +796,14 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       prompt.metadata.modified = now;
       await promptService.savePromptDirectly(prompt);
 
-      cloudPrompt.content = 'Cloud Edit';
-      cloudPrompt.metadata.modified = now.toISOString();
-      cloudPrompt.content_hash = 'cloud-hash';
+      const cloudHash = computeContentHash({
+        title: 'Same Second Edit',
+        content: 'Cloud Edit',
+        category: 'Category',
+      } as any);
       syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, {
         content: 'Cloud Edit',
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
       });
 
       // Act
@@ -775,6 +823,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const sameHash = computeContentHash(prompt);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Timestamp Only',
@@ -783,7 +833,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'same-hash',
+        content_hash: sameHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -803,7 +853,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'old-hash',
+        lastSyncedContentHash: sameHash,
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });

@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     setupFiles: ['./test/test-setup.ts'],
+    // Run tests sequentially to avoid shared state issues with MSW handlers
+    pool: 'forks',
+    fileParallelism: false,
     // Exclude E2E tests that require VS Code Extension Host
     exclude: [
       '**/node_modules/**',

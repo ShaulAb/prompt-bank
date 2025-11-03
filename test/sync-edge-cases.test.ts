@@ -6,6 +6,7 @@ import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
+import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -78,6 +79,12 @@ describe('SyncService - Edge Cases', () => {
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     server.resetHandlers();
     vi.clearAllMocks();
+
+    // CRITICAL: Reset singleton instances to ensure test isolation
+    // TypeScript doesn't allow accessing private static fields, so we use type assertion
+    (SyncService as any).instance = undefined;
+    (AuthService as any).instance = undefined;
+    (SupabaseClientManager as any).instance = undefined;
   });
 
   afterAll(() => {
@@ -94,6 +101,8 @@ describe('SyncService - Edge Cases', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const hash = computeContentHash(prompt);
+
       // Create a soft-deleted cloud prompt
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
@@ -103,7 +112,7 @@ describe('SyncService - Edge Cases', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'hash',
+        content_hash: hash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -126,7 +135,7 @@ describe('SyncService - Edge Cases', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'hash',
+        lastSyncedContentHash: hash,
         lastSyncedAt: new Date(),
         version: 1,
         isDeleted: true, // Corrupted state: points to deleted prompt
@@ -319,6 +328,19 @@ describe('SyncService - Edge Cases', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      // Compute hashes for different content
+      const cloudHash = computeContentHash({
+        title: 'Debug React',
+        content: 'Cloud Content',
+        category: 'Category',
+      } as any);
+
+      const originalHash = computeContentHash({
+        title: 'Debug React',
+        content: 'Original Content',
+        category: 'Category',
+      } as any);
+
       // Add conflicting cloud prompt
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
@@ -328,7 +350,7 @@ describe('SyncService - Edge Cases', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -350,7 +372,7 @@ describe('SyncService - Edge Cases', () => {
       });
       await syncStateStorage.setPromptSyncInfo(prompt.id, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });
@@ -385,6 +407,18 @@ describe('SyncService - Edge Cases', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const cloudHash = computeContentHash({
+        title: 'Conflicted',
+        content: 'Cloud Content',
+        category: 'Category',
+      } as any);
+
+      const originalHash = computeContentHash({
+        title: 'Conflicted',
+        content: 'Original Content',
+        category: 'Category',
+      } as any);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: originalId,
         title: 'Conflicted',
@@ -393,7 +427,7 @@ describe('SyncService - Edge Cases', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),
@@ -413,7 +447,7 @@ describe('SyncService - Edge Cases', () => {
       });
       await syncStateStorage.setPromptSyncInfo(originalId, {
         cloudId: cloudPrompt.cloud_id,
-        lastSyncedContentHash: 'original-hash',
+        lastSyncedContentHash: originalHash,
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });
@@ -445,6 +479,12 @@ describe('SyncService - Edge Cases', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
+      const cloudHash = computeContentHash({
+        title: 'Title',
+        content: 'Cloud Content',
+        category: 'Category',
+      } as any);
+
       const cloudPrompt = syncTestHelpers.addCloudPrompt({
         local_id: prompt.id,
         title: 'Title',
@@ -453,7 +493,7 @@ describe('SyncService - Edge Cases', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
         variables: [],
         metadata: {
           created: prompt.metadata.created.toISOString(),

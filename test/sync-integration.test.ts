@@ -6,6 +6,7 @@ import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
+import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -78,6 +79,12 @@ describe('SyncService - Integration', () => {
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     server.resetHandlers();
     vi.clearAllMocks();
+
+    // CRITICAL: Reset singleton instances to ensure test isolation
+    // TypeScript doesn't allow accessing private static fields, so we use type assertion
+    (SyncService as any).instance = undefined;
+    (AuthService as any).instance = undefined;
+    (SupabaseClientManager as any).instance = undefined;
   });
 
   afterAll(() => {
@@ -197,9 +204,16 @@ describe('SyncService - Integration', () => {
       // Simulate Device B modifying in cloud
       const cloudPrompts = syncTestHelpers.getAllCloudPrompts();
       expect(cloudPrompts).toHaveLength(1);
+
+      const deviceBHash = computeContentHash({
+        title: 'Shared Prompt',
+        content: 'Device B Modified',
+        category: 'Category',
+      } as any);
+
       syncTestHelpers.updateCloudPrompt(cloudPrompts[0].cloud_id, {
         content: 'Device B Modified',
-        content_hash: 'device-b-hash',
+        content_hash: deviceBHash,
       });
 
       // Device A syncs (detects conflict)
@@ -336,6 +350,12 @@ describe('SyncService - Integration', () => {
       await promptService.savePromptDirectly(prompt2);
 
       // 2. Add cloud prompt to download
+      const cloudHash = computeContentHash({
+        title: 'Download 1',
+        content: 'Cloud Content',
+        category: 'Category',
+      } as any);
+
       syncTestHelpers.addCloudPrompt({
         local_id: 'cloud-prompt-1',
         title: 'Download 1',
@@ -344,7 +364,7 @@ describe('SyncService - Integration', () => {
         description: null,
         prompt_order: null,
         category_order: null,
-        content_hash: 'cloud-hash',
+        content_hash: cloudHash,
         variables: [],
         metadata: {
           created: new Date().toISOString(),
