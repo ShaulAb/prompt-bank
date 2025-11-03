@@ -65,11 +65,20 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 6. **Sync Across Devices** (NEW):
     - **First Time Setup**: Sign in with Google OAuth (same account used for sharing).
+    - **Three-Way Merge**: Intelligent sync algorithm compares local, remote, and last-synced states to detect changes on all devices.
     - **Manual Sync**: Command Palette → "Prompt Bank: Sync Prompts" to synchronize with cloud.
-    - **Auto-Sync**: Enable automatic synchronization in settings (`promptBank.sync.autoSync`).
-    - **View Status**: Check sync state with "Prompt Bank: View Sync Status" command.
-    - **Smart Conflict Resolution**: When same prompt is edited on multiple devices, both versions are preserved with device names and timestamps.
-    - **Deletion Support**: Deleted prompts are tracked and synced across devices. Soft-deleted prompts are retained for 30 days before permanent removal.
+    - **Auto-Sync**: Enable automatic synchronization in settings (`promptBank.sync.autoSync`) for seamless background syncing.
+    - **View Status**: Check sync state with "Prompt Bank: View Sync Status" to see user, device name, and last sync time.
+    - **Unlimited Devices**: Sync across as many devices as you need - desktop, laptop, work machine, etc.
+    - **Smart Conflict Resolution**:
+      - **Modify-Modify**: When the same prompt is edited on multiple devices, both versions are preserved with device names and timestamps for manual review.
+      - **Delete-Modify**: When a prompt is deleted on one device but modified on another, the modified version always wins (prevents accidental data loss).
+    - **Deletion Support**:
+      - Deleted prompts are tracked and synced across all devices with tombstones to prevent re-downloading.
+      - Soft-deleted prompts are retained for 30 days before permanent removal.
+      - **Restore Capability**: Recover accidentally deleted prompts within the retention period using Edge Functions.
+    - **Device Tracking**: Each change tracks which device made it, helping you understand prompt history.
+    - **Fresh Start**: Use "Prompt Bank: Clear Sync State" to reset sync metadata if needed.
 
 
 ## 🔧 Commands & Keybindings
@@ -101,7 +110,6 @@ Prompts are stored both locally and in the cloud:
 
 **Cloud Storage** (when sync enabled):
 - **Backend**: Supabase with PostgreSQL and Row Level Security
-- **Quota**: 1,000 prompts and 10 MB per user
 - **Privacy**: Data isolated per user account - no sharing between users unless explicitly shared
 - **Deletion**: Soft-delete with 30-day retention period before automatic permanent removal
 - **Garbage Collection**: Server-side automatic cleanup runs daily
