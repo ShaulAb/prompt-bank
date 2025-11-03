@@ -920,6 +920,7 @@ export class SyncService {
         if (promptId) {
           const existingInfo = await this.syncStateStorage!.getPromptSyncInfo(promptId);
           if (existingInfo) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { deletedAt, ...updates } = existingInfo;
             await this.syncStateStorage!.setPromptSyncInfo(promptId, {
               ...updates,

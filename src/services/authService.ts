@@ -27,8 +27,8 @@ interface SupabaseJWTPayload extends JWTPayload {
   role: string;
   aal?: string;
   session_id?: string;
-  user_metadata?: Record<string, any>; // Additional user metadata
-  app_metadata?: Record<string, any>; // Application metadata
+  user_metadata?: Record<string, unknown>; // Additional user metadata
+  app_metadata?: Record<string, unknown>; // Application metadata
 }
 
 export class AuthService {

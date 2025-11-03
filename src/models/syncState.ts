@@ -199,6 +199,7 @@ export const updatePromptSync = (
  * Remove prompt sync info from sync state
  */
 export const removePromptSync = (state: SyncState, promptId: string): SyncState => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { [promptId]: _, ...rest } = state.promptSyncMap;
   return {
     ...state,
