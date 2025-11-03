@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.6.2](https://github.com/ShaulAb/prompt-bank/compare/v0.6.1...v0.6.2) (2025-11-03)
+
+### 👷 CI/CD
+
+- ✨ add automated marketplace publishing workflow ([854a0d0](https://github.com/ShaulAb/prompt-bank/commit/854a0d04718e9818e4e7588e15fecf14fd9047eb))
+
+### 🐛 Bug Fixes
+
+- **sync:** 🐛 remove unused variables to pass TypeScript checks ([8ddbca4](https://github.com/ShaulAb/prompt-bank/commit/8ddbca45f782b64a3894672818491ed90b198adc))
+
+### ✨ Features
+
+- **auth:** ✨ migrate to JWKS-based JWT verification with ECC P-256 ([7af93a9](https://github.com/ShaulAb/prompt-bank/commit/7af93a9c4d235b1b7b264dac4284f130e076c3e6))
+- **sync:** ✨ add complete deletion support with soft-delete and restore ([870053c](https://github.com/ShaulAb/prompt-bank/commit/870053cbf0360e4b4bb031ca10fb292d2ec3dbbd))
+- **sync:** ✨ add sync state models and storage infrastructure ([f4724eb](https://github.com/ShaulAb/prompt-bank/commit/f4724eb0479eec194bc4bbc9ac360d8971e16357))
+- **sync:** ✨ implement SyncService with three-way merge algorithm ([84a0d5f](https://github.com/ShaulAb/prompt-bank/commit/84a0d5fb1fc44e8559b8fe2e1b5309a8ef15a546))
+- **sync:** add Supabase API integration to SyncService ([e5b5af0](https://github.com/ShaulAb/prompt-bank/commit/e5b5af08c75c1bf3f80eec316fa5385c020a66ed))
+- **sync:** add sync UI commands and VS Code integration ([e334fad](https://github.com/ShaulAb/prompt-bank/commit/e334faddb78b31ad7ed4eb26c02f08db0ed80598))
+
+### ✅ Tests
+
+- 🧪 fix JWKS verification test infrastructure issues ([489c52a](https://github.com/ShaulAb/prompt-bank/commit/489c52ae0ed0f183f358e1d6b8726ab389746084))
+
+### 🔧 Chores
+
+- 🔧 remove committed VSIX files and add to .gitignore ([456cc7a](https://github.com/ShaulAb/prompt-bank/commit/456cc7a18ed1d1bbcc7d93f1f7c39950d6403ace))
+- 🧹 remove debug script from tracking ([d61227e](https://github.com/ShaulAb/prompt-bank/commit/d61227e9d01f9f0569a2433c799f2fbf2b5ac890))
+- 🧹 remove unused WebView HTML files ([a1632dd](https://github.com/ShaulAb/prompt-bank/commit/a1632dd6cc6738a9ee5a5eb4aada8c47fd91a1f3))
+
+### 💄 Styles
+
+- 💄 apply prettier formatting to modified files ([2e72516](https://github.com/ShaulAb/prompt-bank/commit/2e7251648e2d766495711ae009475046bf7a8139))
+- 💄 fix ESLint warnings (reduce from 28 to 24) ([f87091a](https://github.com/ShaulAb/prompt-bank/commit/f87091aabd977ab90ec9c87a4353a982c2e1aab6))
+
+### ♻️ Code Refactoring
+
+- 🔧 replace all 'any' types with proper type definitions ([7dcf095](https://github.com/ShaulAb/prompt-bank/commit/7dcf0952edb0f943cc894a9d87961fa3b3893106))
+- **auth:** 🔧 improve JWKS verification error handling and token lifecycle ([958ac1d](https://github.com/ShaulAb/prompt-bank/commit/958ac1dcf1d1cde6212965af80a6e122a8117e66))
+- **sync:** add Supabase JS client singleton ([45fb82f](https://github.com/ShaulAb/prompt-bank/commit/45fb82fbe6b245fa707a967e2264dbd1bf2a118f))
+- **sync:** migrate SyncService to use Supabase JS client ([507b3a9](https://github.com/ShaulAb/prompt-bank/commit/507b3a91bcb0aa12b84ac29e018cd3838cb1cf7e))
+
+### 📝 Documentation
+
+- 📝 consolidate TEST_PLAN.md and TESTING.md into single guide ([9915d8f](https://github.com/ShaulAb/prompt-bank/commit/9915d8f2990d2e56c9904e84ca2426b37363af3a))
+- 📝 expand sync feature documentation in README ([7d44026](https://github.com/ShaulAb/prompt-bank/commit/7d44026a6e04d59214d425977998023690a340a9))
+- 📝 update authentication documentation and testing guides ([2911c7a](https://github.com/ShaulAb/prompt-bank/commit/2911c7a832342ba1879e2b32597593c919312d61))
+- 📝 update CI/CD documentation for automated publishing ([bd773ec](https://github.com/ShaulAb/prompt-bank/commit/bd773ecbc913c743f4f4b9cb13e296311197c2a8))
+- 📝 update documentation for sync deletion support ([582882a](https://github.com/ShaulAb/prompt-bank/commit/582882ae8dd645e22fbf3767d62452e543ba7cb2))
+- 📝 update documentation for v0.7.0 release preparation ([e6f27fd](https://github.com/ShaulAb/prompt-bank/commit/e6f27fdf5fbabb9734e5bd6fc716aaaea9da962c))
+- 📝 update TESTING.md to reflect all tests passing ([1cffce1](https://github.com/ShaulAb/prompt-bank/commit/1cffce15f79e90727ce1a0760c0424e174ed2630))
+- **sync:** 📝 add comprehensive specification for personal sync feature ([b89bd29](https://github.com/ShaulAb/prompt-bank/commit/b89bd29659bd1d3a8701501009fcad7e04ef40cd))
+- **sync:** add comprehensive sync feature documentation ([18e2af2](https://github.com/ShaulAb/prompt-bank/commit/18e2af22773c8d2237e46b17bb52624ec5ba046d))
+
 ### [0.6.1](https://github.com/ShaulAb/prompt-bank/compare/v0.6.0...v0.6.1) (2025-09-27)
 
 ### ✨ Features
