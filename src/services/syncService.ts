@@ -593,7 +593,7 @@ export class SyncService {
         }
 
         // Check for optimistic lock conflict
-        if (error.message?.includes('conflict') || (error as { status?: number }).status === 409) {
+        if (error.message?.includes('conflict') || errorContext?.status === 409) {
           throw new Error('conflict');
         }
         throw error;
