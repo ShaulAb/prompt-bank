@@ -1,9 +1,10 @@
 import { setupServer } from 'msw/node';
 import { oauthHandlers, oauthTestHelpers } from './oauth-handlers';
 import { jwksHandler, jwksTestHelpers } from './jwks-handlers';
+import { syncHandlers, syncTestHelpers } from './sync-handlers';
 
-// Create MSW server with OAuth and JWKS handlers
-export const server = setupServer(...oauthHandlers, jwksHandler);
+// Create MSW server with OAuth, JWKS, and Sync handlers
+export const server = setupServer(...oauthHandlers, jwksHandler, ...syncHandlers);
 
 // Enhanced server with helper methods
 export const mswTestServer = {
@@ -61,8 +62,9 @@ export const mswTestServer = {
   helpers: {
     oauth: oauthTestHelpers,
     jwks: jwksTestHelpers,
+    sync: syncTestHelpers,
   },
 };
 
 // Export individual helpers for direct import
-export { oauthTestHelpers, jwksTestHelpers };
+export { oauthTestHelpers, jwksTestHelpers, syncTestHelpers };
