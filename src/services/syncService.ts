@@ -401,7 +401,9 @@ export class SyncService {
    * Validate authentication and set session on Supabase client
    *
    * This method gets the auth tokens from AuthService and sets them on the
-   * Supabase client so all subsequent API calls are authenticated.
+   * Supabase client. NOTE: The setSession() call is optional for Edge Functions
+   * (which use explicit Authorization headers), but kept for consistency and
+   * potential future direct database queries via the Supabase client.
    */
   private async validateAuthenticationAndSetSession(): Promise<{
     email: string;
@@ -420,7 +422,8 @@ export class SyncService {
       throw new Error('No refresh token found. Please sign in again.');
     }
 
-    // Set the session on Supabase client for authenticated API calls
+    // Set the session on Supabase client (optional for Edge Functions, but
+    // useful for potential future direct database queries)
     await SupabaseClientManager.setSession(token, refreshToken);
 
     return { email, token, refreshToken };
@@ -437,10 +440,17 @@ export class SyncService {
    */
   private async deletePrompt(cloudId: string): Promise<void> {
     const supabase = SupabaseClientManager.get();
+    const accessToken = await this.authService.getValidAccessToken();
     const deviceInfo = await getDeviceInfo(this.context);
 
     const { error } = await supabase.functions.invoke('delete-prompt', {
       body: { cloudId, deviceId: deviceInfo.id },
+      // NOTE: Explicit Authorization header required for Edge Functions
+      // when persistSession: false. Edge Functions don't automatically
+      // pick up session set via client.auth.setSession().
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (error) {
@@ -455,9 +465,16 @@ export class SyncService {
    */
   private async restorePrompt(cloudId: string): Promise<void> {
     const supabase = SupabaseClientManager.get();
+    const accessToken = await this.authService.getValidAccessToken();
 
     const { error } = await supabase.functions.invoke('restore-prompt', {
       body: { cloudId },
+      // NOTE: Explicit Authorization header required for Edge Functions
+      // when persistSession: false. Edge Functions don't automatically
+      // pick up session set via client.auth.setSession().
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (error) {
@@ -477,12 +494,19 @@ export class SyncService {
     includeDeleted = false
   ): Promise<readonly RemotePrompt[]> {
     const supabase = SupabaseClientManager.get();
+    const accessToken = await this.authService.getValidAccessToken();
 
     try {
       const { data, error } = await supabase.functions.invoke('get-user-prompts', {
         body: {
           since: since?.toISOString(),
           includeDeleted,
+        },
+        // NOTE: Explicit Authorization header required for Edge Functions
+        // when persistSession: false. Edge Functions don't automatically
+        // pick up session set via client.auth.setSession().
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -511,6 +535,7 @@ export class SyncService {
     syncInfo?: PromptSyncInfo
   ): Promise<{ cloudId: string; version: number }> {
     const supabase = SupabaseClientManager.get();
+    const accessToken = await this.authService.getValidAccessToken();
     const contentHash = computeContentHash(prompt);
     const deviceInfo = await getDeviceInfo(this.context);
 
@@ -542,6 +567,12 @@ export class SyncService {
     try {
       const { data, error } = await supabase.functions.invoke('sync-prompt', {
         body: body,
+        // NOTE: Explicit Authorization header required for Edge Functions
+        // when persistSession: false. Edge Functions don't automatically
+        // pick up session set via client.auth.setSession().
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) {
@@ -571,10 +602,17 @@ export class SyncService {
    */
   private async fetchUserQuota(): Promise<UserQuota> {
     const supabase = SupabaseClientManager.get();
+    const accessToken = await this.authService.getValidAccessToken();
 
     try {
       const { data, error } = await supabase.functions.invoke('get-user-quota', {
         body: {},
+        // NOTE: Explicit Authorization header required for Edge Functions
+        // when persistSession: false. Edge Functions don't automatically
+        // pick up session set via client.auth.setSession().
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) {
