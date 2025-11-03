@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import * as vscode from 'vscode';
 import { Prompt } from '../models/prompt';
+import { AuthService } from './authService';
 
 /**
  * Read backend URLs from Prompt Bank configuration with sensible fallbacks.
@@ -100,6 +101,16 @@ export async function createShare(prompt: Prompt, accessToken: string): Promise<
 
   if (!res.ok) {
     const text = await res.text();
+
+    // Check for invalid JWT error (e.g., after key migration)
+    if (res.status === 401 && text.toLowerCase().includes('invalid jwt')) {
+      console.warn('[ShareService] Detected invalid JWT error. Clearing tokens...');
+      await AuthService.get().clearInvalidTokens();
+      throw new Error(
+        'Your session has expired. Please try sharing again to sign in with a new session.'
+      );
+    }
+
     throw new Error(`Failed to create share: ${res.status} ${text}`);
   }
 
@@ -134,6 +145,16 @@ export async function createShareMulti(
 
   if (!res.ok) {
     const text = await res.text();
+
+    // Check for invalid JWT error (e.g., after key migration)
+    if (res.status === 401 && text.toLowerCase().includes('invalid jwt')) {
+      console.warn('[ShareService] Detected invalid JWT error. Clearing tokens...');
+      await AuthService.get().clearInvalidTokens();
+      throw new Error(
+        'Your session has expired. Please try sharing again to sign in with a new session.'
+      );
+    }
+
     throw new Error(`Failed to create share: ${res.status} ${text}`);
   }
 

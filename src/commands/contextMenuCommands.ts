@@ -161,7 +161,7 @@ export class ContextMenuCommands {
       // Ensure user signed in
       const accessToken = await AuthService.get().getValidAccessToken();
       if (!accessToken) {
-        vscode.window.showErrorMessage('You must be signed in with GitHub to share prompts.');
+        vscode.window.showErrorMessage('You must be signed in with Google to share prompts.');
         return;
       }
 

@@ -27,8 +27,8 @@ interface SupabaseJWTPayload extends JWTPayload {
   role: string;
   aal?: string;
   session_id?: string;
-  user_metadata?: Record<string, any>; // Additional user metadata
-  app_metadata?: Record<string, any>; // Application metadata
+  user_metadata?: Record<string, unknown>; // Additional user metadata
+  app_metadata?: Record<string, unknown>; // Application metadata
 }
 
 export class AuthService {
@@ -106,11 +106,25 @@ export class AuthService {
 
     // Check if token exists and verify via JWKS
     if (this.token) {
-      const isValid = await this.verifyToken(this.token);
+      try {
+        const isValid = await this.verifyToken(this.token);
 
-      // Token is verified and not expired
-      if (isValid && this.expiresAt && Date.now() < this.expiresAt) {
-        return this.token;
+        // Token is verified and not expired
+        if (isValid && this.expiresAt && Date.now() < this.expiresAt) {
+          return this.token;
+        }
+      } catch (error) {
+        // Check if this is an invalid JWT error (e.g., after key migration)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('signature') || errorMessage.includes('invalid')) {
+          console.warn(
+            '[AuthService] Detected invalid JWT (likely after key migration). Clearing tokens...'
+          );
+          await this.clearInvalidTokens();
+          // Continue to new auth flow below
+          return this.beginGoogleAuthFlow();
+        }
+        // For other errors, continue with refresh attempt
       }
     }
 
@@ -124,7 +138,14 @@ export class AuthService {
           return this.token;
         }
       } catch (error) {
-        console.error('[AuthService] Failed to refresh token:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[AuthService] Failed to refresh token:', errorMessage);
+
+        // If refresh fails with invalid JWT, clear tokens
+        if (errorMessage.includes('signature') || errorMessage.includes('invalid')) {
+          console.warn('[AuthService] Refresh token also invalid. Clearing all tokens...');
+          await this.clearInvalidTokens();
+        }
       }
     }
 
@@ -265,6 +286,34 @@ export class AuthService {
     await this.context.globalState.update(this.LAST_VERIFICATION_KEY, undefined);
 
     vscode.window.showInformationMessage('Signed out successfully');
+  }
+
+  /**
+   * Clear invalid tokens without calling Supabase logout endpoint
+   *
+   * Used for automatic recovery when tokens become invalid (e.g., after JWT key migration).
+   * Unlike signOut(), this doesn't attempt to call Supabase's logout endpoint since
+   * the token is already invalid.
+   */
+  public async clearInvalidTokens(): Promise<void> {
+    console.log('[AuthService] Clearing invalid tokens');
+
+    // Clear in-memory state
+    this.token = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.userId = undefined;
+    this.userEmail = undefined;
+
+    // Clear stored secrets
+    await this.context.secrets.delete(this.TOKEN_KEY);
+    await this.context.secrets.delete(this.REFRESH_KEY);
+    await this.context.secrets.delete(this.EXPIRY_KEY);
+    await this.context.secrets.delete(this.USER_ID_KEY);
+    await this.context.secrets.delete(this.USER_EMAIL_KEY);
+
+    // Clear last verification timestamp
+    await this.context.globalState.update(this.LAST_VERIFICATION_KEY, undefined);
   }
 
   // ────────────────────────────────────────────────────────────────────────────────
