@@ -4,7 +4,7 @@ import { AuthService } from '../src/services/authService';
 import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
-import { createPrompt } from '../src/models/prompt';
+import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { promises as fs } from 'fs';
 import * as path from 'path';
