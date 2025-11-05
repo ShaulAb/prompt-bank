@@ -10,8 +10,9 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthService } from './authService';
-import { SupabaseClientManager } from './supabaseClient';
+import { SupabaseClientManager, Database } from './supabaseClient';
 import { SyncService } from './syncService';
 import { PromptService } from './promptService';
 import { FileStorageProvider } from '../storage/fileStorage';
@@ -24,8 +25,8 @@ export interface WorkspaceServices {
   /** Authentication service */
   auth: AuthService;
   
-  /** Supabase client manager */
-  supabase: SupabaseClientManager;
+  /** Supabase client instance (not the manager class) */
+  supabase: SupabaseClient<Database>;
   
   /** Sync service for cloud synchronization */
   sync: SyncService;
@@ -163,8 +164,8 @@ export class ServicesContainer {
 
     const syncStateStorage = new SyncStateStorage(workspaceRoot);
 
-    // 4. Prompt service (depends on storage)
-    const promptService = new PromptService(storageProvider);
+    // 4. Prompt service (depends on storage and auth)
+    const promptService = new PromptService(storageProvider, authService);
     await promptService.initialize();
 
     // 5. Sync service (depends on auth, syncStateStorage)
@@ -182,16 +183,36 @@ export class ServicesContainer {
   /**
    * Dispose services in proper order
    *
+   * Disposes each service individually with error handling to ensure
+   * all services are disposed even if one fails.
+   *
    * @param services - Services bundle to dispose
    */
   private async disposeServices(services: WorkspaceServices): Promise<void> {
     // Dispose in reverse dependency order
     // (Sync depends on Auth/Supabase, so dispose sync first)
+    // Use Promise.allSettled to ensure all dispose attempts complete
 
-    await services.sync.dispose();
-    await services.prompt.dispose();
-    // Note: SupabaseClientManager is static, dispose separately if needed
-    await services.auth.dispose();
+    const disposeResults = await Promise.allSettled([
+      services.sync.dispose().catch(err => {
+        console.error('[ServicesContainer] Error disposing SyncService:', err);
+        throw err;
+      }),
+      services.prompt.dispose().catch(err => {
+        console.error('[ServicesContainer] Error disposing PromptService:', err);
+        throw err;
+      }),
+      services.auth.dispose().catch(err => {
+        console.error('[ServicesContainer] Error disposing AuthService:', err);
+        throw err;
+      }),
+    ]);
+
+    // Log any failures but don't throw - disposal should be best-effort
+    const failures = disposeResults.filter(result => result.status === 'rejected');
+    if (failures.length > 0) {
+      console.warn(`[ServicesContainer] ${failures.length} service(s) failed to dispose properly`);
+    }
   }
 }
 

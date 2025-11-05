@@ -5,11 +5,9 @@ import { PromptTreeProvider, PromptDragAndDropController } from './views/promptT
 import { TreeCommands } from './commands/treeCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
 import { registerSyncCommands } from './commands/syncCommands';
-import { AuthService } from './services/authService';
-import { SyncService } from './services/syncService';
 import { SupabaseClientManager } from './services/supabaseClient';
 import { WebViewCache } from './webview/WebViewCache';
-import { ServicesContainer } from './services/servicesContainer';
+import { ServicesContainer, WorkspaceServices } from './services/servicesContainer';
 
 // Global services container instance
 // Manages services per workspace with proper lifecycle
@@ -26,24 +24,20 @@ export async function activate(context: vscode.ExtensionContext) {
     // Create services container
     servicesContainer = new ServicesContainer();
 
-    // Initialize the prompt service (legacy singleton - will be migrated in Phase 3)
+    // Initialize the prompt service (legacy singleton for TreeProvider - TODO: migrate in future)
     await promptService.initialize();
 
-    // Get extension details for auth URI construction
+    // Get extension details for logging
     const extensionId = context.extension.id;
-    const publisher = extensionId.split('.')[0];
-    const extensionName = extensionId.split('.')[1];
+    console.log('[Extension] Activation details:', { extensionId });
 
-    console.log('[Extension] Activation details:', { extensionId, publisher, extensionName });
-
-    // Initialize Supabase client (shared by Auth, Sync, and Share services)
+    // Initialize Supabase client (shared singleton - required for all services)
     SupabaseClientManager.initialize();
 
-    // Get workspace root
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    // Get workspace root and initialize workspace-scoped services
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let workspaceServices: WorkspaceServices | undefined;
     
-    // Get services from container (no more singletons!)
-    let workspaceServices = null;
     if (workspaceRoot) {
       workspaceServices = await servicesContainer.getOrCreate(context, workspaceRoot);
     }
