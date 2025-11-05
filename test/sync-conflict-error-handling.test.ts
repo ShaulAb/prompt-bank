@@ -14,18 +14,23 @@ import { PromptService } from '../src/services/promptService';
 import { SyncService } from '../src/services/syncService';
 import { AuthService } from '../src/services/authService';
 import { SupabaseClientManager } from '../src/services/supabaseClient';
+import { FileStorageProvider } from '../src/storage/fileStorage';
+import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { computeContentHash } from '../src/utils/contentHash';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 
 describe('SyncService - 409 Conflict Error Handling', () => {
   let context: vscode.ExtensionContext;
+  let authService: AuthService;
   let promptService: PromptService;
   let syncService: SyncService;
+  let syncStateStorage: SyncStateStorage;
   let testStorageDir: string;
 
   beforeAll(() => {
     server.listen({ onUnhandledRequest: 'warn' });
+    SupabaseClientManager.initialize();
   });
 
   afterAll(() => {
@@ -36,11 +41,6 @@ describe('SyncService - 409 Conflict Error Handling', () => {
     // Clean up local storage
     const { promises: fs } = await import('fs');
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
-    
-    // Reset singleton instances to ensure test isolation
-    (SyncService as any).instance = undefined;
-    (AuthService as any).instance = undefined;
-    (SupabaseClientManager as any).instance = undefined;
     
     // Clear all mocks
     vi.clearAllMocks();
@@ -69,18 +69,20 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       subscriptions: [],
     } as unknown as vscode.ExtensionContext;
 
-    // Initialize services
-    AuthService.initialize(context, 'test-publisher', 'test-extension');
-    SupabaseClientManager.initialize();
-    promptService = new PromptService();
-    await promptService.initialize(testStorageDir);
-    syncService = SyncService.initialize(context, testStorageDir);
-
-    // Mock authentication
-    const authService = AuthService.get();
+    // Create services using DI
+    authService = new AuthService(context, 'test-publisher', 'test-extension');
     vi.spyOn(authService, 'getValidAccessToken').mockResolvedValue('mock-access-token');
     vi.spyOn(authService, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
     vi.spyOn(authService, 'getUserEmail').mockResolvedValue('test@example.com');
+
+    const storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
+    await storageProvider.initialize();
+
+    promptService = new PromptService(storageProvider, authService);
+    await promptService.initialize();
+
+    syncStateStorage = new SyncStateStorage(testStorageDir);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
   });
 
   describe('PROMPT_DELETED Conflict', () => {

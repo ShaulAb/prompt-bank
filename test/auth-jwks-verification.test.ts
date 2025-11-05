@@ -26,9 +26,6 @@ describe('AuthService - JWKS Verification', () => {
   });
 
   beforeEach(() => {
-    // Reset AuthService singleton to ensure fresh instance for each test
-    (AuthService as any).instance = undefined;
-
     // Mock VS Code workspace configuration
     const mockConfig = {
       get: vi.fn((key: string, defaultValue?: any) => {
@@ -80,8 +77,8 @@ describe('AuthService - JWKS Verification', () => {
       logPath: '/test/logs',
     } as unknown as vscode.ExtensionContext;
 
-    // Initialize AuthService
-    authService = AuthService.initialize(context, 'test-publisher', 'test-extension');
+    // Create AuthService using DI (no more singleton!)
+    authService = new AuthService(context, 'test-publisher', 'test-extension');
   });
 
   afterEach(() => {

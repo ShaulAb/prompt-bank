@@ -4,6 +4,7 @@ import { AuthService } from '../src/services/authService';
 import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
+import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
@@ -14,12 +15,15 @@ import * as vscode from 'vscode';
 
 describe('SyncService - Three-Way Merge Algorithm', () => {
   let syncService: SyncService;
+  let authService: AuthService;
   let promptService: PromptService;
+  let syncStateStorage: SyncStateStorage;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
 
   beforeAll(() => {
     server.listen({ onUnhandledRequest: 'warn' });
+    SupabaseClientManager.initialize();
   });
 
   beforeEach(async () => {
@@ -32,13 +36,6 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       os.tmpdir(),
       `prompt-bank-sync-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     );
-
-    // Initialize storage and services
-    const storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
-    await storageProvider.initialize();
-
-    promptService = new PromptService(storageProvider);
-    await promptService.initialize();
 
     // Mock ExtensionContext
     const vscode = await import('vscode');
@@ -61,30 +58,26 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       asAbsolutePath: (relativePath: string) => path.join(testStorageDir, relativePath),
     } as unknown as vscode.ExtensionContext;
 
-    // Initialize services (required by SyncService)
-    AuthService.initialize(context, 'test-publisher', 'test-extension');
-    SupabaseClientManager.initialize();
+    // Create services using DI
+    authService = new AuthService(context, 'test-publisher', 'test-extension');
+    vi.spyOn(authService, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+    vi.spyOn(authService, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+    vi.spyOn(authService, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-    // Initialize sync service
-    syncService = SyncService.initialize(context, testStorageDir);
+    const storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
+    await storageProvider.initialize();
 
-    // Mock authentication
-    vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
-    vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
-    vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+    promptService = new PromptService(storageProvider, authService);
+    await promptService.initialize();
+
+    syncStateStorage = new SyncStateStorage(testStorageDir);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
   });
 
   afterEach(async () => {
-    // Cleanup
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     server.resetHandlers();
     vi.clearAllMocks();
-
-    // CRITICAL: Reset singleton instances to ensure test isolation
-    // TypeScript doesn't allow accessing private static fields, so we use type assertion
-    (SyncService as any).instance = undefined;
-    (AuthService as any).instance = undefined;
-    (SupabaseClientManager as any).instance = undefined;
   });
 
   afterAll(() => {

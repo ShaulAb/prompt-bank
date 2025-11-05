@@ -4,6 +4,7 @@ import { AuthService } from '../src/services/authService';
 import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
+import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
@@ -14,12 +15,16 @@ import type * as vscode from 'vscode';
 
 describe('SyncService - Integration', () => {
   let syncService: SyncService;
+  let authService: AuthService;
   let promptService: PromptService;
+  let syncStateStorage: SyncStateStorage;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
 
   beforeAll(() => {
     server.listen({ onUnhandledRequest: 'warn' });
+    // Initialize Supabase client once for all tests (still uses singleton pattern)
+    SupabaseClientManager.initialize();
   });
 
   beforeEach(async () => {
@@ -32,13 +37,6 @@ describe('SyncService - Integration', () => {
       os.tmpdir(),
       `prompt-bank-sync-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     );
-
-    // Initialize storage and services
-    const storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
-    await storageProvider.initialize();
-
-    promptService = new PromptService(storageProvider);
-    await promptService.initialize();
 
     // Mock ExtensionContext
     const vscode = await import('vscode');
@@ -61,30 +59,33 @@ describe('SyncService - Integration', () => {
       asAbsolutePath: (relativePath: string) => path.join(testStorageDir, relativePath),
     } as unknown as vscode.ExtensionContext;
 
-    // Initialize services (required by SyncService)
-    AuthService.initialize(context, 'test-publisher', 'test-extension');
-    SupabaseClientManager.initialize();
+    // Create services using DI (no more singletons!)
+    authService = new AuthService(context, 'test-publisher', 'test-extension');
+    
+    // Mock authentication methods
+    vi.spyOn(authService, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+    vi.spyOn(authService, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+    vi.spyOn(authService, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-    // Initialize sync service
-    syncService = SyncService.initialize(context, testStorageDir);
+    // Initialize storage
+    const storageProvider = new FileStorageProvider({ storagePath: testStorageDir });
+    await storageProvider.initialize();
 
-    // Mock authentication
-    vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
-    vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
-    vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+    promptService = new PromptService(storageProvider, authService);
+    await promptService.initialize();
+
+    // Create sync state storage and sync service with DI
+    syncStateStorage = new SyncStateStorage(testStorageDir);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
   });
 
   afterEach(async () => {
-    // Cleanup
+    // Cleanup storage directory
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     server.resetHandlers();
     vi.clearAllMocks();
 
-    // CRITICAL: Reset singleton instances to ensure test isolation
-    // TypeScript doesn't allow accessing private static fields, so we use type assertion
-    (SyncService as any).instance = undefined;
-    (AuthService as any).instance = undefined;
-    (SupabaseClientManager as any).instance = undefined;
+    // Note: No singleton resets needed - using DI now! ✨
   });
 
   afterAll(() => {
@@ -148,37 +149,29 @@ describe('SyncService - Integration', () => {
       expect(deviceAResult.stats.uploaded).toBe(2);
       expect(deviceAResult.stats.downloaded).toBe(0);
 
-      // DEVICE B - Fresh workspace (simulated by clearing local prompts)
+      // DEVICE B - Fresh workspace (simulated by creating new services with different storage)
       await promptService.deletePromptById(deviceAPrompt1.id);
       await promptService.deletePromptById(deviceAPrompt2.id);
 
-      // CRITICAL: Reset singleton instances to simulate a different device
-      // This ensures Device B gets a fresh SyncService instance with its own storage path
-      (SyncService as any).instance = undefined;
-      (AuthService as any).instance = undefined;
-      (SupabaseClientManager as any).instance = undefined;
-
-      // Create new sync service for Device B (simulates different device)
+      // Create new services for Device B using DI (simulates different device)
       const testStorageDirB = path.join(
         os.tmpdir(),
         `prompt-bank-sync-test-deviceB-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       );
+
       const storageProviderB = new FileStorageProvider({ storagePath: testStorageDirB });
       await storageProviderB.initialize();
 
-      const promptServiceB = new PromptService(storageProviderB);
+      const authServiceB = new AuthService(context, 'test-publisher', 'test-extension');
+      vi.spyOn(authServiceB, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(authServiceB, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(authServiceB, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+
+      const promptServiceB = new PromptService(storageProviderB, authServiceB);
       await promptServiceB.initialize();
 
-      // Re-initialize services for Device B
-      AuthService.initialize(context, 'test-publisher', 'test-extension');
-      SupabaseClientManager.initialize();
-
-      // Re-mock authentication for Device B
-      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
-      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
-      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
-
-      const syncServiceB = SyncService.initialize(context, testStorageDirB);
+      const syncStateStorageB = new SyncStateStorage(testStorageDirB);
+      const syncServiceB = new SyncService(context, testStorageDirB, authServiceB, syncStateStorageB);
 
       // Device B syncs (should download from cloud)
       const deviceBLocalPrompts = await promptServiceB.listPrompts();
@@ -298,8 +291,10 @@ describe('SyncService - Integration', () => {
 
       await syncService.performSync([prompt], promptService);
 
-      // Create new SyncService instance (simulates app restart)
-      const syncService2 = SyncService.initialize(context, testStorageDir);
+      // Create new SyncService instance with same storage (simulates app restart)
+      const authService2 = new AuthService(context, 'test-publisher', 'test-extension');
+      const syncStateStorage2 = new SyncStateStorage(testStorageDir);
+      const syncService2 = new SyncService(context, testStorageDir, authService2, syncStateStorage2);
 
       // Get sync state info
       const syncInfo = await syncService2.getSyncStateInfo();
@@ -338,25 +333,17 @@ describe('SyncService - Integration', () => {
       // Verify sync state cleared
       await expect(syncService.getSyncStateInfo()).rejects.toThrow(/Not configured/);
 
-      // CRITICAL: Clear cloud database to simulate true first sync scenario
-      // When sync state is cleared locally, the cloud prompts should also be deleted
-      // to test the "upload everything as if first sync" behavior
+      // Clear cloud database to simulate true first sync scenario
       syncTestHelpers.clearCloudDatabase();
 
-      // CRITICAL: Reset singleton to simulate fresh sync session after clearing state
-      // This ensures the SyncService re-initializes with the cleared state
-      (SyncService as any).instance = undefined;
-      (AuthService as any).instance = undefined;
-      (SupabaseClientManager as any).instance = undefined;
+      // Create fresh sync service with DI (simulates fresh sync session after clearing state)
+      const authServiceFresh = new AuthService(context, 'test-publisher', 'test-extension');
+      vi.spyOn(authServiceFresh, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-      // Re-initialize services
-      AuthService.initialize(context, 'test-publisher', 'test-extension');
-      SupabaseClientManager.initialize();
-      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
-      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
-      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
-
-      const syncServiceFresh = SyncService.initialize(context, testStorageDir);
+      const syncStateStorageFresh = new SyncStateStorage(testStorageDir);
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorageFresh);
 
       // Next sync should be treated as first sync
       const localPrompts = await promptService.listPrompts();
