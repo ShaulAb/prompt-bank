@@ -418,7 +418,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       expect(result.stats.conflicts).toBe(0);
 
       // Verify local updated
-      const updatedLocalPrompt = await promptService.getPrompt(prompt.id);
+      const finalPrompts = await promptService.listPrompts();
+      const updatedLocalPrompt = finalPrompts.find((p) => p.id === prompt.id);
       expect(updatedLocalPrompt?.content).toBe('Modified Cloud Content');
     });
 
