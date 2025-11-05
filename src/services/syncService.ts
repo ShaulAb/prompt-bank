@@ -470,6 +470,12 @@ export class SyncService {
     });
 
     if (error) {
+      const errorContext = (error as { context?: { status?: number } }).context;
+      // 404 is acceptable - prompt already deleted
+      if (errorContext?.status === 404) {
+        console.info(`[SyncService] Prompt ${cloudId} already deleted in cloud`);
+        return;
+      }
       throw new Error(`Failed to delete prompt: ${error.message}`);
     }
   }
@@ -569,11 +575,13 @@ export class SyncService {
 
     // NEW FORMAT: Server returns specific error code
     if (errorContext.error && Object.values(SyncConflictType).includes(errorContext.error as SyncConflictType)) {
-      return {
+      const result: SyncConflictError = {
         code: errorContext.error as SyncConflictType,
         message: error.message || 'Sync conflict',
-        details: errorContext.details as SyncConflictError['details'],
+        ...(errorContext.details ? { details: errorContext.details as NonNullable<SyncConflictError['details']> } : {}),
       };
+      
+      return result;
     }
 
     // LEGACY FORMAT: Server returns generic 'conflict' message
@@ -587,7 +595,6 @@ export class SyncService {
       return {
         code: SyncConflictType.PROMPT_DELETED,
         message: 'Conflict detected (legacy format)',
-        details: undefined,
       };
     }
 
@@ -712,21 +719,47 @@ export class SyncService {
           );
         }
 
-        // Check for optimistic lock conflict or soft-deleted prompt conflict
-        if (error.message?.includes('conflict') || errorContext?.status === 409) {
-          throw new Error('conflict');
+        // Check for 409 conflict - Need to parse Response object to get error details
+        if (errorContext?.status === 409) {
+          // error.context is a Response object - clone it before reading (can only read once)
+          const response = errorContext as unknown as Response;
+          let responseBody: any;
+          
+          try {
+            // Clone the response so we can read it (Response body can only be consumed once)
+            const clonedResponse = response.clone();
+            responseBody = await clonedResponse.json();
+          } catch (parseError) {
+            // If we can't parse the response, throw a generic conflict error WITHOUT context
+            // This will be caught by outer catch and wrapped
+            console.warn('[SyncService] Failed to parse 409 response body:', parseError);
+            throw new Error('Sync conflict detected but response body could not be parsed');
+          }
+          
+          // Successfully parsed - create error with context and throw
+          // This will be caught by outer catch, which will preserve the context
+          const conflictError = new Error(responseBody?.message || 'Sync conflict');
+          (conflictError as any).context = {
+            status: 409,
+            error: responseBody?.error,
+            details: responseBody?.details,
+          };
+          throw conflictError;
         }
+
+        // Other errors
         throw error;
       }
 
       return data as { cloudId: string; version: number };
     } catch (error) {
-      if (error instanceof Error && error.message === 'conflict') {
-        throw error; // Re-throw conflict for higher-level handling
-      }
       if (error instanceof Error) {
         // If it's already our user-friendly error, don't wrap it
         if (error.message.includes('session has expired')) {
+          throw error;
+        }
+        // If it has context (our conflict error), re-throw for uploadWithConflictHandling
+        if ((error as any).context) {
           throw error;
         }
         throw new Error(`Failed to upload prompt: ${error.message}`);

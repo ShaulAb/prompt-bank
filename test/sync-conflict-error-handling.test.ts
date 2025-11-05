@@ -8,7 +8,7 @@
  * 3. OPTIMISTIC_LOCK_CONFLICT - Concurrent modification race condition
  */
 
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { PromptService } from '../src/services/promptService';
 import { SyncService } from '../src/services/syncService';
@@ -32,10 +32,32 @@ describe('SyncService - 409 Conflict Error Handling', () => {
     server.close();
   });
 
+  afterEach(async () => {
+    // Clean up local storage
+    const { promises: fs } = await import('fs');
+    await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
+    
+    // Reset singleton instances to ensure test isolation
+    (SyncService as any).instance = undefined;
+    (AuthService as any).instance = undefined;
+    (SupabaseClientManager as any).instance = undefined;
+    
+    // Clear all mocks
+    vi.clearAllMocks();
+  });
+
   beforeEach(async () => {
     // Clear test helpers state
     syncTestHelpers.clearCloudDatabase();
     syncTestHelpers.resetQuota();
+
+    // Generate unique test storage directory for each test
+    const { tmpdir } = await import('os');
+    const { join } = await import('path');
+    testStorageDir = join(
+      tmpdir(),
+      `prompt-bank-conflict-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
 
     // Mock extension context
     context = {
@@ -48,7 +70,6 @@ describe('SyncService - 409 Conflict Error Handling', () => {
     } as unknown as vscode.ExtensionContext;
 
     // Initialize services
-    testStorageDir = (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '') + '/.vscode/prompt-bank-test';
     AuthService.initialize(context, 'test-publisher', 'test-extension');
     SupabaseClientManager.initialize();
     promptService = new PromptService();
@@ -72,38 +93,21 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
-      // Create cloud prompt
-      const cloudPrompt = syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
-        title: prompt.title,
-        content: prompt.content,
-        description: prompt.description || null,
-        category: prompt.category,
-        prompt_order: prompt.order || null,
-        category_order: prompt.categoryOrder || null,
-        variables: prompt.variables || [],
-        metadata: {
-          created: prompt.metadata.created.toISOString(),
-          modified: prompt.metadata.modified.toISOString(),
-          usageCount: prompt.metadata.usageCount,
-          lastUsed: prompt.metadata.lastUsed?.toISOString(),
-          context: prompt.metadata.context,
-        },
-        sync_metadata: {
-          lastModifiedDeviceId: 'device-1',
-          lastModifiedDeviceName: 'Device 1',
-        },
-      });
+      // Perform first sync to upload prompt to cloud
+      const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
+      expect(firstSyncResult.stats.uploaded).toBe(1);
 
-      // Perform first sync to establish sync state
-      await syncService.performSync(await promptService.listPrompts(), promptService);
+      // Get the cloud ID that was assigned
+      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      expect(allCloudPrompts.length).toBe(1);
+      const cloudId = allCloudPrompts[0].cloud_id;
 
       // Soft-delete the cloud prompt
-      syncTestHelpers.deleteCloudPrompt(cloudPrompt.cloud_id);
+      syncTestHelpers.deleteCloudPrompt(cloudId);
 
       // Modify local prompt (this should trigger conflict on next sync)
       prompt.content = 'Modified content';
-      await promptService.updatePrompt(prompt);
+      await promptService.savePromptDirectly(prompt);
 
       // Act: Perform sync (should detect soft-delete and upload as NEW)
       const result = await syncService.performSync(await promptService.listPrompts(), promptService);
@@ -113,11 +117,11 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       expect(result.stats.conflicts).toBe(0);
 
       // Verify a NEW cloud prompt was created (not the deleted one)
-      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
-      const activePrompts = allCloudPrompts.filter((p) => !p.deleted_at);
+      const finalCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      const activePrompts = finalCloudPrompts.filter((p) => !p.deleted_at);
       expect(activePrompts.length).toBe(1);
       expect(activePrompts[0].content).toBe('Modified content');
-      expect(activePrompts[0].cloud_id).not.toBe(cloudPrompt.cloud_id); // Different cloudId
+      expect(activePrompts[0].cloud_id).not.toBe(cloudId); // Different cloudId
     });
   });
 
@@ -131,40 +135,22 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
-      // Create cloud prompt with version 1
-      const cloudPrompt = syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
-        title: prompt.title,
-        content: prompt.content,
-        description: prompt.description || null,
-        category: prompt.category,
-        prompt_order: prompt.order || null,
-        category_order: prompt.categoryOrder || null,
-        variables: prompt.variables || [],
-        metadata: {
-          created: prompt.metadata.created.toISOString(),
-          modified: prompt.metadata.modified.toISOString(),
-          usageCount: prompt.metadata.usageCount,
-          lastUsed: prompt.metadata.lastUsed?.toISOString(),
-          context: prompt.metadata.context,
-        },
-        sync_metadata: {
-          lastModifiedDeviceId: 'device-1',
-          lastModifiedDeviceName: 'Device 1',
-        },
-      });
+      // Perform first sync to upload to cloud
+      const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
+      expect(firstSyncResult.stats.uploaded).toBe(1);
 
-      // Perform first sync to establish sync state
-      await syncService.performSync(await promptService.listPrompts(), promptService);
+      // Get the cloud ID
+      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      const cloudId = allCloudPrompts[0].cloud_id;
 
       // Simulate another device updating the cloud prompt (version 2)
-      syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, {
+      syncTestHelpers.updateCloudPrompt(cloudId, {
         content: 'Updated by another device',
       });
 
       // Modify local prompt (still thinks version is 1)
       prompt.content = 'Modified locally';
-      await promptService.updatePrompt(prompt);
+      await promptService.savePromptDirectly(prompt);
 
       // Act & Assert: Should throw sync_conflict_retry error
       await expect(
@@ -183,34 +169,16 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
-      // Create cloud prompt
-      const cloudPrompt = syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
-        title: prompt.title,
-        content: prompt.content,
-        description: prompt.description || null,
-        category: prompt.category,
-        prompt_order: prompt.order || null,
-        category_order: prompt.categoryOrder || null,
-        variables: prompt.variables || [],
-        metadata: {
-          created: prompt.metadata.created.toISOString(),
-          modified: prompt.metadata.modified.toISOString(),
-          usageCount: prompt.metadata.usageCount,
-          lastUsed: prompt.metadata.lastUsed?.toISOString(),
-          context: prompt.metadata.context,
-        },
-        sync_metadata: {
-          lastModifiedDeviceId: 'device-1',
-          lastModifiedDeviceName: 'Device 1',
-        },
-      });
+      // Perform first sync to upload to cloud
+      const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
+      expect(firstSyncResult.stats.uploaded).toBe(1);
 
-      // Perform first sync
-      await syncService.performSync(await promptService.listPrompts(), promptService);
+      // Get the cloud ID
+      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      const cloudId = allCloudPrompts[0].cloud_id;
 
       // Soft-delete cloud prompt
-      syncTestHelpers.deleteCloudPrompt(cloudPrompt.cloud_id);
+      syncTestHelpers.deleteCloudPrompt(cloudId);
 
       // Temporarily replace MSW handler with legacy format
       const { server } = await import('./e2e/helpers/msw-setup');
@@ -232,7 +200,7 @@ describe('SyncService - 409 Conflict Error Handling', () => {
 
       // Modify local prompt
       prompt.content = 'Modified content';
-      await promptService.updatePrompt(prompt);
+      await promptService.savePromptDirectly(prompt);
 
       // Act: Should still work with legacy format (assumes PROMPT_DELETED)
       const result = await syncService.performSync(await promptService.listPrompts(), promptService);
@@ -252,31 +220,17 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
-      const cloudPrompt = syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
-        title: prompt.title,
-        content: prompt.content,
-        description: null,
-        category: prompt.category,
-        prompt_order: null,
-        category_order: null,
-        variables: [],
-        metadata: {
-          created: prompt.metadata.created.toISOString(),
-          modified: prompt.metadata.modified.toISOString(),
-          usageCount: 0,
-        },
-        sync_metadata: {
-          lastModifiedDeviceId: 'device-1',
-          lastModifiedDeviceName: 'Device 1',
-        },
-      });
-
-      await syncService.performSync(await promptService.listPrompts(), promptService);
-      syncTestHelpers.deleteCloudPrompt(cloudPrompt.cloud_id);
+      // First sync to upload
+      const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
+      expect(firstSyncResult.stats.uploaded).toBe(1);
+      
+      // Get cloud ID and delete it
+      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      const cloudId = allCloudPrompts[0].cloud_id;
+      syncTestHelpers.deleteCloudPrompt(cloudId);
 
       prompt.content = 'Modified';
-      await promptService.updatePrompt(prompt);
+      await promptService.savePromptDirectly(prompt);
 
       // Should successfully handle the detailed error response
       const result = await syncService.performSync(await promptService.listPrompts(), promptService);
@@ -291,31 +245,17 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       });
       await promptService.savePromptDirectly(prompt);
 
-      const cloudPrompt = syncTestHelpers.addCloudPrompt({
-        local_id: prompt.id,
-        title: prompt.title,
-        content: prompt.content,
-        description: null,
-        category: prompt.category,
-        prompt_order: null,
-        category_order: null,
-        variables: [],
-        metadata: {
-          created: prompt.metadata.created.toISOString(),
-          modified: prompt.metadata.modified.toISOString(),
-          usageCount: 0,
-        },
-        sync_metadata: {
-          lastModifiedDeviceId: 'device-1',
-          lastModifiedDeviceName: 'Device 1',
-        },
-      });
-
-      await syncService.performSync(await promptService.listPrompts(), promptService);
-      syncTestHelpers.updateCloudPrompt(cloudPrompt.cloud_id, { content: 'Remote change' });
+      // First sync to upload
+      const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
+      expect(firstSyncResult.stats.uploaded).toBe(1);
+      
+      // Get cloud ID and update it (simulating another device)
+      const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
+      const cloudId = allCloudPrompts[0].cloud_id;
+      syncTestHelpers.updateCloudPrompt(cloudId, { content: 'Remote change' });
 
       prompt.content = 'Local change';
-      await promptService.updatePrompt(prompt);
+      await promptService.savePromptDirectly(prompt);
 
       // Should throw with detailed error information
       await expect(
