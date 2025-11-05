@@ -55,21 +55,28 @@ export async function activate(context: vscode.ExtensionContext) {
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
 
-    // Register context menu commands (with auth service from container)
-    const contextMenuCommands = new ContextMenuCommands(
-      promptService,
-      treeProvider,
-      workspaceServices?.auth!
-    );
-    contextMenuCommands.registerCommands(context);
-
-    // Register all other commands (with optional auth service for share functionality)
-    registerCommands(context, treeProvider, workspaceServices?.auth);
-
-    // Register sync commands (if workspace available, pass services from container)
+    // Register workspace-dependent commands only if workspace is available
     if (workspaceRoot && workspaceServices) {
+      // Register context menu commands (requires auth service)
+      const contextMenuCommands = new ContextMenuCommands(
+        promptService,
+        treeProvider,
+        workspaceServices.auth
+      );
+      contextMenuCommands.registerCommands(context);
+
+      // Register all other commands (with auth service for share functionality)
+      registerCommands(context, treeProvider, workspaceServices.auth);
+
+      // Register sync commands
       const syncCommands = registerSyncCommands(context, promptService, workspaceServices.sync);
       context.subscriptions.push(...syncCommands);
+    } else {
+      // Register commands without workspace-dependent features
+      registerCommands(context, treeProvider);
+      vscode.window.showWarningMessage(
+        'Prompt Bank: No workspace folder detected. Some features (sync, sharing) will be unavailable.'
+      );
     }
 
     // Refresh tree when prompts change
