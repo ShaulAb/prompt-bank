@@ -488,8 +488,11 @@ export class PromptService {
 
   /**
    * Share a collection of prompts.
+   * 
+   * @param categoryToShare - Optional category name to share. If not provided, shows quick pick.
+   * @param authService - Optional auth service for authentication. Uses injected service if not provided.
    */
-  async shareCollection(categoryToShare?: string): Promise<void> {
+  async shareCollection(categoryToShare?: string, authService?: AuthService): Promise<void> {
     await this.ensureInitialized();
 
     let promptsToShare: Prompt[] = [];
@@ -540,13 +543,16 @@ export class PromptService {
       return;
     }
 
-    const authService = this.authService || AuthService.get();
-    const accessToken = await authService.getValidAccessToken();
+    const auth = authService || this.authService;
+    if (!auth) {
+      throw new Error('AuthService not provided. This method requires dependency injection.');
+    }
+    const accessToken = await auth.getValidAccessToken();
     if (!accessToken) {
       vscode.window.showErrorMessage('You must be logged in to share collections.');
       return;
     }
-    const shareResult = await createShareMulti(promptsToShare, accessToken, authService);
+    const shareResult = await createShareMulti(promptsToShare, accessToken, auth);
     vscode.env.clipboard.writeText(shareResult.url);
     vscode.window.showInformationMessage(
       'Collection share link copied to clipboard! Expires in 24h.'

@@ -32,60 +32,34 @@ import { getDeviceInfo } from '../utils/deviceId';
 import type { PromptService } from './promptService';
 
 /**
- * Sync service singleton
+ * Sync service using dependency injection
  *
  * Coordinates between local storage, Supabase backend, and VS Code UI
  * to provide seamless multi-device synchronization.
  */
 export class SyncService {
-  private static instance: SyncService | undefined;
-
-  private syncStateStorage: SyncStateStorage | undefined;
+  private syncStateStorage: SyncStateStorage;
   private authService: AuthService;
 
   // In-memory sync status cache (for tree view icons)
   private syncStatusCache = new Map<string, 'synced' | 'out-of-sync' | 'conflict'>();
 
   /**
-   * Create a new SyncService instance
-   *
-   * Note: For backward compatibility, prefer using `SyncService.initialize()` for singleton usage.
-   * Use this constructor directly only for DI scenarios or testing.
+   * Create a new SyncService instance using dependency injection.
    *
    * @param context - VS Code extension context
-   * @param workspaceRoot - Absolute path to workspace root directory (for backward compatibility)
-   * @param authService - Optional injected auth service (for DI). Falls back to singleton if not provided.
-   * @param syncStateStorage - Optional injected sync state storage (for DI). Creates new instance if not provided.
+   * @param workspaceRoot - Absolute path to workspace root directory
+   * @param authService - Injected auth service for authentication
+   * @param syncStateStorage - Injected sync state storage for managing sync metadata
    */
   constructor(
     private context: vscode.ExtensionContext,
     workspaceRoot: string,
-    authService?: AuthService,
-    syncStateStorage?: SyncStateStorage
+    authService: AuthService,
+    syncStateStorage: SyncStateStorage
   ) {
-    // Use injected dependencies if provided, otherwise fall back to legacy behavior
-    this.authService = authService || AuthService.get();
-    this.syncStateStorage = syncStateStorage || new SyncStateStorage(workspaceRoot);
-  }
-
-  /**
-   * Initialize the singleton
-   */
-  public static initialize(context: vscode.ExtensionContext, workspaceRoot: string): SyncService {
-    if (!SyncService.instance) {
-      SyncService.instance = new SyncService(context, workspaceRoot);
-    }
-    return SyncService.instance;
-  }
-
-  /**
-   * Get the singleton instance
-   */
-  public static get(): SyncService {
-    if (!SyncService.instance) {
-      throw new Error('SyncService not initialized. Call initialize() first.');
-    }
-    return SyncService.instance;
+    this.authService = authService;
+    this.syncStateStorage = syncStateStorage;
   }
 
   // ────────────────────────────────────────────────────────────────────────────

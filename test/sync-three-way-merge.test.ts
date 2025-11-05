@@ -716,21 +716,13 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         version: 1,
       });
 
-      // CRITICAL: Reset singleton to ensure SyncService picks up the manually configured sync state
-      (SyncService as unknown as { instance: unknown }).instance = undefined;
-      (AuthService as unknown as { instance: unknown }).instance = undefined;
-      (SupabaseClientManager as unknown as { instance: unknown }).instance = undefined;
+      // Create fresh services with DI (they'll pick up the pre-configured sync state)
+      const authServiceFresh = new AuthService(context, 'test-publisher', 'test-extension');
+      vi.spyOn(authServiceFresh, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test@example.com');
 
-      // Re-initialize services
-      AuthService.initialize(context, 'test-publisher', 'test-extension');
-
-      // Mock authentication and refresh token
-      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
-      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
-      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test@example.com');
-
-      SupabaseClientManager.initialize();
-      syncService = SyncService.initialize(context, testStorageDir);
+      syncService = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
 
       // Modify local prompt
       prompt.content = 'Modified Locally';
@@ -816,9 +808,17 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         content_hash: cloudHash,
       });
 
+      // Create fresh syncService with manually-configured syncStateStorage
+      const authServiceFresh = new AuthService(context, 'test-publisher', 'test-extension');
+      vi.spyOn(authServiceFresh, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+
       // Act
       const localPrompts = await promptService.listPrompts();
-      const result = await syncService.performSync(localPrompts, promptService);
+      const result = await syncServiceFresh.performSync(localPrompts, promptService);
 
       // Assert - Content hash should detect the difference despite same timestamp
       expect(result.stats.conflicts).toBeGreaterThanOrEqual(1);
@@ -872,9 +872,17 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       prompt.metadata.modified = new Date();
       await promptService.savePromptDirectly(prompt);
 
+      // Create fresh syncService with manually-configured syncStateStorage
+      const authServiceFresh = new AuthService(context, 'test-publisher', 'test-extension');
+      vi.spyOn(authServiceFresh, 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+
       // Act
       const localPrompts = await promptService.listPrompts();
-      const result = await syncService.performSync(localPrompts, promptService);
+      const result = await syncServiceFresh.performSync(localPrompts, promptService);
 
       // Assert - No conflict because content hash is identical
       expect(result.stats.conflicts).toBe(0);

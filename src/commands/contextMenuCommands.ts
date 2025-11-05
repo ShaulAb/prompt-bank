@@ -11,12 +11,12 @@ import { createShare } from '../services/shareService';
  */
 export class ContextMenuCommands {
   private extensionContext: vscode.ExtensionContext | undefined;
-  private authService: AuthService | undefined;
+  private authService: AuthService;
 
   constructor(
     private promptService: PromptService,
     private treeProvider: PromptTreeProvider,
-    authService?: AuthService
+    authService: AuthService
   ) {
     this.authService = authService;
   }
@@ -164,14 +164,13 @@ export class ContextMenuCommands {
 
     try {
       // Ensure user signed in
-      const authService = this.authService || AuthService.get();
-      const accessToken = await authService.getValidAccessToken();
+      const accessToken = await this.authService.getValidAccessToken();
       if (!accessToken) {
         vscode.window.showErrorMessage('You must be signed in with Google to share prompts.');
         return;
       }
 
-      const result = await createShare(prompt, accessToken);
+      const result = await createShare(prompt, accessToken, this.authService);
       await vscode.env.clipboard.writeText(result.url);
       vscode.window.showInformationMessage('Share link copied to clipboard! Expires in 24h.');
     } catch (error) {
@@ -186,7 +185,7 @@ export class ContextMenuCommands {
     const categoryName = item.category;
     try {
       // Call the centralized promptService method with the specific category
-      await this.promptService.shareCollection(categoryName);
+      await this.promptService.shareCollection(categoryName, this.authService);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to share collection: ${error}`);
     }

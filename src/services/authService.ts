@@ -32,8 +32,6 @@ interface SupabaseJWTPayload extends JWTPayload {
 }
 
 export class AuthService {
-  private static instance: AuthService | undefined;
-
   private token: string | undefined;
   private refreshToken: string | undefined;
   private expiresAt: number | undefined;
@@ -59,10 +57,7 @@ export class AuthService {
   private readonly OFFLINE_GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes for offline scenarios
 
   /**
-   * Create a new AuthService instance
-   *
-   * Note: For backward compatibility, prefer using `AuthService.initialize()` for singleton usage.
-   * Use this constructor directly only for DI scenarios or testing.
+   * Create a new AuthService instance using dependency injection.
    *
    * @param context - VS Code extension context
    * @param publisher - Extension publisher name
@@ -81,30 +76,6 @@ export class AuthService {
     );
     this.publisher = publisher;
     this.extensionName = extensionName;
-  }
-
-  /**
-   * Initialise the singleton. Must be called once from extension activation.
-   */
-  public static initialize(
-    context: vscode.ExtensionContext,
-    publisher: string,
-    extensionName: string
-  ): AuthService {
-    if (!AuthService.instance) {
-      AuthService.instance = new AuthService(context, publisher, extensionName);
-    }
-    return AuthService.instance;
-  }
-
-  /**
-   * Retrieve the existing instance. Throws if not yet initialised.
-   */
-  public static get(): AuthService {
-    if (!AuthService.instance) {
-      throw new Error('AuthService not initialised. Call initialize() first.');
-    }
-    return AuthService.instance;
   }
 
   /**

@@ -14,10 +14,9 @@ import { SyncService } from '../services/syncService';
 export const registerSyncCommands = (
   _context: vscode.ExtensionContext,
   promptService: PromptService,
-  syncService?: SyncService
+  syncService: SyncService
 ): vscode.Disposable[] => {
-  // For backward compatibility, fall back to singleton if syncService not provided
-  const service = syncService || SyncService.get();
+  const service = syncService;
 
   return [
     // Command: Sync prompts now

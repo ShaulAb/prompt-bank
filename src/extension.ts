@@ -55,16 +55,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
 
-    // Register context menu commands (with optional auth service from container)
+    // Register context menu commands (with auth service from container)
     const contextMenuCommands = new ContextMenuCommands(
       promptService,
       treeProvider,
-      workspaceServices?.auth
+      workspaceServices?.auth!
     );
     contextMenuCommands.registerCommands(context);
 
-    // Register all other commands
-    registerCommands(context, treeProvider);
+    // Register all other commands (with optional auth service for share functionality)
+    registerCommands(context, treeProvider, workspaceServices?.auth);
 
     // Register sync commands (if workspace available, pass services from container)
     if (workspaceRoot && workspaceServices) {
