@@ -145,6 +145,49 @@ export interface DeviceInfo {
 }
 
 /**
+ * Sync conflict error codes from Edge Functions
+ * Matches SyncErrorCodes in the sync-prompt Edge Function
+ */
+export enum SyncConflictType {
+  PROMPT_DELETED = 'PROMPT_DELETED',
+  VERSION_CONFLICT = 'VERSION_CONFLICT',
+  OPTIMISTIC_LOCK_CONFLICT = 'OPTIMISTIC_LOCK_CONFLICT',
+}
+
+/**
+ * Parsed sync conflict error from Edge Function response
+ * This provides detailed information about why a 409 conflict occurred
+ */
+export interface SyncConflictError {
+  /** The specific type of conflict */
+  code: SyncConflictType;
+
+  /** Human-readable error message */
+  message: string;
+
+  /** Additional details about the conflict */
+  details?: {
+    /** Cloud ID of the conflicting prompt */
+    cloudId?: string;
+
+    /** When the prompt was deleted (for PROMPT_DELETED) */
+    deletedAt?: string;
+
+    /** Device that deleted the prompt (for PROMPT_DELETED) */
+    deletedByDevice?: string;
+
+    /** Version client expected (for VERSION_CONFLICT) */
+    expectedVersion?: number;
+
+    /** Actual current version in cloud (for VERSION_CONFLICT) */
+    actualVersion?: number;
+
+    /** When the prompt was last modified (for VERSION_CONFLICT) */
+    lastModifiedAt?: string;
+  };
+}
+
+/**
  * Create an empty sync state for a new device
  */
 export const createEmptySyncState = (

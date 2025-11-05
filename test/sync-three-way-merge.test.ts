@@ -10,7 +10,7 @@ import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 
 describe('SyncService - Three-Way Merge Algorithm', () => {
   let syncService: SyncService;
@@ -722,6 +722,22 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
         lastSyncedAt: new Date(Date.now() - 5000),
         version: 1,
       });
+
+      // CRITICAL: Reset singleton to ensure SyncService picks up the manually configured sync state
+      (SyncService as unknown as { instance: unknown }).instance = undefined;
+      (AuthService as unknown as { instance: unknown }).instance = undefined;
+      (SupabaseClientManager as unknown as { instance: unknown }).instance = undefined;
+
+      // Re-initialize services
+      AuthService.initialize(context, 'test-publisher', 'test-extension');
+
+      // Mock authentication and refresh token
+      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test@example.com');
+
+      SupabaseClientManager.initialize();
+      syncService = SyncService.initialize(context, testStorageDir);
 
       // Modify local prompt
       prompt.content = 'Modified Locally';

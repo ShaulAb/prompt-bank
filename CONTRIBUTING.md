@@ -228,7 +228,7 @@ Use `npm run release:dry-run` to preview how your commits will affect the next v
 3. **Test your changes**:
    ```bash
    # Run all quality checks
-   npx npx vitest run --isolate
+   npx vitest run --isolate
    npx prettier --check src
    npx tsc --noEmit
    npm run build
@@ -262,10 +262,10 @@ Use `npm run release:dry-run` to preview how your commits will affect the next v
 
 All PRs must pass these quality gates before merging:
 
-✅ **Tests** - All tests must pass (`npx npx vitest run --isolate`)  
-✅ **Type Checking** - TypeScript compilation must succeed (`npx tsc --noEmit`)  
-✅ **Formatting** - Code must be formatted with Prettier (`npx prettier --check src`)  
-✅ **Build** - Extension must build successfully (`npm run build`)  
+✅ **Tests** - All tests must pass (`npx vitest run --isolate`)
+✅ **Type Checking** - TypeScript compilation must succeed (`npx tsc --noEmit`)
+✅ **Formatting** - Code must be formatted with Prettier (`npx prettier --check src`)
+✅ **Build** - Extension must build successfully (`npm run build`)
 ✅ **Security** - No high/critical security vulnerabilities
 
 These checks are automatically run in our CI/CD pipeline, but you should run them locally before submitting your PR.

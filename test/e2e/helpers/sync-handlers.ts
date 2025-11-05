@@ -111,18 +111,36 @@ export const syncHandlers = [
           );
         }
 
-        // Check if prompt is soft-deleted (409 conflict)
+        // Check if prompt is soft-deleted (409 conflict with specific error code)
         if (existingPrompt.deleted_at) {
           return HttpResponse.json(
-            { error: 'conflict', message: 'Prompt is soft-deleted' },
+            {
+              success: false,
+              error: 'PROMPT_DELETED',
+              message: 'Cannot update a soft-deleted prompt',
+              details: {
+                cloudId: existingPrompt.cloud_id,
+                deletedAt: existingPrompt.deleted_at,
+                deletedByDevice: existingPrompt.deleted_by_device_id,
+              },
+            },
             { status: 409 }
           );
         }
 
-        // Optimistic locking check
+        // Optimistic locking check (version mismatch)
         if (expectedVersion !== undefined && existingPrompt.version !== expectedVersion) {
           return HttpResponse.json(
-            { error: 'conflict', message: 'Version mismatch' },
+            {
+              success: false,
+              error: 'VERSION_CONFLICT',
+              message: 'Prompt version has changed since last sync',
+              details: {
+                expectedVersion,
+                actualVersion: existingPrompt.version,
+                lastModifiedAt: existingPrompt.updated_at,
+              },
+            },
             { status: 409 }
           );
         }
