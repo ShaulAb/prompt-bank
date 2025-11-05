@@ -125,11 +125,22 @@ export class SyncService {
     for (const prompt of local) {
       const syncInfo = promptSyncMap[prompt.id];
       const cloudId = syncInfo?.cloudId;
-      const remotePrompt = cloudId ? remoteMap.get(cloudId) : undefined;
+      let remotePrompt = cloudId ? remoteMap.get(cloudId) : undefined;
+
+      // On first sync, try matching by local_id if cloudId not available
+      if (!remotePrompt && !cloudId) {
+        // First sync - try matching by local_id
+        const matchedByLocalId = remote.find((r) => r.local_id === prompt.id && !r.deleted_at);
+        if (matchedByLocalId) {
+          remotePrompt = matchedByLocalId;
+          // Update remoteMap for subsequent lookups
+          remoteMap.set(matchedByLocalId.cloud_id, matchedByLocalId);
+        }
+      }
 
       if (!remotePrompt) {
-        // Check if deleted remotely
-        const remoteDeleted = remote.find((r) => r.cloud_id === cloudId && r.deleted_at);
+        // Check if deleted remotely (must have cloudId to check)
+        const remoteDeleted = cloudId ? remote.find((r) => r.cloud_id === cloudId && r.deleted_at) : undefined;
 
         if (remoteDeleted) {
           // DELETE-MODIFY CONFLICT: Remote deleted, local modified
@@ -151,8 +162,11 @@ export class SyncService {
       const remoteHash = remotePrompt.content_hash;
       const lastSyncHash = syncInfo?.lastSyncedContentHash;
 
-      if (!lastSync) {
-        // FIRST SYNC - Check content hash for conflicts (prevent data loss)
+      // Determine if this is first sync for this prompt (no sync info or no lastSyncedContentHash)
+      const isFirstSyncForPrompt = !syncInfo || !lastSyncHash;
+
+      if (isFirstSyncForPrompt && !lastSync) {
+        // TRUE FIRST SYNC - Check content hash for conflicts (prevent data loss)
         if (localHash !== remoteHash) {
           // Same prompt ID, different content → conflict
           plan.conflicts.push({ local: prompt, remote: remotePrompt });
@@ -161,7 +175,7 @@ export class SyncService {
         }
         // else: remote is newer or same, will download below
       } else {
-        // SUBSEQUENT SYNCS - Three-way merge
+        // SUBSEQUENT SYNCS - Three-way merge (use lastSyncHash if available, otherwise assume changed)
         const localChangedSinceSync = lastSyncHash ? !matchesHash(prompt, lastSyncHash) : true;
         const remoteChangedSinceSync = lastSyncHash ? remoteHash !== lastSyncHash : true;
 
@@ -823,19 +837,52 @@ export class SyncService {
         }
 
         // Normal upload flow
-        const uploaded = await this.uploadPrompt(prompt, syncInfo ?? undefined);
-        const contentHash = computeContentHash(prompt);
+        try {
+          const uploaded = await this.uploadPrompt(prompt, syncInfo ?? undefined);
+          const contentHash = computeContentHash(prompt);
 
-        // Update sync state (clear deletion flag if re-uploading)
-        await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
-          cloudId: uploaded.cloudId,
-          lastSyncedContentHash: contentHash,
-          lastSyncedAt: new Date(),
-          version: uploaded.version,
-          isDeleted: false,
-        });
+          // Update sync state (clear deletion flag if re-uploading)
+          await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
+            cloudId: uploaded.cloudId,
+            lastSyncedContentHash: contentHash,
+            lastSyncedAt: new Date(),
+            version: uploaded.version,
+            isDeleted: false,
+          });
 
-        result.stats.uploaded++;
+          result.stats.uploaded++;
+        } catch (uploadError) {
+          // Handle delete-modify conflict: if cloud prompt is soft-deleted, upload as new
+          const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+          const errorContext = (uploadError as { context?: { status?: number } }).context;
+
+          if (
+            (errorMessage === 'conflict' || errorContext?.status === 409) &&
+            syncInfo?.cloudId
+          ) {
+            // Cloud prompt might be soft-deleted - try uploading as new prompt
+            try {
+              const uploaded = await this.uploadPrompt(prompt); // No syncInfo = new prompt
+              const contentHash = computeContentHash(prompt);
+
+              await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
+                cloudId: uploaded.cloudId,
+                lastSyncedContentHash: contentHash,
+                lastSyncedAt: new Date(),
+                version: uploaded.version,
+                isDeleted: false,
+              });
+
+              result.stats.uploaded++;
+            } catch (retryError) {
+              // If retry also fails, re-throw original error
+              throw uploadError;
+            }
+          } else {
+            // Not a soft-deleted conflict, re-throw
+            throw uploadError;
+          }
+        }
       }
 
       // 4. Download prompts
