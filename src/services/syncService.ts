@@ -21,7 +21,9 @@ import type {
   RemotePrompt,
   UserQuota,
   PromptSyncInfo,
+  SyncConflictError,
 } from '../models/syncState';
+import { SyncConflictType } from '../models/syncState';
 import { SyncStateStorage } from '../storage/syncStateStorage';
 import { AuthService } from './authService';
 import { SupabaseClientManager } from './supabaseClient';
@@ -544,6 +546,109 @@ export class SyncService {
   }
 
   /**
+   * Parse sync conflict error from Edge Function response
+   *
+   * Handles BOTH new format (with specific error codes) and legacy format (generic 409).
+   * This provides backward compatibility during server migration.
+   *
+   * @param error - Error from uploadPrompt
+   * @returns Parsed conflict error, or null if not a sync conflict
+   */
+  private parseSyncConflictError(error: unknown): SyncConflictError | null {
+    if (!(error instanceof Error)) {
+      return null;
+    }
+
+    const errorContext = (error as { context?: { status?: number; error?: string; details?: unknown } })
+      .context;
+
+    // Check if it's a 409 conflict
+    if (errorContext?.status !== 409) {
+      return null;
+    }
+
+    // NEW FORMAT: Server returns specific error code
+    if (errorContext.error && Object.values(SyncConflictType).includes(errorContext.error as SyncConflictType)) {
+      return {
+        code: errorContext.error as SyncConflictType,
+        message: error.message || 'Sync conflict',
+        details: errorContext.details as SyncConflictError['details'],
+      };
+    }
+
+    // LEGACY FORMAT: Server returns generic 'conflict' message
+    // Assume it's a soft-delete conflict (the most common case)
+    // This maintains backward compatibility with old server implementations
+    if (error.message?.includes('conflict') || errorContext.error === 'conflict') {
+      console.warn(
+        '[SyncService] Received legacy 409 conflict format. Assuming PROMPT_DELETED. ' +
+        'Consider updating Edge Functions for better conflict resolution.'
+      );
+      return {
+        code: SyncConflictType.PROMPT_DELETED,
+        message: 'Conflict detected (legacy format)',
+        details: undefined,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Upload prompt with intelligent conflict resolution
+   *
+   * Handles three types of conflicts:
+   * 1. PROMPT_DELETED - Cloud prompt was soft-deleted → Upload as NEW prompt
+   * 2. VERSION_CONFLICT - Version mismatch → Throw error to retry entire sync
+   * 3. OPTIMISTIC_LOCK_CONFLICT - Concurrent modification → Throw error to retry entire sync
+   *
+   * @param prompt - Prompt to upload
+   * @param syncInfo - Existing sync info (if updating)
+   * @returns Cloud ID and version
+   * @throws Error if conflict requires retry or upload fails
+   */
+  private async uploadWithConflictHandling(
+    prompt: Prompt,
+    syncInfo?: PromptSyncInfo
+  ): Promise<{ cloudId: string; version: number }> {
+    try {
+      return await this.uploadPrompt(prompt, syncInfo);
+    } catch (uploadError) {
+      const conflictError = this.parseSyncConflictError(uploadError);
+
+      if (!conflictError) {
+        throw uploadError; // Not a sync conflict, re-throw
+      }
+
+      switch (conflictError.code) {
+        case SyncConflictType.PROMPT_DELETED:
+          // Soft-deleted prompt - upload as NEW with new cloudId
+          console.info(
+            `[SyncService] Prompt ${prompt.id} was deleted in cloud (cloudId: ${syncInfo?.cloudId}). ` +
+            `Creating new cloud prompt.`
+          );
+          return await this.uploadPrompt(prompt); // No syncInfo = new prompt
+
+        case SyncConflictType.VERSION_CONFLICT:
+        case SyncConflictType.OPTIMISTIC_LOCK_CONFLICT:
+          // Version conflict - need to retry entire sync to get fresh state
+          console.warn(
+            `[SyncService] ${conflictError.code} for prompt ${prompt.id}. ` +
+            `Expected v${conflictError.details?.expectedVersion}, ` +
+            `actual v${conflictError.details?.actualVersion}. ` +
+            `This usually means another device modified the prompt. Retrying sync...`
+          );
+          throw new Error('sync_conflict_retry');
+
+        default:
+          // Unknown conflict type - fail safe by retrying entire sync
+          console.error(`[SyncService] Unknown conflict type: ${conflictError.code}`);
+          throw new Error('sync_conflict_retry');
+      }
+    }
+  }
+
+  /**
    * Upload or update a single prompt to Supabase
    *
    * @param prompt - Prompt to upload
@@ -836,53 +941,20 @@ export class SyncService {
           continue; // Skip to next prompt
         }
 
-        // Normal upload flow
-        try {
-          const uploaded = await this.uploadPrompt(prompt, syncInfo ?? undefined);
-          const contentHash = computeContentHash(prompt);
+        // Normal upload flow with intelligent conflict handling
+        const uploaded = await this.uploadWithConflictHandling(prompt, syncInfo ?? undefined);
+        const contentHash = computeContentHash(prompt);
 
-          // Update sync state (clear deletion flag if re-uploading)
-          await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
-            cloudId: uploaded.cloudId,
-            lastSyncedContentHash: contentHash,
-            lastSyncedAt: new Date(),
-            version: uploaded.version,
-            isDeleted: false,
-          });
+        // Update sync state (clear deletion flag if re-uploading)
+        await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
+          cloudId: uploaded.cloudId,
+          lastSyncedContentHash: contentHash,
+          lastSyncedAt: new Date(),
+          version: uploaded.version,
+          isDeleted: false,
+        });
 
-          result.stats.uploaded++;
-        } catch (uploadError) {
-          // Handle delete-modify conflict: if cloud prompt is soft-deleted, upload as new
-          const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
-          const errorContext = (uploadError as { context?: { status?: number } }).context;
-
-          if (
-            (errorMessage === 'conflict' || errorContext?.status === 409) &&
-            syncInfo?.cloudId
-          ) {
-            // Cloud prompt might be soft-deleted - try uploading as new prompt
-            try {
-              const uploaded = await this.uploadPrompt(prompt); // No syncInfo = new prompt
-              const contentHash = computeContentHash(prompt);
-
-              await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
-                cloudId: uploaded.cloudId,
-                lastSyncedContentHash: contentHash,
-                lastSyncedAt: new Date(),
-                version: uploaded.version,
-                isDeleted: false,
-              });
-
-              result.stats.uploaded++;
-            } catch (retryError) {
-              // If retry also fails, re-throw original error
-              throw uploadError;
-            }
-          } else {
-            // Not a soft-deleted conflict, re-throw
-            throw uploadError;
-          }
-        }
+        result.stats.uploaded++;
       }
 
       // 4. Download prompts
