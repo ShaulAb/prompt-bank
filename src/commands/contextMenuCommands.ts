@@ -11,10 +11,15 @@ import { createShare } from '../services/shareService';
  */
 export class ContextMenuCommands {
   private extensionContext: vscode.ExtensionContext | undefined;
+  private authService: AuthService | undefined;
+
   constructor(
     private promptService: PromptService,
-    private treeProvider: PromptTreeProvider
-  ) {}
+    private treeProvider: PromptTreeProvider,
+    authService?: AuthService
+  ) {
+    this.authService = authService;
+  }
 
   /**
    * Register all context menu commands
@@ -159,7 +164,8 @@ export class ContextMenuCommands {
 
     try {
       // Ensure user signed in
-      const accessToken = await AuthService.get().getValidAccessToken();
+      const authService = this.authService || AuthService.get();
+      const accessToken = await authService.getValidAccessToken();
       if (!accessToken) {
         vscode.window.showErrorMessage('You must be signed in with Google to share prompts.');
         return;

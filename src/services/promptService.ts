@@ -13,9 +13,11 @@ import { AuthService } from './authService';
 export class PromptService {
   private storage: IStorageProvider;
   private isInitialized = false;
+  private authService: AuthService | undefined;
 
-  constructor(storage?: IStorageProvider) {
+  constructor(storage?: IStorageProvider, authService?: AuthService) {
     this.storage = storage || new FileStorageProvider();
+    this.authService = authService;
   }
 
   /**
@@ -538,12 +540,13 @@ export class PromptService {
       return;
     }
 
-    const accessToken = await AuthService.get().getValidAccessToken();
+    const authService = this.authService || AuthService.get();
+    const accessToken = await authService.getValidAccessToken();
     if (!accessToken) {
       vscode.window.showErrorMessage('You must be logged in to share collections.');
       return;
     }
-    const shareResult = await createShareMulti(promptsToShare, accessToken);
+    const shareResult = await createShareMulti(promptsToShare, accessToken, authService);
     vscode.env.clipboard.writeText(shareResult.url);
     vscode.window.showInformationMessage(
       'Collection share link copied to clipboard! Expires in 24h.'

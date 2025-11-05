@@ -39,18 +39,13 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize Supabase client (shared by Auth, Sync, and Share services)
     SupabaseClientManager.initialize();
 
-    // Initialise authentication service (legacy singleton - for backward compatibility)
-    AuthService.initialize(context, publisher, extensionName);
-
-    // Initialize sync service (requires workspace root)
+    // Get workspace root
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    
+    // Get services from container (no more singletons!)
+    let workspaceServices = null;
     if (workspaceRoot) {
-      // Legacy singleton initialization for backward compatibility
-      SyncService.initialize(context, workspaceRoot);
-      
-      // Also create services via container (for future migration)
-      // This ensures the container has services ready when commands need them
-      await servicesContainer.getOrCreate(context, workspaceRoot);
+      workspaceServices = await servicesContainer.getOrCreate(context, workspaceRoot);
     }
 
     // Create and register tree view
@@ -66,16 +61,20 @@ export async function activate(context: vscode.ExtensionContext) {
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
 
-    // Register context menu commands
-    const contextMenuCommands = new ContextMenuCommands(promptService, treeProvider);
+    // Register context menu commands (with optional auth service from container)
+    const contextMenuCommands = new ContextMenuCommands(
+      promptService,
+      treeProvider,
+      workspaceServices?.auth
+    );
     contextMenuCommands.registerCommands(context);
 
     // Register all other commands
     registerCommands(context, treeProvider);
 
-    // Register sync commands (if workspace available)
-    if (workspaceRoot) {
-      const syncCommands = registerSyncCommands(context, promptService);
+    // Register sync commands (if workspace available, pass services from container)
+    if (workspaceRoot && workspaceServices) {
+      const syncCommands = registerSyncCommands(context, promptService, workspaceServices.sync);
       context.subscriptions.push(...syncCommands);
     }
 

@@ -13,14 +13,16 @@ import { SyncService } from '../services/syncService';
  */
 export const registerSyncCommands = (
   _context: vscode.ExtensionContext,
-  promptService: PromptService
+  promptService: PromptService,
+  syncService?: SyncService
 ): vscode.Disposable[] => {
-  const syncService = SyncService.get();
+  // For backward compatibility, fall back to singleton if syncService not provided
+  const service = syncService || SyncService.get();
 
   return [
     // Command: Sync prompts now
     vscode.commands.registerCommand('promptBank.syncPrompts', async () => {
-      await syncPromptsCommand(promptService, syncService);
+      await syncPromptsCommand(promptService, service);
     }),
 
     // Command: Enable/disable auto-sync
@@ -30,17 +32,17 @@ export const registerSyncCommands = (
 
     // Command: View sync status
     vscode.commands.registerCommand('promptBank.viewSyncStatus', async () => {
-      await viewSyncStatusCommand(syncService);
+      await viewSyncStatusCommand(service);
     }),
 
     // Command: Clear sync state (reset)
     vscode.commands.registerCommand('promptBank.clearSyncState', async () => {
-      await clearSyncStateCommand(syncService);
+      await clearSyncStateCommand(service);
     }),
 
     // Command: Restore deleted prompts
     vscode.commands.registerCommand('promptBank.restoreDeletedPrompts', async () => {
-      await restoreDeletedPromptsCommand(syncService, promptService);
+      await restoreDeletedPromptsCommand(service, promptService);
     }),
   ];
 };
