@@ -53,14 +53,19 @@ export class SyncService {
    * Use this constructor directly only for DI scenarios or testing.
    *
    * @param context - VS Code extension context
-   * @param workspaceRoot - Absolute path to workspace root directory
+   * @param workspaceRoot - Absolute path to workspace root directory (for backward compatibility)
+   * @param authService - Optional injected auth service (for DI). Falls back to singleton if not provided.
+   * @param syncStateStorage - Optional injected sync state storage (for DI). Creates new instance if not provided.
    */
   constructor(
     private context: vscode.ExtensionContext,
-    workspaceRoot: string
+    workspaceRoot: string,
+    authService?: AuthService,
+    syncStateStorage?: SyncStateStorage
   ) {
-    this.authService = AuthService.get();
-    this.syncStateStorage = new SyncStateStorage(workspaceRoot);
+    // Use injected dependencies if provided, otherwise fall back to legacy behavior
+    this.authService = authService || AuthService.get();
+    this.syncStateStorage = syncStateStorage || new SyncStateStorage(workspaceRoot);
   }
 
   /**

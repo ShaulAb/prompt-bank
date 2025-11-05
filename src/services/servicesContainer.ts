@@ -152,25 +152,24 @@ export class ServicesContainer {
 
     // Create services in dependency order
     // 1. Auth service (no dependencies)
-    const authService = AuthService.initialize(context, publisher, extensionName);
+    const authService = new AuthService(context, publisher, extensionName);
 
-    // 2. Supabase client (depends on auth - but currently uses static)
+    // 2. Supabase client (static singleton - no DI needed)
     const supabaseClient = SupabaseClientManager.initialize();
 
     // 3. Storage providers
     const storageProvider = new FileStorageProvider({ storagePath: workspaceRoot });
     await storageProvider.initialize();
 
-    // TODO: Will be used when SyncService constructor is updated to accept dependencies
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const syncStateStorage = new SyncStateStorage(workspaceRoot);
 
     // 4. Prompt service (depends on storage)
     const promptService = new PromptService(storageProvider);
     await promptService.initialize();
 
-    // 5. Sync service (depends on auth, supabase, storage)
-    const syncService = SyncService.initialize(context, workspaceRoot);
+    // 5. Sync service (depends on auth, syncStateStorage)
+    // Use constructor with dependency injection
+    const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage);
 
     return {
       auth: authService,
