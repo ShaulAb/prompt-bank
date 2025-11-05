@@ -12,6 +12,7 @@ import type { Prompt } from '../../src/models/prompt';
  * Prompt creation options for tests
  */
 export interface PromptOptions {
+  id?: string;
   title: string;
   content: string;
   category?: string;
@@ -24,13 +25,21 @@ export interface PromptOptions {
  * @example
  * ```ts
  * const prompt = createPrompt({ title: 'Test', content: 'Content', category: 'Cat' });
+ * const promptWithId = createPrompt({ id: 'custom-id', title: 'Test', content: 'Content' });
  * ```
  */
 export function createPrompt(options: PromptOptions): Prompt {
-  return baseCreatePrompt(
+  const prompt = baseCreatePrompt(
     options.title,
     options.content,
     options.category || 'General',
     options.description
   );
+
+  // Override ID if provided (useful for conflict resolution tests)
+  if (options.id) {
+    prompt.id = options.id;
+  }
+
+  return prompt;
 }

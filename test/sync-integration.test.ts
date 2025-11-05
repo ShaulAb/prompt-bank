@@ -152,6 +152,12 @@ describe('SyncService - Integration', () => {
       await promptService.deletePromptById(deviceAPrompt1.id);
       await promptService.deletePromptById(deviceAPrompt2.id);
 
+      // CRITICAL: Reset singleton instances to simulate a different device
+      // This ensures Device B gets a fresh SyncService instance with its own storage path
+      (SyncService as any).instance = undefined;
+      (AuthService as any).instance = undefined;
+      (SupabaseClientManager as any).instance = undefined;
+
       // Create new sync service for Device B (simulates different device)
       const testStorageDirB = path.join(
         os.tmpdir(),
@@ -162,6 +168,15 @@ describe('SyncService - Integration', () => {
 
       const promptServiceB = new PromptService(storageProviderB);
       await promptServiceB.initialize();
+
+      // Re-initialize services for Device B
+      AuthService.initialize(context, 'test-publisher', 'test-extension');
+      SupabaseClientManager.initialize();
+
+      // Re-mock authentication for Device B
+      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
       const syncServiceB = SyncService.initialize(context, testStorageDirB);
 
@@ -323,9 +338,29 @@ describe('SyncService - Integration', () => {
       // Verify sync state cleared
       await expect(syncService.getSyncStateInfo()).rejects.toThrow(/Not configured/);
 
+      // CRITICAL: Clear cloud database to simulate true first sync scenario
+      // When sync state is cleared locally, the cloud prompts should also be deleted
+      // to test the "upload everything as if first sync" behavior
+      syncTestHelpers.clearCloudDatabase();
+
+      // CRITICAL: Reset singleton to simulate fresh sync session after clearing state
+      // This ensures the SyncService re-initializes with the cleared state
+      (SyncService as any).instance = undefined;
+      (AuthService as any).instance = undefined;
+      (SupabaseClientManager as any).instance = undefined;
+
+      // Re-initialize services
+      AuthService.initialize(context, 'test-publisher', 'test-extension');
+      SupabaseClientManager.initialize();
+      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+
+      const syncServiceFresh = SyncService.initialize(context, testStorageDir);
+
       // Next sync should be treated as first sync
       const localPrompts = await promptService.listPrompts();
-      const result = await syncService.performSync(localPrompts, promptService);
+      const result = await syncServiceFresh.performSync(localPrompts, promptService);
 
       // Should re-upload everything as if first sync
       expect(result.stats.uploaded).toBe(2);

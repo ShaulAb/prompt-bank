@@ -452,9 +452,23 @@ describe('SyncService - Edge Cases', () => {
         version: 1,
       });
 
+      // CRITICAL: Reset singleton to ensure SyncService picks up the manually configured sync state
+      (SyncService as any).instance = undefined;
+      (AuthService as any).instance = undefined;
+      (SupabaseClientManager as any).instance = undefined;
+
+      // Re-initialize services
+      AuthService.initialize(context, 'test-publisher', 'test-extension');
+      SupabaseClientManager.initialize();
+      vi.spyOn(AuthService.get(), 'getValidAccessToken').mockResolvedValue('mock-access-token');
+      vi.spyOn(AuthService.get(), 'getRefreshToken').mockResolvedValue('mock-refresh-token');
+      vi.spyOn(AuthService.get(), 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
+
+      const syncServiceFresh = SyncService.initialize(context, testStorageDir);
+
       // Act
       const localPrompts = await promptService.listPrompts();
-      const result = await syncService.performSync(localPrompts, promptService);
+      const result = await syncServiceFresh.performSync(localPrompts, promptService);
 
       // Assert
       expect(result.stats.conflicts).toBe(1);
