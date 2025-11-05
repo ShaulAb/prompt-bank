@@ -37,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Get workspace root and initialize workspace-scoped services
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let workspaceServices: WorkspaceServices | undefined;
-    
+
     if (workspaceRoot) {
       workspaceServices = await servicesContainer.getOrCreate(context, workspaceRoot);
     }
@@ -103,7 +103,7 @@ export async function deactivate() {
 
 /**
  * Get the services container instance
- * 
+ *
  * @returns Services container, or undefined if not initialized
  */
 export function getServicesContainer(): ServicesContainer | undefined {

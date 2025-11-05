@@ -261,7 +261,9 @@ export function registerCommands(
     async () => {
       try {
         if (!authService) {
-          vscode.window.showErrorMessage('Authentication service not available. Please reload the extension.');
+          vscode.window.showErrorMessage(
+            'Authentication service not available. Please reload the extension.'
+          );
           return;
         }
         await promptService.shareCollection(undefined, authService);

@@ -488,7 +488,7 @@ export class PromptService {
 
   /**
    * Share a collection of prompts.
-   * 
+   *
    * @param categoryToShare - Optional category name to share. If not provided, shows quick pick.
    * @param authService - Optional auth service for authentication. Uses injected service if not provided.
    */

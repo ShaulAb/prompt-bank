@@ -24,13 +24,13 @@ import { SyncStateStorage } from '../storage/syncStateStorage';
 export interface WorkspaceServices {
   /** Authentication service */
   auth: AuthService;
-  
+
   /** Supabase client instance (not the manager class) */
   supabase: SupabaseClient<Database>;
-  
+
   /** Sync service for cloud synchronization */
   sync: SyncService;
-  
+
   /** Prompt service for local prompt management */
   prompt: PromptService;
 }
@@ -115,9 +115,7 @@ export class ServicesContainer {
     const allServices = Array.from(this.services.values());
 
     // Dispose all workspaces in parallel
-    await Promise.all(
-      allServices.map(services => this.disposeServices(services))
-    );
+    await Promise.all(allServices.map((services) => this.disposeServices(services)));
 
     this.services.clear();
   }
@@ -194,25 +192,24 @@ export class ServicesContainer {
     // Use Promise.allSettled to ensure all dispose attempts complete
 
     const disposeResults = await Promise.allSettled([
-      services.sync.dispose().catch(err => {
+      services.sync.dispose().catch((err) => {
         console.error('[ServicesContainer] Error disposing SyncService:', err);
         throw err;
       }),
-      services.prompt.dispose().catch(err => {
+      services.prompt.dispose().catch((err) => {
         console.error('[ServicesContainer] Error disposing PromptService:', err);
         throw err;
       }),
-      services.auth.dispose().catch(err => {
+      services.auth.dispose().catch((err) => {
         console.error('[ServicesContainer] Error disposing AuthService:', err);
         throw err;
       }),
     ]);
 
     // Log any failures but don't throw - disposal should be best-effort
-    const failures = disposeResults.filter(result => result.status === 'rejected');
+    const failures = disposeResults.filter((result) => result.status === 'rejected');
     if (failures.length > 0) {
       console.warn(`[ServicesContainer] ${failures.length} service(s) failed to dispose properly`);
     }
   }
 }
-

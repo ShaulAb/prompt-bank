@@ -54,7 +54,7 @@ export class SyncService {
    */
   constructor(
     private context: vscode.ExtensionContext,
-    workspaceRoot: string,
+    _workspaceRoot: string,
     authService: AuthService,
     syncStateStorage: SyncStateStorage
   ) {
@@ -130,7 +130,9 @@ export class SyncService {
 
       if (!remotePrompt) {
         // Check if deleted remotely (must have cloudId to check)
-        const remoteDeleted = cloudId ? remote.find((r) => r.cloud_id === cloudId && r.deleted_at) : undefined;
+        const remoteDeleted = cloudId
+          ? remote.find((r) => r.cloud_id === cloudId && r.deleted_at)
+          : undefined;
 
         if (remoteDeleted) {
           // DELETE-MODIFY CONFLICT: Remote deleted, local modified
@@ -340,7 +342,7 @@ export class SyncService {
    * Generate a new unique ID for prompts
    */
   private generateNewId(): string {
-    return `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -553,8 +555,9 @@ export class SyncService {
       return null;
     }
 
-    const errorContext = (error as { context?: { status?: number; error?: string; details?: unknown } })
-      .context;
+    const errorContext = (
+      error as { context?: { status?: number; error?: string; details?: unknown } }
+    ).context;
 
     // Check if it's a 409 conflict
     if (errorContext?.status !== 409) {
@@ -562,13 +565,18 @@ export class SyncService {
     }
 
     // NEW FORMAT: Server returns specific error code
-    if (errorContext.error && Object.values(SyncConflictType).includes(errorContext.error as SyncConflictType)) {
+    if (
+      errorContext.error &&
+      Object.values(SyncConflictType).includes(errorContext.error as SyncConflictType)
+    ) {
       const result: SyncConflictError = {
         code: errorContext.error as SyncConflictType,
         message: error.message || 'Sync conflict',
-        ...(errorContext.details ? { details: errorContext.details as NonNullable<SyncConflictError['details']> } : {}),
+        ...(errorContext.details
+          ? { details: errorContext.details as NonNullable<SyncConflictError['details']> }
+          : {}),
       };
-      
+
       return result;
     }
 
@@ -578,7 +586,7 @@ export class SyncService {
     if (error.message?.includes('conflict') || errorContext.error === 'conflict') {
       console.warn(
         '[SyncService] Received legacy 409 conflict format. Assuming PROMPT_DELETED. ' +
-        'Consider updating Edge Functions for better conflict resolution.'
+          'Consider updating Edge Functions for better conflict resolution.'
       );
       return {
         code: SyncConflictType.PROMPT_DELETED,
@@ -620,7 +628,7 @@ export class SyncService {
           // Soft-deleted prompt - upload as NEW with new cloudId
           console.info(
             `[SyncService] Prompt ${prompt.id} was deleted in cloud (cloudId: ${syncInfo?.cloudId}). ` +
-            `Creating new cloud prompt.`
+              `Creating new cloud prompt.`
           );
           return await this.uploadPrompt(prompt); // No syncInfo = new prompt
 
@@ -629,9 +637,9 @@ export class SyncService {
           // Version conflict - need to retry entire sync to get fresh state
           console.warn(
             `[SyncService] ${conflictError.code} for prompt ${prompt.id}. ` +
-            `Expected v${conflictError.details?.expectedVersion}, ` +
-            `actual v${conflictError.details?.actualVersion}. ` +
-            `This usually means another device modified the prompt. Retrying sync...`
+              `Expected v${conflictError.details?.expectedVersion}, ` +
+              `actual v${conflictError.details?.actualVersion}. ` +
+              `This usually means another device modified the prompt. Retrying sync...`
           );
           throw new Error('sync_conflict_retry');
 
@@ -712,7 +720,7 @@ export class SyncService {
           // error.context is a Response object - clone it before reading (can only read once)
           const response = errorContext as unknown as Response;
           let responseBody: any;
-          
+
           try {
             // Clone the response so we can read it (Response body can only be consumed once)
             const clonedResponse = response.clone();
@@ -723,7 +731,7 @@ export class SyncService {
             console.warn('[SyncService] Failed to parse 409 response body:', parseError);
             throw new Error('Sync conflict detected but response body could not be parsed');
           }
-          
+
           // Successfully parsed - create error with context and throw
           // This will be caught by outer catch, which will preserve the context
           const conflictError = new Error(responseBody?.message || 'Sync conflict');
@@ -1170,10 +1178,12 @@ export class SyncService {
    * Should be called when the workspace is closed or the extension is deactivated.
    */
   public async dispose(): Promise<void> {
-    // Clear sync state storage reference
-    this.syncStateStorage = undefined;
+    // Clear sync status cache
+    this.clearSyncStatusCache();
 
-    // Note: No timers or intervals to clean up in this service
-    // The AuthService and SupabaseClientManager will be disposed separately
+    // Note: No additional cleanup needed
+    // - syncStateStorage is managed by the container
+    // - AuthService and SupabaseClientManager will be disposed separately
+    // - No timers or intervals to clean up
   }
 }
