@@ -46,7 +46,16 @@ export class SyncService {
   // In-memory sync status cache (for tree view icons)
   private syncStatusCache = new Map<string, 'synced' | 'out-of-sync' | 'conflict'>();
 
-  private constructor(
+  /**
+   * Create a new SyncService instance
+   *
+   * Note: For backward compatibility, prefer using `SyncService.initialize()` for singleton usage.
+   * Use this constructor directly only for DI scenarios or testing.
+   *
+   * @param context - VS Code extension context
+   * @param workspaceRoot - Absolute path to workspace root directory
+   */
+  constructor(
     private context: vscode.ExtensionContext,
     workspaceRoot: string
   ) {
@@ -1170,5 +1179,22 @@ export class SyncService {
   public async clearAllSyncState(): Promise<void> {
     await this.syncStateStorage!.clearAllSyncState();
     this.clearSyncStatusCache();
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   */
+  public async dispose(): Promise<void> {
+    // Clear sync state storage reference
+    this.syncStateStorage = undefined;
+
+    // Note: No timers or intervals to clean up in this service
+    // The AuthService and SupabaseClientManager will be disposed separately
   }
 }

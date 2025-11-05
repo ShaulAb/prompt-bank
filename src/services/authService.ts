@@ -58,7 +58,17 @@ export class AuthService {
   private readonly LAST_VERIFICATION_KEY = 'promptBank.lastTokenVerification';
   private readonly OFFLINE_GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes for offline scenarios
 
-  private constructor(
+  /**
+   * Create a new AuthService instance
+   *
+   * Note: For backward compatibility, prefer using `AuthService.initialize()` for singleton usage.
+   * Use this constructor directly only for DI scenarios or testing.
+   *
+   * @param context - VS Code extension context
+   * @param publisher - Extension publisher name
+   * @param extensionName - Extension name
+   */
+  constructor(
     private context: vscode.ExtensionContext,
     publisher: string,
     extensionName: string
@@ -610,5 +620,27 @@ export class AuthService {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears all authentication state from memory (not from SecretStorage).
+   */
+  public async dispose(): Promise<void> {
+    // Clear in-memory authentication state
+    this.token = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.userId = undefined;
+    this.userEmail = undefined;
+
+    // Note: We intentionally do NOT clear SecretStorage here
+    // Users expect their auth to persist across extension reloads
   }
 }

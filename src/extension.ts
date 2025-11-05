@@ -9,6 +9,11 @@ import { AuthService } from './services/authService';
 import { SyncService } from './services/syncService';
 import { SupabaseClientManager } from './services/supabaseClient';
 import { WebViewCache } from './webview/WebViewCache';
+import { ServicesContainer } from './services/servicesContainer';
+
+// Global services container instance
+// Manages services per workspace with proper lifecycle
+let servicesContainer: ServicesContainer | undefined;
 
 /**
  * Extension activation function
@@ -18,7 +23,10 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('Prompt Bank extension is activating...');
 
   try {
-    // Initialize the prompt service
+    // Create services container
+    servicesContainer = new ServicesContainer();
+
+    // Initialize the prompt service (legacy singleton - will be migrated in Phase 3)
     await promptService.initialize();
 
     // Get extension details for auth URI construction
@@ -31,13 +39,18 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize Supabase client (shared by Auth, Sync, and Share services)
     SupabaseClientManager.initialize();
 
-    // Initialise authentication service
+    // Initialise authentication service (legacy singleton - for backward compatibility)
     AuthService.initialize(context, publisher, extensionName);
 
     // Initialize sync service (requires workspace root)
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
     if (workspaceRoot) {
+      // Legacy singleton initialization for backward compatibility
       SyncService.initialize(context, workspaceRoot);
+      
+      // Also create services via container (for future migration)
+      // This ensures the container has services ready when commands need them
+      await servicesContainer.getOrCreate(context, workspaceRoot);
     }
 
     // Create and register tree view
@@ -83,8 +96,23 @@ export async function activate(context: vscode.ExtensionContext) {
  * Extension deactivation function
  * Called when the extension is deactivated
  */
-export function deactivate() {
+export async function deactivate() {
+  // Dispose services container (cleans up all workspace services)
+  if (servicesContainer) {
+    await servicesContainer.disposeAll();
+    servicesContainer = undefined;
+  }
+
   // Clear WebView cache to free memory
   WebViewCache.clear();
   console.log('Prompt Bank extension deactivated');
+}
+
+/**
+ * Get the services container instance
+ * 
+ * @returns Services container, or undefined if not initialized
+ */
+export function getServicesContainer(): ServicesContainer | undefined {
+  return servicesContainer;
 }

@@ -636,6 +636,24 @@ export class PromptService {
     }
     return prompts.length;
   }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears initialization state but does NOT delete data from storage.
+   */
+  async dispose(): Promise<void> {
+    // Clear initialization flag
+    this.isInitialized = false;
+
+    // Note: We don't dispose the storage provider since it's injected
+    // and may be shared across multiple services
+  }
 }
 
 // Export singleton instance
