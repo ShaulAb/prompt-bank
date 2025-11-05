@@ -348,6 +348,61 @@ https://xlqtowactrzmslpkzliq.supabase.co/auth/v1/.well-known/jwks.json
 - Tokens auto-refresh when expired
 - See `test/auth-jwks-verification.test.ts` for test examples
 
+### Dependency Injection Architecture
+
+The extension uses **constructor-based dependency injection** for all services, managed by `ServicesContainer`.
+
+**Overview:**
+- **Pattern**: Constructor injection (no singletons)
+- **Container**: `ServicesContainer` manages service lifecycle
+- **Benefits**: Better testability, explicit dependencies, proper cleanup
+
+**How It Works:**
+1. Extension activates → `ServicesContainer` created
+2. Services instantiated with dependencies via constructor
+3. Services passed to commands/handlers
+4. Extension deactivates → all services disposed
+
+**Service Initialization:**
+```typescript
+// Production: via ServicesContainer
+const services = await servicesContainer.getOrCreate(context, workspaceRoot);
+const authService = services.auth;
+const syncService = services.sync;
+const promptService = services.prompt;
+
+// Tests: direct instantiation with DI
+const authService = new AuthService(context, publisher, extensionName);
+const syncStateStorage = new SyncStateStorage(workspaceRoot);
+const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage);
+```
+
+**Dependency Graph:**
+```
+ServicesContainer
+├─> AuthService(context, publisher, extension)
+├─> SupabaseClientManager (static singleton - global resource)
+├─> FileStorageProvider(workspaceRoot)
+│   └─> injected into PromptService
+├─> SyncStateStorage(workspaceRoot)
+│   └─> injected into SyncService
+├─> PromptService(storage, authService)
+└─> SyncService(context, root, auth, syncStorage)
+```
+
+**Adding a New Service:**
+1. Create service with constructor dependencies
+2. Add `dispose()` method for cleanup
+3. Update `ServicesContainer.getOrCreate()` to instantiate it
+4. Update `WorkspaceServices` interface
+5. Update `disposeServices()` to clean it up
+6. Write tests using direct instantiation
+
+**Key Files:**
+- `src/services/servicesContainer.ts` - Container implementation
+- `src/extension.ts` - Container usage in activation
+- `test/sync-*.test.ts` - Examples of DI in tests
+
 ### WebView Development
 
 The extension uses LitElement for the prompt editor:

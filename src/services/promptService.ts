@@ -13,9 +13,11 @@ import { AuthService } from './authService';
 export class PromptService {
   private storage: IStorageProvider;
   private isInitialized = false;
+  private authService: AuthService | undefined;
 
-  constructor(storage?: IStorageProvider) {
+  constructor(storage?: IStorageProvider, authService?: AuthService) {
     this.storage = storage || new FileStorageProvider();
+    this.authService = authService;
   }
 
   /**
@@ -486,8 +488,11 @@ export class PromptService {
 
   /**
    * Share a collection of prompts.
+   *
+   * @param categoryToShare - Optional category name to share. If not provided, shows quick pick.
+   * @param authService - Optional auth service for authentication. Uses injected service if not provided.
    */
-  async shareCollection(categoryToShare?: string): Promise<void> {
+  async shareCollection(categoryToShare?: string, authService?: AuthService): Promise<void> {
     await this.ensureInitialized();
 
     let promptsToShare: Prompt[] = [];
@@ -538,12 +543,16 @@ export class PromptService {
       return;
     }
 
-    const accessToken = await AuthService.get().getValidAccessToken();
+    const auth = authService || this.authService;
+    if (!auth) {
+      throw new Error('AuthService not provided. This method requires dependency injection.');
+    }
+    const accessToken = await auth.getValidAccessToken();
     if (!accessToken) {
       vscode.window.showErrorMessage('You must be logged in to share collections.');
       return;
     }
-    const shareResult = await createShareMulti(promptsToShare, accessToken);
+    const shareResult = await createShareMulti(promptsToShare, accessToken, auth);
     vscode.env.clipboard.writeText(shareResult.url);
     vscode.window.showInformationMessage(
       'Collection share link copied to clipboard! Expires in 24h.'
@@ -635,6 +644,24 @@ export class PromptService {
       await this.storage.update(prompt);
     }
     return prompts.length;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears initialization state but does NOT delete data from storage.
+   */
+  async dispose(): Promise<void> {
+    // Clear initialization flag
+    this.isInitialized = false;
+
+    // Note: We don't dispose the storage provider since it's injected
+    // and may be shared across multiple services
   }
 }
 

@@ -118,6 +118,28 @@ class SupabaseClientManager {
     const client = SupabaseClientManager.get();
     await client.auth.signOut();
   }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears the Supabase client instance and any active auth sessions.
+   */
+  public static async dispose(): Promise<void> {
+    if (SupabaseClientManager.instance) {
+      // Clear any active auth session
+      await SupabaseClientManager.instance.auth.signOut().catch(() => {
+        // Ignore errors during cleanup
+      });
+
+      // Clear the instance reference
+      SupabaseClientManager.instance = undefined;
+    }
+  }
 }
 
 export { SupabaseClientManager };

@@ -32,8 +32,6 @@ interface SupabaseJWTPayload extends JWTPayload {
 }
 
 export class AuthService {
-  private static instance: AuthService | undefined;
-
   private token: string | undefined;
   private refreshToken: string | undefined;
   private expiresAt: number | undefined;
@@ -58,7 +56,14 @@ export class AuthService {
   private readonly LAST_VERIFICATION_KEY = 'promptBank.lastTokenVerification';
   private readonly OFFLINE_GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes for offline scenarios
 
-  private constructor(
+  /**
+   * Create a new AuthService instance using dependency injection.
+   *
+   * @param context - VS Code extension context
+   * @param publisher - Extension publisher name
+   * @param extensionName - Extension name
+   */
+  constructor(
     private context: vscode.ExtensionContext,
     publisher: string,
     extensionName: string
@@ -71,30 +76,6 @@ export class AuthService {
     );
     this.publisher = publisher;
     this.extensionName = extensionName;
-  }
-
-  /**
-   * Initialise the singleton. Must be called once from extension activation.
-   */
-  public static initialize(
-    context: vscode.ExtensionContext,
-    publisher: string,
-    extensionName: string
-  ): AuthService {
-    if (!AuthService.instance) {
-      AuthService.instance = new AuthService(context, publisher, extensionName);
-    }
-    return AuthService.instance;
-  }
-
-  /**
-   * Retrieve the existing instance. Throws if not yet initialised.
-   */
-  public static get(): AuthService {
-    if (!AuthService.instance) {
-      throw new Error('AuthService not initialised. Call initialize() first.');
-    }
-    return AuthService.instance;
   }
 
   /**
@@ -610,5 +591,27 @@ export class AuthService {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears all authentication state from memory (not from SecretStorage).
+   */
+  public async dispose(): Promise<void> {
+    // Clear in-memory authentication state
+    this.token = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.userId = undefined;
+    this.userEmail = undefined;
+
+    // Note: We intentionally do NOT clear SecretStorage here
+    // Users expect their auth to persist across extension reloads
   }
 }
