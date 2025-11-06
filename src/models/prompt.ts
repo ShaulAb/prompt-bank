@@ -1,3 +1,32 @@
+import { randomUUID } from 'crypto';
+
+/**
+ * Version snapshot of a prompt at a specific point in time
+ * Used for version history and restoration
+ */
+export interface PromptVersion {
+  /** Unique version identifier (UUID) - unique across all devices */
+  versionId: string;
+
+  /** When this version was created (authoritative ordering) */
+  timestamp: Date;
+
+  /** Device that created this version (stable machine ID) */
+  deviceId: string;
+
+  /** Device name for display (e.g., "MacBook Pro (darwin)") */
+  deviceName: string;
+
+  /** Snapshot of prompt state at this version */
+  content: string;
+  title: string;
+  description?: string;
+  category: string;
+
+  /** Optional user-provided reason for change */
+  changeReason?: string;
+}
+
 /**
  * Core prompt model with extensible structure for future features
  */
@@ -28,6 +57,9 @@ export interface Prompt {
 
   /** Metadata for analytics and future features */
   metadata: PromptMetadata;
+
+  /** Version history (sorted by timestamp, oldest first) */
+  versions: PromptVersion[];
 }
 
 /**
@@ -101,6 +133,7 @@ export function createPrompt(
       modified: new Date(),
       usageCount: 0,
     },
+    versions: [], // Initialize with empty version history
   };
 
   if (description !== undefined) {
@@ -108,6 +141,43 @@ export function createPrompt(
   }
 
   return newPrompt;
+}
+
+/**
+ * Get the current (most recent) version of a prompt
+ * Returns undefined if no versions exist
+ */
+export function getCurrentVersion(prompt: Prompt): PromptVersion | undefined {
+  if (prompt.versions.length === 0) {
+    return undefined;
+  }
+  return prompt.versions[prompt.versions.length - 1];
+}
+
+/**
+ * Get the display version number for a specific version ID
+ * Version numbers are 1-indexed (v1, v2, v3, ...)
+ * Returns 0 if version not found
+ */
+export function getVersionNumber(prompt: Prompt, versionId: string): number {
+  const index = prompt.versions.findIndex((v) => v.versionId === versionId);
+  return index === -1 ? 0 : index + 1;
+}
+
+/**
+ * Get the current display version number (total version count)
+ * Returns 0 if no versions exist
+ */
+export function getDisplayVersionNumber(prompt: Prompt): number {
+  return prompt.versions.length;
+}
+
+/**
+ * Generate a UUID v4 using Node.js crypto module
+ * Available in Node.js 14.17.0+ and 15.6.0+
+ */
+export function generateUUID(): string {
+  return randomUUID();
 }
 
 /**

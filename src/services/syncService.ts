@@ -41,8 +41,6 @@ export class SyncService {
   private syncStateStorage: SyncStateStorage;
   private authService: AuthService;
 
-  // In-memory sync status cache (for tree view icons)
-  private syncStatusCache = new Map<string, 'synced' | 'out-of-sync' | 'conflict'>();
 
   /**
    * Create a new SyncService instance using dependency injection.
@@ -293,6 +291,47 @@ export class SyncService {
   /**
    * Convert remote prompt to local Prompt format
    */
+  /**
+   * Merge version histories from local and remote prompts
+   * Versions are combined, sorted by timestamp, and deduplicated
+   *
+   * @param localVersions - Version history from local prompt
+   * @param remoteVersions - Version history from remote prompt
+   * @returns Merged and deduplicated version array
+   */
+  private mergeVersionHistories(
+    localVersions: import('../models/prompt').PromptVersion[],
+    remoteVersions: import('../models/prompt').PromptVersion[]
+  ): import('../models/prompt').PromptVersion[] {
+    // Combine all versions
+    const allVersions = [...localVersions, ...remoteVersions];
+
+    // Sort by timestamp (oldest first for authoritative ordering)
+    allVersions.sort((a, b) => {
+      const aTime = new Date(a.timestamp).getTime();
+      const bTime = new Date(b.timestamp).getTime();
+      return aTime - bTime;
+    });
+
+    // Deduplicate by versionId (same version synced from both sides)
+    const uniqueById = new Map<string, import('../models/prompt').PromptVersion>();
+    for (const version of allVersions) {
+      if (!uniqueById.has(version.versionId)) {
+        uniqueById.set(version.versionId, version);
+      }
+    }
+
+    const deduplicatedVersions = Array.from(uniqueById.values());
+
+    console.log(
+      `[SyncService] Merged version histories: ` +
+        `${localVersions.length} local + ${remoteVersions.length} remote = ` +
+        `${deduplicatedVersions.length} unique versions`
+    );
+
+    return deduplicatedVersions;
+  }
+
   private convertRemoteToLocal(remote: RemotePrompt): Prompt {
     // Type assertion for metadata from JSON
     interface MetadataJSON {
@@ -301,9 +340,45 @@ export class SyncService {
       usageCount: number;
       lastUsed?: string | number | Date;
       context?: FileContext;
+      versions?: Array<{
+        versionId: string;
+        timestamp: string | number | Date;
+        deviceId: string;
+        deviceName: string;
+        content: string;
+        title: string;
+        description?: string;
+        category: string;
+        changeReason?: string;
+      }>;
     }
     const metadata = remote.metadata as MetadataJSON;
     const variables = (remote.variables as TemplateVariable[]) || [];
+
+    // Convert version history (timestamps from JSON strings to Date objects)
+    const versions: import('../models/prompt').PromptVersion[] = (metadata.versions || []).map(
+      (v) => {
+        const version: import('../models/prompt').PromptVersion = {
+          versionId: v.versionId,
+          timestamp: new Date(v.timestamp),
+          deviceId: v.deviceId,
+          deviceName: v.deviceName,
+          content: v.content,
+          title: v.title,
+          category: v.category,
+        };
+
+        // Add optional properties
+        if (v.description !== undefined) {
+          version.description = v.description;
+        }
+        if (v.changeReason !== undefined) {
+          version.changeReason = v.changeReason;
+        }
+
+        return version;
+      }
+    );
 
     const prompt: Prompt = {
       id: remote.local_id,
@@ -316,6 +391,7 @@ export class SyncService {
         modified: new Date(metadata.modified),
         usageCount: metadata.usageCount || 0,
       },
+      versions: versions, // Include version history
     };
 
     // Add optional properties only if they exist
@@ -350,32 +426,6 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Get sync status for a specific prompt (for tree view icon)
-   *
-   * @param promptId - Local prompt ID
-   * @returns Sync status: 'synced', 'out-of-sync', or 'conflict'
-   */
-  public getSyncStatus(promptId: string): 'synced' | 'out-of-sync' | 'conflict' {
-    return this.syncStatusCache.get(promptId) || 'synced';
-  }
-
-  /**
-   * Update sync status cache (called during sync operations)
-   *
-   * Note: Currently unused but kept for future tree view icon support
-   */
-  // private updateSyncStatusCache(
-  //   promptId: string,
-  //   status: 'synced' | 'out-of-sync' | 'conflict'
-  // ): void {
-  //   this.syncStatusCache.set(promptId, status);
-  // }
-
-  /**
-   * Clear sync status cache (called after successful sync)
-   */
-  private clearSyncStatusCache(): void {
-    this.syncStatusCache.clear();
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -397,21 +447,6 @@ export class SyncService {
     return state;
   }
 
-  /**
-   * Validate user is authenticated
-   *
-   * Note: Currently unused but kept for potential future use
-   */
-  // private async validateAuthentication(): Promise<{ email: string; token: string }> {
-  //   const token = await this.authService.getValidAccessToken();
-  //   const email = await this.authService.getUserEmail();
-
-  //   if (!email) {
-  //     throw new Error('No user email found. Please sign in again.');
-  //   }
-
-  //   return { email, token };
-  // }
 
   /**
    * Validate authentication and set session on Supabase client
@@ -684,6 +719,18 @@ export class SyncService {
         usageCount: prompt.metadata.usageCount,
         lastUsed: prompt.metadata.lastUsed?.toISOString(),
         context: prompt.metadata.context,
+        // ✅ Include version history for cross-device sync
+        versions: prompt.versions.map((v) => ({
+          versionId: v.versionId,
+          timestamp: v.timestamp.toISOString(),
+          deviceId: v.deviceId,
+          deviceName: v.deviceName,
+          content: v.content,
+          title: v.title,
+          description: v.description,
+          category: v.category,
+          changeReason: v.changeReason,
+        })),
       },
       sync_metadata: {
         lastModifiedDeviceId: deviceInfo.id,
@@ -986,13 +1033,32 @@ export class SyncService {
         result.stats.uploaded++;
       }
 
-      // 4. Download prompts
+      // 4. Download prompts (with version history merging)
       for (const remotePrompt of plan.toDownload) {
-        const localPrompt = this.convertRemoteToLocal(remotePrompt);
-        await promptService.savePromptDirectly(localPrompt);
+        const remoteLocalPrompt = this.convertRemoteToLocal(remotePrompt);
 
-        const contentHash = computeContentHash(localPrompt);
-        await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
+        // Check if prompt exists locally (for version merging)
+        const existingLocal = await promptService.listPrompts({
+          category: remoteLocalPrompt.category,
+        });
+        const existingPrompt = existingLocal.find((p) => p.id === remoteLocalPrompt.id);
+
+        if (existingPrompt && existingPrompt.versions.length > 0) {
+          // Merge version histories from both local and remote
+          remoteLocalPrompt.versions = this.mergeVersionHistories(
+            existingPrompt.versions,
+            remoteLocalPrompt.versions
+          );
+          console.log(
+            `[SyncService] Merged versions for prompt "${remoteLocalPrompt.title}": ` +
+              `${remoteLocalPrompt.versions.length} total versions`
+          );
+        }
+
+        await promptService.savePromptDirectly(remoteLocalPrompt);
+
+        const contentHash = computeContentHash(remoteLocalPrompt);
+        await this.syncStateStorage!.setPromptSyncInfo(remoteLocalPrompt.id, {
           cloudId: remotePrompt.cloud_id,
           lastSyncedContentHash: contentHash,
           lastSyncedAt: new Date(),
@@ -1067,10 +1133,6 @@ export class SyncService {
 
     // 7. Update last synced timestamp
     await this.syncStateStorage!.updateLastSyncedAt();
-
-    // 8. Clear sync status cache
-    this.clearSyncStatusCache();
-
     return result;
   }
 
@@ -1165,7 +1227,6 @@ export class SyncService {
    */
   public async clearAllSyncState(): Promise<void> {
     await this.syncStateStorage!.clearAllSyncState();
-    this.clearSyncStatusCache();
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -1178,12 +1239,6 @@ export class SyncService {
    * Should be called when the workspace is closed or the extension is deactivated.
    */
   public async dispose(): Promise<void> {
-    // Clear sync status cache
-    this.clearSyncStatusCache();
-
-    // Note: No additional cleanup needed
-    // - syncStateStorage is managed by the container
-    // - AuthService and SupabaseClientManager will be disposed separately
     // - No timers or intervals to clean up
   }
 }

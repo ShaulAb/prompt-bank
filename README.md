@@ -38,6 +38,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, and Rename Category.
 - **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
 - **Authentication**: Secure Google OAuth integration for sharing and sync features.
+- **Prompt Versioning**: Automatic version history for every prompt edit. Restore previous versions, track changes across devices, and never lose work. Configurable strategies (on-save, time-debounce, manual) with automatic pruning to manage storage.
 - **Persistence**: All data persists across VS Code sessions with atomic file operations.
 
 
