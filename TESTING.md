@@ -7,8 +7,8 @@ This document provides a comprehensive overview of the testing strategy, test ca
 ## 📊 Test Overview
 
 ```
-Total Tests: 123 tests across 17 test files
-Status: ✅ 114 passing | ⏭️ 9 skipped
+Total Tests: 141 tests across 22 test files
+Status: ✅ 132 passing | ⏭️ 9 skipped
 Success Rate: 100% (all tests passing)
 CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 ```
@@ -70,8 +70,9 @@ CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 - **Save Selection**: Save from editor selection (`save-selection-prompt.test.ts` - 9 tests)
 - **WebView**: Editor panel (`webview-editor-panel.test.ts` - 10 tests, 7 skipped)
 - **Sync Features**: Three-way merge, edge cases, integration, conflict resolution (4 files, 46 tests)
+- **Versioning**: Version creation, pruning, restoration, sync integration, helper functions (5 files, 18 tests)
 
-**Status**: ✅ **103 tests passing, 9 skipped**
+**Status**: ✅ **121 tests passing, 9 skipped**
 
 **Run Command**:
 ```bash
@@ -209,6 +210,68 @@ npx tsx scripts/test-real-jwks.ts
 - ✅ Before releasing JWKS-related changes
 - ✅ When debugging JWT verification issues
 - ✅ After Supabase project configuration changes
+
+---
+
+### 5. **Versioning Tests** (✅ All Passing)
+
+**Purpose**: Test prompt version history management, restoration, and cross-device sync
+
+**Location**: `test/versioning/*.test.ts` (5 files, 18 tests)
+
+**Test Files**:
+
+#### ✅ **Version Creation Tests** (`version-creation.test.ts` - 3 tests)
+1. ✅ Create version on edit
+2. ✅ Create version on save with strategy
+3. ✅ Respect versioning configuration (enabled/disabled)
+
+#### ✅ **Version Pruning Tests** (`version-pruning.test.ts` - 2 tests)
+1. ✅ Prune old versions when exceeding maxVersions limit
+2. ✅ Keep all versions when under limit
+
+#### ✅ **Version Restoration Tests** (`version-restoration.test.ts` - 2 tests)
+1. ✅ Restore old version and create snapshot before restoration
+2. ✅ Restore all fields (title, description, category, content)
+
+#### ✅ **Sync Integration Tests** (`sync-integration.test.ts` - 2 tests)
+1. ✅ Upload versions to cloud in metadata
+2. ✅ Download versions from cloud and merge with local
+
+#### ✅ **Helper Function Tests** (`helper-functions.test.ts` - 9 tests)
+1. ✅ getCurrentVersion() returns latest version
+2. ✅ getVersionByIndex() retrieves specific version
+3. ✅ findVersionById() locates version by UUID
+4. ✅ generateUUID() creates valid v4 UUIDs
+5. ✅ sortVersionsByTimestamp() orders chronologically
+6. ✅ pruneOldVersions() respects maxVersions limit
+7. ✅ mergeVersionHistories() deduplicates and sorts
+8. ✅ Version timestamp serialization/deserialization
+9. ✅ Device info extraction from vscode.env
+
+**Key Features Tested**:
+- UUID-based version identification (cross-device unique)
+- Timestamp-based ordering (authoritative)
+- Device attribution (machineId + appName)
+- Automatic pruning (configurable max limit)
+- User confirmation for restoration
+- Cross-device sync with timestamp merging
+- Version metadata in Supabase uploads
+
+**Configuration Options**:
+```typescript
+"promptBank.versioning.enabled": true,
+"promptBank.versioning.strategy": "on-save" | "time-debounce" | "manual",
+"promptBank.versioning.maxVersions": 10,  // 5-50 range
+"promptBank.versioning.debounceMinutes": 5  // 1-60 range
+```
+
+**Status**: ✅ **18 tests passing** (all tests passing)
+
+**Run Command**:
+```bash
+npm run test -- test/versioning
+```
 
 ---
 
