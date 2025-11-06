@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Prompt, createPrompt } from '../models/prompt';
+import { Prompt, createPrompt, PromptVersion, generateUUID, getCurrentVersion } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { createShareMulti } from './shareService';
@@ -619,7 +619,6 @@ export class PromptService {
 
       case 'time-debounce': {
         const debounceMinutes = config.get<number>('debounceMinutes', 5);
-        const { getCurrentVersion } = require('../models/prompt');
         const lastVersion = getCurrentVersion(prompt);
 
         if (!lastVersion) {
@@ -691,11 +690,8 @@ export class PromptService {
     // Get device info
     const deviceInfo = await this.getDeviceInfo();
 
-    // Import at runtime to avoid circular dependencies
-    const { generateUUID } = await import('../models/prompt');
-
     // Create version snapshot of CURRENT state
-    const newVersion: import('../models/prompt').PromptVersion = {
+    const newVersion: PromptVersion = {
       versionId: generateUUID(),
       timestamp: new Date(),
       deviceId: deviceInfo.deviceId,
@@ -730,7 +726,7 @@ export class PromptService {
   /**
    * Get version history for a prompt
    */
-  async getVersionHistory(promptId: string): Promise<import('../models/prompt').PromptVersion[]> {
+  async getVersionHistory(promptId: string): Promise<PromptVersion[]> {
     await this.ensureInitialized();
 
     const prompt = await this.storage.load(promptId);
