@@ -41,8 +41,6 @@ export class SyncService {
   private syncStateStorage: SyncStateStorage;
   private authService: AuthService;
 
-  // In-memory sync status cache (for tree view icons)
-  private syncStatusCache = new Map<string, 'synced' | 'out-of-sync' | 'conflict'>();
 
   /**
    * Create a new SyncService instance using dependency injection.
@@ -428,32 +426,6 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Get sync status for a specific prompt (for tree view icon)
-   *
-   * @param promptId - Local prompt ID
-   * @returns Sync status: 'synced', 'out-of-sync', or 'conflict'
-   */
-  public getSyncStatus(promptId: string): 'synced' | 'out-of-sync' | 'conflict' {
-    return this.syncStatusCache.get(promptId) || 'synced';
-  }
-
-  /**
-   * Update sync status cache (called during sync operations)
-   *
-   * Note: Currently unused but kept for future tree view icon support
-   */
-  // private updateSyncStatusCache(
-  //   promptId: string,
-  //   status: 'synced' | 'out-of-sync' | 'conflict'
-  // ): void {
-  //   this.syncStatusCache.set(promptId, status);
-  // }
-
-  /**
-   * Clear sync status cache (called after successful sync)
-   */
-  private clearSyncStatusCache(): void {
-    this.syncStatusCache.clear();
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -475,21 +447,6 @@ export class SyncService {
     return state;
   }
 
-  /**
-   * Validate user is authenticated
-   *
-   * Note: Currently unused but kept for potential future use
-   */
-  // private async validateAuthentication(): Promise<{ email: string; token: string }> {
-  //   const token = await this.authService.getValidAccessToken();
-  //   const email = await this.authService.getUserEmail();
-
-  //   if (!email) {
-  //     throw new Error('No user email found. Please sign in again.');
-  //   }
-
-  //   return { email, token };
-  // }
 
   /**
    * Validate authentication and set session on Supabase client
@@ -1176,10 +1133,6 @@ export class SyncService {
 
     // 7. Update last synced timestamp
     await this.syncStateStorage!.updateLastSyncedAt();
-
-    // 8. Clear sync status cache
-    this.clearSyncStatusCache();
-
     return result;
   }
 
@@ -1274,7 +1227,6 @@ export class SyncService {
    */
   public async clearAllSyncState(): Promise<void> {
     await this.syncStateStorage!.clearAllSyncState();
-    this.clearSyncStatusCache();
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -1287,12 +1239,6 @@ export class SyncService {
    * Should be called when the workspace is closed or the extension is deactivated.
    */
   public async dispose(): Promise<void> {
-    // Clear sync status cache
-    this.clearSyncStatusCache();
-
-    // Note: No additional cleanup needed
-    // - syncStateStorage is managed by the container
-    // - AuthService and SupabaseClientManager will be disposed separately
     // - No timers or intervals to clean up
   }
 }

@@ -222,7 +222,6 @@ export class PromptService {
       return; // User cancelled
     }
 
-    // TODO: Phase 3 - Handle template variables
     const contentToInsert = selected.prompt.content;
 
     // Copy to clipboard
@@ -800,52 +799,6 @@ export class PromptService {
     return prompt;
   }
 
-  /**
-   * Migrate existing prompts to include version history
-   * Creates initial version from current state for prompts without versions
-   */
-  async migratePromptsToVersioning(): Promise<number> {
-    await this.ensureInitialized();
-
-    const allPrompts = await this.storage.list();
-    let migratedCount = 0;
-
-    for (const prompt of allPrompts) {
-      // Check if prompt needs migration (no versions or empty array)
-      if (!prompt.versions || prompt.versions.length === 0) {
-        const deviceInfo = await this.getDeviceInfo();
-        const { generateUUID } = await import('../models/prompt');
-
-        // Create initial version from current state
-        const initialVersion: import('../models/prompt').PromptVersion = {
-          versionId: generateUUID(),
-          timestamp: prompt.metadata.created,
-          deviceId: deviceInfo.deviceId,
-          deviceName: deviceInfo.deviceName,
-          content: prompt.content,
-          title: prompt.title,
-          category: prompt.category,
-          changeReason: 'Initial version (migrated)',
-        };
-
-        // Add optional description
-        if (prompt.description !== undefined) {
-          initialVersion.description = prompt.description;
-        }
-
-        prompt.versions = [initialVersion];
-
-        await this.storage.update(prompt);
-        migratedCount++;
-      }
-    }
-
-    if (migratedCount > 0) {
-      console.log(`[PromptService] Migrated ${migratedCount} prompts to versioning system`);
-    }
-
-    return migratedCount;
-  }
 
   // Private helper methods
 

@@ -11,3 +11,4 @@ reset-vscode-view.sh
 
 # Supabase CLI temporary files
 supabase/.temp/
+*.vsix
