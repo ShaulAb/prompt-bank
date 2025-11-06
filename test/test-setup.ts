@@ -41,6 +41,7 @@ vi.mock('vscode', () => {
       uriScheme: 'vscode',
       openExternal: vi.fn().mockResolvedValue(true),
       appName: 'Code - Test',
+      machineId: 'test-machine-id-12345',
     },
     globalState: {
       get: vi.fn((key: string) => undefined),
