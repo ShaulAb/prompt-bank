@@ -41,7 +41,6 @@ export class SyncService {
   private syncStateStorage: SyncStateStorage;
   private authService: AuthService;
 
-
   /**
    * Create a new SyncService instance using dependency injection.
    *
@@ -446,7 +445,6 @@ export class SyncService {
 
     return state;
   }
-
 
   /**
    * Validate authentication and set session on Supabase client

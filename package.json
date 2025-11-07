@@ -106,6 +106,12 @@
         "commandPalette": false
       },
       {
+        "command": "promptBank.viewVersionHistory",
+        "title": "View Version History",
+        "icon": "$(history)",
+        "commandPalette": false
+      },
+      {
         "command": "promptBank.sharePromptFromTree",
         "title": "Share Prompt"
       },
@@ -213,6 +219,11 @@
           "command": "promptBank.duplicatePromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@3"
+        },
+        {
+          "command": "promptBank.viewVersionHistory",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+          "group": "1_modification@4"
         },
         {
           "command": "promptBank.sharePromptFromTree",

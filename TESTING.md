@@ -273,6 +273,31 @@ npx tsx scripts/test-real-jwks.ts
 npm run test -- test/versioning
 ```
 
+#### ⚠️ **Version History UI Tests** (Pending)
+
+**Status**: Backend fully tested (18 tests ✅), UI layer manual testing only
+
+**UI Components**:
+- Context menu "View Version History" command
+- QuickPick interface with version list
+- Empty states (disabled vs no versions)
+- Restoration confirmation dialogs
+- Settings navigation integration
+
+**Current Testing**:
+- Backend: ✅ Version creation, pruning, restoration, sync (18 tests passing)
+- UI: ⏭️ Manual testing via Extension Development Host (F5)
+- Future: Automated UI tests with VS Code API mocking
+
+**Manual Test Scenarios**:
+1. Right-click prompt → "View Version History"
+2. Verify QuickPick shows versions with format: `v{N} - {date} ({device}) [Current]`
+3. Select older version → confirm restoration dialog appears
+4. Test with versioning disabled → verify "Enable in settings" message
+5. Test with new prompt (no versions) → verify "No history yet" message
+6. Test device name truncation (>30 chars)
+7. Verify tree refreshes after restoration
+
 ---
 
 ## 🚀 Running Tests

@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Prompt, createPrompt, PromptVersion, generateUUID, getCurrentVersion } from '../models/prompt';
+import {
+  Prompt,
+  createPrompt,
+  PromptVersion,
+  generateUUID,
+  getCurrentVersion,
+} from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { createShareMulti } from './shareService';
@@ -794,7 +800,6 @@ export class PromptService {
 
     return prompt;
   }
-
 
   // Private helper methods
 
