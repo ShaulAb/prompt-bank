@@ -8,6 +8,16 @@ on:
       - '**.md'
       - '.github/**'
       - '!.github/workflows/publish.yml'
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even if version exists (skip version check)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: write
@@ -43,10 +53,20 @@ jobs:
       - name: Check if this is a new version
         id: check_version
         run: |
+          FORCE_PUBLISH="${{ github.event.inputs.force_publish }}"
+          CURRENT_VERSION=${{ steps.version.outputs.VERSION }}
+
+          # If force publish is enabled, skip version check
+          if [ "$FORCE_PUBLISH" = "true" ]; then
+            echo "SHOULD_PUBLISH=true" >> $GITHUB_OUTPUT
+            echo "🔨 Force publish enabled - skipping version check"
+            echo "✅ Will publish version: $CURRENT_VERSION"
+            exit 0
+          fi
+
           # Get the latest published version from git tags
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           LATEST_VERSION=${LATEST_TAG#v}
-          CURRENT_VERSION=${{ steps.version.outputs.VERSION }}
 
           echo "Latest published: $LATEST_VERSION"
           echo "Current version: $CURRENT_VERSION"
