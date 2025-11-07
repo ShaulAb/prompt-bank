@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.7.0](https://github.com/ShaulAb/prompt-bank/compare/v0.6.2...v0.7.0) (2025-11-07)
+
+### ⚠ BREAKING CHANGES
+
+- **models:** None - versions array defaults to [] for backward compatibility
+
+### ♻️ Code Refactoring
+
+- **services:** ♻️ add dependency injection container - Phase 1 ([a71ffe7](https://github.com/ShaulAb/prompt-bank/commit/a71ffe798db319118ef13c81065117fba1d21df9))
+- **services:** ♻️ complete Phase 3 - migrate to container-based DI ([cd67441](https://github.com/ShaulAb/prompt-bank/commit/cd67441e76ad43a1663e0907e07b6ebd536a02a2))
+- **services:** ♻️ remove all backward compatibility code - pure DI architecture ([7dce5cb](https://github.com/ShaulAb/prompt-bank/commit/7dce5cb3a970124af4f99beb93367ffd4c23d5bf))
+- **services:** ♻️ transition to constructor-based dependency injection - Phase 2 ([38f4ca6](https://github.com/ShaulAb/prompt-bank/commit/38f4ca6afbc037caa666d9141a27bc29edb1d3cb))
+- **services:** 🔧 fix code quality issues after DI migration ([f90dced](https://github.com/ShaulAb/prompt-bank/commit/f90dced8eddb0efd100bd09150fb03a2a65a6f1b))
+
+### ✅ Tests
+
+- ♻️ migrate all tests to dependency injection pattern ([049fbde](https://github.com/ShaulAb/prompt-bank/commit/049fbdeb0be15d34428838df25ef87e56aba4037))
+- **setup:** ✅ add machineId to VS Code mock ([659d34e](https://github.com/ShaulAb/prompt-bank/commit/659d34e978eef1a7283a9b596f27d0e71c902028))
+- **sync:** ✅ add comprehensive sync feature test infrastructure ([458257f](https://github.com/ShaulAb/prompt-bank/commit/458257f2dd4f6e941ab27aa981dbd175eab69494))
+- **sync:** ✨ create ergonomic prompt factory helper ([0f76c64](https://github.com/ShaulAb/prompt-bank/commit/0f76c6433e51f26dac51e73b54dfa058d93e87af))
+- **sync:** 🐛 fix singleton state isolation in integration tests ([e3d8606](https://github.com/ShaulAb/prompt-bank/commit/e3d86060ad16c1ee59374616d1fb8bd5312a8fd8))
+- **sync:** 🐛 fix test infrastructure issues - 81% pass rate achieved ([3e30c93](https://github.com/ShaulAb/prompt-bank/commit/3e30c930a6d138f94321b1a301ff035d45f5371d))
+- **sync:** 🧪 fix service initialization and vscode mocks ([55baa1f](https://github.com/ShaulAb/prompt-bank/commit/55baa1f680416d689d8ce8fb4a9726347904df4a))
+- **versioning:** ✅ add comprehensive versioning tests ([6e66d2c](https://github.com/ShaulAb/prompt-bank/commit/6e66d2c55f24feba74c994d87ab79a0a52adbd1d))
+
+### 📝 Documentation
+
+- 📝 update testing documentation and fix typos ([f04b0a5](https://github.com/ShaulAb/prompt-bank/commit/f04b0a535ebe2f385718dc67872a3e65f5910fe9))
+- **contributing:** 📝 add Dependency Injection architecture section ([88c4829](https://github.com/ShaulAb/prompt-bank/commit/88c48294536194c4e2118098db4d6aca6ee61c20))
+- **readme,testing:** 📝 add prompt versioning documentation ([34cd4a0](https://github.com/ShaulAb/prompt-bank/commit/34cd4a095ae08fd07173dc51cfa765eb7a63eb73))
+- **sync:** 📝 update TODO with root cause analysis ([844ea3d](https://github.com/ShaulAb/prompt-bank/commit/844ea3d552562b32e030fed4dbf3c126bf7d4724))
+- **tests:** 📝 document remaining work for sync test implementation ([9a07acc](https://github.com/ShaulAb/prompt-bank/commit/9a07acc6e1dd03af590116d81b988693c4f5cea9))
+
+### 🔧 Chores
+
+- massive codebase cleanup - remove dead code and docs ([dd97b14](https://github.com/ShaulAb/prompt-bank/commit/dd97b14766626d2f0942db5b21eb5adac04eb8b7))
+
+### ✨ Features
+
+- **config:** ✨ add versioning configuration settings ([67ec148](https://github.com/ShaulAb/prompt-bank/commit/67ec1485a239b69183f618c6516f75467d8f9209))
+- **models:** ✨ add prompt versioning data model ([fadc189](https://github.com/ShaulAb/prompt-bank/commit/fadc1896d9ca49b76df72d36c554a216e868de06))
+- **services:** ✨ implement version management in PromptService ([ccb5cd3](https://github.com/ShaulAb/prompt-bank/commit/ccb5cd37c9ca5baadf85b6633c109288e2ee62ba))
+- **storage:** ✨ add version persistence support ([bf37c5f](https://github.com/ShaulAb/prompt-bank/commit/bf37c5fc658a95733b885658a5f57af45e5e9afb))
+- **sync:** ✨ add intelligent 409 conflict resolution with specific error codes ([5261802](https://github.com/ShaulAb/prompt-bank/commit/5261802a37d06c1ece2b67ba0916700a066fddab))
+- **sync:** ✨ add version sync and merge support ([e39ba87](https://github.com/ShaulAb/prompt-bank/commit/e39ba87fee2c1d7ff67857626790801214a86ae6))
+- **versioning:** ✨ add version history UI with QuickPick interface ([b9ce0d5](https://github.com/ShaulAb/prompt-bank/commit/b9ce0d5d371644b745ff9b3f92612533cf81a0bc))
+
+### 🐛 Bug Fixes
+
+- **extension:** remove unsafe optional chaining with non-null assertion ([20ee96a](https://github.com/ShaulAb/prompt-bank/commit/20ee96a1754f15a15157a125f027803bbf91b146)), closes [#47](https://github.com/ShaulAb/prompt-bank/issues/47)
+- **services:** 🐛 address code review findings - type safety and error handling ([29913da](https://github.com/ShaulAb/prompt-bank/commit/29913dad587b33e69918bab8fc5582cf1f5d465a))
+- **sync:** 🐛 correct 409 conflict status code detection ([d9d2fd3](https://github.com/ShaulAb/prompt-bank/commit/d9d2fd31b9af6257bc91ba78e2752621d4d571a6))
+- **sync:** 🐛 fix 409 conflict tests and error parsing - all tests passing ([671f0df](https://github.com/ShaulAb/prompt-bank/commit/671f0df5832f5981dec1ace4bf84d8433bcc51cb))
+- **sync:** 🐛 resolve 409 conflict loops and corrupted state detection ([975dc57](https://github.com/ShaulAb/prompt-bank/commit/975dc5758fc53588bf4836723d519b98f3ff3c7a))
+- **sync:** 🐛 resolve three-way merge detection issues ([33c7abb](https://github.com/ShaulAb/prompt-bank/commit/33c7abbf1eede19f8bfcec77234da3956c856458))
+- **versioning:** 🐛 fix TypeScript strictness and code formatting ([50f83e8](https://github.com/ShaulAb/prompt-bank/commit/50f83e8b1db98c08c369c2d8068112567392848e))
+- **versioning:** 🐛 replace require() with static imports for ESLint compliance ([19ab201](https://github.com/ShaulAb/prompt-bank/commit/19ab2010b1dc9084fbfa6267ec2b3ce41a99e6f0)), closes [#48](https://github.com/ShaulAb/prompt-bank/issues/48)
+
 ### [0.6.2](https://github.com/ShaulAb/prompt-bank/compare/v0.6.1...v0.6.2) (2025-11-03)
 
 ### 👷 CI/CD
