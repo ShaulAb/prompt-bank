@@ -103,40 +103,27 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
         run: npx ovsx publish --pat $OVSX_PAT
 
-      - name: Create GitHub Release
+      - name: Update GitHub Release
         if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
-        uses: actions/create-release@v1
-        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          release_name: Release v${{ steps.version.outputs.VERSION }}
-          body: |
-            ## 🚀 Release v${{ steps.version.outputs.VERSION }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
 
-            This version has been automatically published to:
-            - ✅ [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank)
-            - ✅ [Open VSX Registry](https://open-vsx.org/extension/prestissimo/prompt-bank)
+          # Update the existing release body (created from dev branch)
+          gh release edit "v${VERSION}" --notes "## 🚀 Release v${VERSION}
 
-            ### 📋 Changes
-            See [CHANGELOG.md](https://github.com/ShaulAb/prompt-bank/blob/main/CHANGELOG.md) for detailed changes.
+          This version has been successfully published to:
+          - ✅ [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank)
+          - ✅ [Open VSX Registry](https://open-vsx.org/extension/prestissimo/prompt-bank)
 
-            ---
-            *This release was automatically published from main branch.*
-          draft: false
-          prerelease: false
+          ### 📋 Changes
+          See [CHANGELOG.md](https://github.com/ShaulAb/prompt-bank/blob/main/CHANGELOG.md) for detailed changes.
 
-      - name: Upload VSIX to release
-        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./prompt-bank-${{ steps.version.outputs.VERSION }}.vsix
-          asset_name: prompt-bank-${{ steps.version.outputs.VERSION }}.vsix
-          asset_content_type: application/zip
+          ---
+          *This release was automatically published from main branch.*"
+
+          echo "✅ Updated GitHub release v${VERSION} with marketplace links"
 
       - name: Summary
         if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
