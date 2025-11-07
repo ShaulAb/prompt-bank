@@ -74,14 +74,19 @@ export class TreeCommands {
       const enabled = config.get<boolean>('enabled', true);
 
       if (!enabled) {
-        vscode.window.showInformationMessage(
-          'Versioning is disabled. Enable it in settings to track history.',
-          'Open Settings'
-        ).then(selection => {
-          if (selection === 'Open Settings') {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'promptBank.versioning');
-          }
-        });
+        vscode.window
+          .showInformationMessage(
+            'Versioning is disabled. Enable it in settings to track history.',
+            'Open Settings'
+          )
+          .then((selection) => {
+            if (selection === 'Open Settings') {
+              vscode.commands.executeCommand(
+                'workbench.action.openSettings',
+                'promptBank.versioning'
+              );
+            }
+          });
         return;
       }
 
@@ -103,19 +108,24 @@ export class TreeCommands {
         versionId: string;
       }
 
-      const items: VersionQuickPickItem[] = versions.map(v => {
+      const items: VersionQuickPickItem[] = versions.map((v) => {
         const versionNum = getVersionNumber(prompt, v.versionId);
         const isCurrent = currentVersion?.versionId === v.versionId;
-        const deviceName = v.deviceName.length > 30
-          ? v.deviceName.substring(0, 27) + '...'
-          : v.deviceName;
+        const deviceName =
+          v.deviceName.length > 30 ? v.deviceName.substring(0, 27) + '...' : v.deviceName;
 
-        return {
+        const item: VersionQuickPickItem = {
           label: `v${versionNum} - ${new Date(v.timestamp).toLocaleString()} (${deviceName})${isCurrent ? ' [Current]' : ''}`,
           description: v.title || v.content?.substring(0, 50) || '(No title)',
-          detail: v.changeReason,
-          versionId: v.versionId
+          versionId: v.versionId,
         };
+
+        // Only add detail if changeReason exists (exactOptionalPropertyTypes compliance)
+        if (v.changeReason) {
+          item.detail = v.changeReason;
+        }
+
+        return item;
       });
 
       // Show QuickPick
@@ -123,7 +133,7 @@ export class TreeCommands {
         placeHolder: 'Select a version to restore',
         matchOnDescription: true,
         matchOnDetail: true,
-        ignoreFocusOut: true
+        ignoreFocusOut: true,
       });
 
       if (selected) {
