@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Prompt, createPrompt } from '../models/prompt';
+import {
+  Prompt,
+  createPrompt,
+  PromptVersion,
+  generateUUID,
+  getCurrentVersion,
+} from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { createShareMulti } from './shareService';
@@ -13,9 +19,11 @@ import { AuthService } from './authService';
 export class PromptService {
   private storage: IStorageProvider;
   private isInitialized = false;
+  private authService: AuthService | undefined;
 
-  constructor(storage?: IStorageProvider) {
+  constructor(storage?: IStorageProvider, authService?: AuthService) {
     this.storage = storage || new FileStorageProvider();
+    this.authService = authService;
   }
 
   /**
@@ -220,7 +228,6 @@ export class PromptService {
       return; // User cancelled
     }
 
-    // TODO: Phase 3 - Handle template variables
     const contentToInsert = selected.prompt.content;
 
     // Copy to clipboard
@@ -299,9 +306,26 @@ export class PromptService {
 
   /**
    * Edit an existing prompt
+   * Automatically creates a version snapshot before modifications
    */
-  async editPromptById(prompt: Prompt): Promise<void> {
+  async editPromptById(prompt: Prompt, changeReason?: string): Promise<void> {
     await this.ensureInitialized();
+
+    // Load original from storage to capture state BEFORE modifications
+    const original = await this.storage.load(prompt.id);
+    if (!original) {
+      throw new Error(`Prompt not found: ${prompt.id}`);
+    }
+
+    // Create version from ORIGINAL state (before modifications)
+    const versionCreated = await this.createVersion(original, 'on-save', changeReason);
+
+    // Copy updated versions array to the modified prompt
+    prompt.versions = original.versions;
+
+    // Update modified timestamp
+    prompt.metadata.modified = new Date();
+
     // Ensure order is set if missing
     if (prompt.order === undefined) {
       const promptsInCategory = (await this.storage.list({ category: prompt.category })) || [];
@@ -311,7 +335,16 @@ export class PromptService {
       );
       prompt.order = maxOrder + 1;
     }
+
+    // Save to storage
     await this.storage.update(prompt);
+
+    // Show version number in success message
+    if (versionCreated) {
+      const { getDisplayVersionNumber } = await import('../models/prompt');
+      const versionNumber = getDisplayVersionNumber(prompt);
+      console.log(`[PromptService] Prompt "${prompt.title}" saved as v${versionNumber}`);
+    }
   }
 
   /**
@@ -486,8 +519,11 @@ export class PromptService {
 
   /**
    * Share a collection of prompts.
+   *
+   * @param categoryToShare - Optional category name to share. If not provided, shows quick pick.
+   * @param authService - Optional auth service for authentication. Uses injected service if not provided.
    */
-  async shareCollection(categoryToShare?: string): Promise<void> {
+  async shareCollection(categoryToShare?: string, authService?: AuthService): Promise<void> {
     await this.ensureInitialized();
 
     let promptsToShare: Prompt[] = [];
@@ -538,16 +574,231 @@ export class PromptService {
       return;
     }
 
-    const accessToken = await AuthService.get().getValidAccessToken();
+    const auth = authService || this.authService;
+    if (!auth) {
+      throw new Error('AuthService not provided. This method requires dependency injection.');
+    }
+    const accessToken = await auth.getValidAccessToken();
     if (!accessToken) {
       vscode.window.showErrorMessage('You must be logged in to share collections.');
       return;
     }
-    const shareResult = await createShareMulti(promptsToShare, accessToken);
+    const shareResult = await createShareMulti(promptsToShare, accessToken, auth);
     vscode.env.clipboard.writeText(shareResult.url);
     vscode.window.showInformationMessage(
       'Collection share link copied to clipboard! Expires in 24h.'
     );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Version Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get device information for version attribution
+   * Uses sync state if available, otherwise generates from machine info
+   */
+  private async getDeviceInfo(): Promise<{ deviceId: string; deviceName: string }> {
+    const os = await import('os');
+
+    // Use VS Code's stable machine ID
+    const deviceId = vscode.env.machineId;
+
+    // Generate human-readable device name
+    const hostname = os.hostname();
+    const platform = os.platform();
+    const deviceName = `${hostname} (${platform})`;
+
+    return { deviceId, deviceName };
+  }
+
+  /**
+   * Determine if a new version should be created based on strategy
+   */
+  private shouldCreateVersion(prompt: Prompt, strategy: string): boolean {
+    const config = vscode.workspace.getConfiguration('promptBank.versioning');
+
+    switch (strategy) {
+      case 'on-save':
+        // Always create version on explicit save
+        return true;
+
+      case 'time-debounce': {
+        const debounceMinutes = config.get<number>('debounceMinutes', 5);
+        const lastVersion = getCurrentVersion(prompt);
+
+        if (!lastVersion) {
+          return true;
+        }
+
+        const minutesSinceLastVersion =
+          (Date.now() - lastVersion.timestamp.getTime()) / (1000 * 60);
+
+        return minutesSinceLastVersion >= debounceMinutes;
+      }
+
+      case 'manual':
+        // User must explicitly request version creation
+        return false;
+
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * Prune old versions to prevent storage bloat
+   * Keeps most recent N versions based on config
+   */
+  private async pruneVersions(prompt: Prompt): Promise<void> {
+    const config = vscode.workspace.getConfiguration('promptBank.versioning');
+    const maxVersions = config.get<number>('maxVersions', 10);
+
+    if (prompt.versions.length <= maxVersions) {
+      return; // No pruning needed
+    }
+
+    // Sort by timestamp (oldest first)
+    prompt.versions.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    // Keep only the most recent N versions
+    const removedCount = prompt.versions.length - maxVersions;
+    prompt.versions = prompt.versions.slice(-maxVersions);
+
+    console.log(
+      `[PromptService] Pruned ${removedCount} old versions for prompt "${prompt.title}". ` +
+        `Kept ${maxVersions} most recent.`
+    );
+  }
+
+  /**
+   * Create a new version snapshot (called before modifying prompt)
+   * Returns true if version was created, false if skipped
+   */
+  async createVersion(
+    prompt: Prompt,
+    strategy: 'on-save' | 'time-debounce' | 'manual' = 'on-save',
+    changeReason?: string
+  ): Promise<boolean> {
+    const config = vscode.workspace.getConfiguration('promptBank.versioning');
+    const enabled = config.get<boolean>('enabled', true);
+
+    if (!enabled) {
+      return false;
+    }
+
+    // Check if we should create a version based on strategy
+    const shouldCreate = this.shouldCreateVersion(prompt, strategy);
+    if (!shouldCreate) {
+      return false;
+    }
+
+    // Get device info
+    const deviceInfo = await this.getDeviceInfo();
+
+    // Create version snapshot of CURRENT state
+    const newVersion: PromptVersion = {
+      versionId: generateUUID(),
+      timestamp: new Date(),
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      content: prompt.content,
+      title: prompt.title,
+      category: prompt.category,
+    };
+
+    // Add optional properties
+    if (prompt.description !== undefined) {
+      newVersion.description = prompt.description;
+    }
+    if (changeReason !== undefined) {
+      newVersion.changeReason = changeReason;
+    }
+
+    // Add to version history
+    prompt.versions.push(newVersion);
+
+    // Apply pruning
+    await this.pruneVersions(prompt);
+
+    console.log(
+      `[PromptService] Created version for prompt "${prompt.title}" ` +
+        `(v${prompt.versions.length}) on device ${deviceInfo.deviceName}`
+    );
+
+    return true;
+  }
+
+  /**
+   * Get version history for a prompt
+   */
+  async getVersionHistory(promptId: string): Promise<PromptVersion[]> {
+    await this.ensureInitialized();
+
+    const prompt = await this.storage.load(promptId);
+    if (!prompt) {
+      throw new Error(`Prompt not found: ${promptId}`);
+    }
+
+    // Return sorted by timestamp (newest first for display)
+    return [...prompt.versions].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  /**
+   * Restore a specific version (creates new version with restored content)
+   */
+  async restoreVersion(promptId: string, versionId: string): Promise<Prompt> {
+    await this.ensureInitialized();
+
+    const prompt = await this.storage.load(promptId);
+    if (!prompt) {
+      throw new Error(`Prompt not found: ${promptId}`);
+    }
+
+    const versionToRestore = prompt.versions.find((v) => v.versionId === versionId);
+    if (!versionToRestore) {
+      throw new Error(`Version not found: ${versionId}`);
+    }
+
+    const { getVersionNumber, getDisplayVersionNumber } = await import('../models/prompt');
+    const versionNumber = getVersionNumber(prompt, versionId);
+
+    // Confirm restoration
+    const confirmation = await vscode.window.showWarningMessage(
+      `Restore version ${versionNumber} from ${versionToRestore.timestamp.toLocaleString()}?\n\n` +
+        `This will create a new version with the restored content.`,
+      { modal: true },
+      'Restore'
+    );
+
+    if (confirmation !== 'Restore') {
+      return prompt;
+    }
+
+    // Create version snapshot BEFORE restoration (captures current state being replaced)
+    await this.createVersion(prompt, 'on-save', `Before restoring v${versionNumber}`);
+
+    // Restore content from version (this modifies the current content)
+    prompt.content = versionToRestore.content;
+    prompt.title = versionToRestore.title;
+    prompt.category = versionToRestore.category;
+    prompt.metadata.modified = new Date();
+
+    // Handle optional description
+    if (versionToRestore.description !== undefined) {
+      prompt.description = versionToRestore.description;
+    } else {
+      delete prompt.description;
+    }
+
+    await this.storage.update(prompt);
+
+    const newVersionNumber = getDisplayVersionNumber(prompt);
+    vscode.window.showInformationMessage(
+      `Restored version ${versionNumber} as v${newVersionNumber}`
+    );
+
+    return prompt;
   }
 
   // Private helper methods
@@ -635,6 +886,24 @@ export class PromptService {
       await this.storage.update(prompt);
     }
     return prompts.length;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears initialization state but does NOT delete data from storage.
+   */
+  async dispose(): Promise<void> {
+    // Clear initialization flag
+    this.isInitialized = false;
+
+    // Note: We don't dispose the storage provider since it's injected
+    // and may be shared across multiple services
   }
 }
 

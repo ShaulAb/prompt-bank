@@ -62,10 +62,10 @@ Thank you for your interest in contributing to Prompt Bank! This document provid
 ```
 prompt-bank/
 ├── src/                     # Source code
-│   ├── commands/           # VS Code commands
-│   ├── models/             # Data models and types
-│   ├── services/           # Business logic
-│   ├── storage/            # Data persistence
+│   ├── commands/           # VS Code commands (includes syncCommands.ts)
+│   ├── models/             # Data models and types (includes syncState.ts)
+│   ├── services/           # Business logic (includes syncService.ts)
+│   ├── storage/            # Data persistence (includes syncStateStorage.ts)
 │   ├── views/              # Tree view providers
 │   ├── webview/            # WebView components
 │   └── extension.ts        # Main extension entry point
@@ -228,7 +228,7 @@ Use `npm run release:dry-run` to preview how your commits will affect the next v
 3. **Test your changes**:
    ```bash
    # Run all quality checks
-   npx npx vitest run --isolate
+   npx vitest run --isolate
    npx prettier --check src
    npx tsc --noEmit
    npm run build
@@ -262,10 +262,10 @@ Use `npm run release:dry-run` to preview how your commits will affect the next v
 
 All PRs must pass these quality gates before merging:
 
-✅ **Tests** - All tests must pass (`npx npx vitest run --isolate`)  
-✅ **Type Checking** - TypeScript compilation must succeed (`npx tsc --noEmit`)  
-✅ **Formatting** - Code must be formatted with Prettier (`npx prettier --check src`)  
-✅ **Build** - Extension must build successfully (`npm run build`)  
+✅ **Tests** - All tests must pass (`npx vitest run --isolate`)
+✅ **Type Checking** - TypeScript compilation must succeed (`npx tsc --noEmit`)
+✅ **Formatting** - Code must be formatted with Prettier (`npx prettier --check src`)
+✅ **Build** - Extension must build successfully (`npm run build`)
 ✅ **Security** - No high/critical security vulnerabilities
 
 These checks are automatically run in our CI/CD pipeline, but you should run them locally before submitting your PR.
@@ -309,6 +309,100 @@ For feature requests, please describe:
 
 ## 🔧 Advanced Development
 
+### Authentication Architecture
+
+The extension uses **JWKS-based JWT verification** for secure authentication:
+
+**Overview:**
+- **OAuth Provider**: Google OAuth via Supabase Auth
+- **Token Type**: JWT (JSON Web Token) signed with ECC (P-256) asymmetric keys
+- **Verification**: Public-key cryptography using JWKS endpoint
+- **Library**: [`jose`](https://github.com/panva/jose) for industry-standard JWT verification
+
+**How It Works:**
+1. User authenticates via Google OAuth (PKCE flow)
+2. Supabase Auth issues JWT signed with **ECC P-256 private key**
+3. AuthService verifies JWT using **public key** from JWKS endpoint
+4. Tokens cached with 5-minute offline grace period
+
+**JWKS Endpoint:**
+```
+https://xlqtowactrzmslpkzliq.supabase.co/auth/v1/.well-known/jwks.json
+```
+
+**Testing Strategy:**
+- **Unit Tests**: Mock JWKS responses (MSW)
+- **Integration Tests**: Full auth flow with test keys (CI/CD)
+- **Manual Validation**: Real Supabase endpoint verification
+- **Script**: Run `npx tsx scripts/test-real-jwks.ts` to verify JWKS endpoint
+
+**Key Benefits:**
+- ✅ Zero-downtime key rotation
+- ✅ No shared secrets exposed
+- ✅ Fast local JWT verification
+- ✅ Offline-capable with grace period
+
+**For Developers:**
+- AuthService (`src/services/authService.ts`) handles all verification
+- JWKS keys cached for 10 minutes (Supabase Edge cache)
+- Tokens auto-refresh when expired
+- See `test/auth-jwks-verification.test.ts` for test examples
+
+### Dependency Injection Architecture
+
+The extension uses **constructor-based dependency injection** for all services, managed by `ServicesContainer`.
+
+**Overview:**
+- **Pattern**: Constructor injection (no singletons)
+- **Container**: `ServicesContainer` manages service lifecycle
+- **Benefits**: Better testability, explicit dependencies, proper cleanup
+
+**How It Works:**
+1. Extension activates → `ServicesContainer` created
+2. Services instantiated with dependencies via constructor
+3. Services passed to commands/handlers
+4. Extension deactivates → all services disposed
+
+**Service Initialization:**
+```typescript
+// Production: via ServicesContainer
+const services = await servicesContainer.getOrCreate(context, workspaceRoot);
+const authService = services.auth;
+const syncService = services.sync;
+const promptService = services.prompt;
+
+// Tests: direct instantiation with DI
+const authService = new AuthService(context, publisher, extensionName);
+const syncStateStorage = new SyncStateStorage(workspaceRoot);
+const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage);
+```
+
+**Dependency Graph:**
+```
+ServicesContainer
+├─> AuthService(context, publisher, extension)
+├─> SupabaseClientManager (static singleton - global resource)
+├─> FileStorageProvider(workspaceRoot)
+│   └─> injected into PromptService
+├─> SyncStateStorage(workspaceRoot)
+│   └─> injected into SyncService
+├─> PromptService(storage, authService)
+└─> SyncService(context, root, auth, syncStorage)
+```
+
+**Adding a New Service:**
+1. Create service with constructor dependencies
+2. Add `dispose()` method for cleanup
+3. Update `ServicesContainer.getOrCreate()` to instantiate it
+4. Update `WorkspaceServices` interface
+5. Update `disposeServices()` to clean it up
+6. Write tests using direct instantiation
+
+**Key Files:**
+- `src/services/servicesContainer.ts` - Container implementation
+- `src/extension.ts` - Container usage in activation
+- `test/sync-*.test.ts` - Examples of DI in tests
+
 ### WebView Development
 
 The extension uses LitElement for the prompt editor:
@@ -322,6 +416,7 @@ The extension uses LitElement for the prompt editor:
 The extension supports multiple storage providers:
 
 - **FileStorageProvider** - Local JSON files (default)
+- **SyncStateStorage** - Sync metadata and deletion tracking
 - Extensible for future cloud providers
 
 ## 📦 Building and Packaging

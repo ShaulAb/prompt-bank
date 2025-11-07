@@ -3,13 +3,15 @@ import { promptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { PromptEditorPanel } from '../webview/PromptEditorPanel';
 import { parseShareUrl, fetchShare } from '../services/shareService';
+import type { AuthService } from '../services/authService';
 
 /**
  * Register all Prompt Bank commands
  */
 export function registerCommands(
   context: vscode.ExtensionContext,
-  treeProvider: PromptTreeProvider
+  treeProvider: PromptTreeProvider,
+  authService?: AuthService
 ): void {
   // Register save prompt command
   const savePromptCommand = vscode.commands.registerCommand('promptBank.savePrompt', async () => {
@@ -258,7 +260,13 @@ export function registerCommands(
     'promptBank.shareCollection',
     async () => {
       try {
-        await promptService.shareCollection();
+        if (!authService) {
+          vscode.window.showErrorMessage(
+            'Authentication service not available. Please reload the extension.'
+          );
+          return;
+        }
+        await promptService.shareCollection(undefined, authService);
       } catch (error) {
         vscode.window.showErrorMessage(`Error sharing collection: ${error}`);
       }

@@ -1,0 +1,141 @@
+name: Publish to Marketplaces
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - '!.github/workflows/publish.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Check if this is a new version
+        id: check_version
+        run: |
+          # Get the latest published version from git tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_VERSION=${LATEST_TAG#v}
+          CURRENT_VERSION=${{ steps.version.outputs.VERSION }}
+
+          echo "Latest published: $LATEST_VERSION"
+          echo "Current version: $CURRENT_VERSION"
+
+          if [ "$LATEST_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "SHOULD_PUBLISH=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Version $CURRENT_VERSION is already published"
+          else
+            echo "SHOULD_PUBLISH=true" >> $GITHUB_OUTPUT
+            echo "✅ New version detected: $CURRENT_VERSION"
+          fi
+
+      - name: Run quality checks
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        run: |
+          npx tsc --noEmit
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Package extension
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        run: npm run package
+
+      - name: Publish to VS Code Marketplace
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+        run: npx vsce publish --pat $VSCE_PAT
+
+      - name: Publish to Open VSX Registry
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
+        run: npx ovsx publish --pat $OVSX_PAT
+
+      - name: Create GitHub Release
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          release_name: Release v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🚀 Release v${{ steps.version.outputs.VERSION }}
+
+            This version has been automatically published to:
+            - ✅ [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank)
+            - ✅ [Open VSX Registry](https://open-vsx.org/extension/prestissimo/prompt-bank)
+
+            ### 📋 Changes
+            See [CHANGELOG.md](https://github.com/ShaulAb/prompt-bank/blob/main/CHANGELOG.md) for detailed changes.
+
+            ---
+            *This release was automatically published from main branch.*
+          draft: false
+          prerelease: false
+
+      - name: Upload VSIX to release
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./prompt-bank-${{ steps.version.outputs.VERSION }}.vsix
+          asset_name: prompt-bank-${{ steps.version.outputs.VERSION }}.vsix
+          asset_content_type: application/zip
+
+      - name: Summary
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        run: |
+          echo "## ✅ Successfully Published v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Published to:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ VS Code Marketplace" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Open VSX Registry" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GitHub Releases" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Open VSX Registry](https://open-vsx.org/extension/prestissimo/prompt-bank)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Skip message
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'false'
+        run: |
+          echo "## ⚠️ Publishing Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version ${{ steps.version.outputs.VERSION }} is already published." >> $GITHUB_STEP_SUMMARY
+          echo "No new release was created." >> $GITHUB_STEP_SUMMARY

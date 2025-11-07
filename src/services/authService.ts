@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 
 // Supabase API response types
 interface TokenResponse {
@@ -16,9 +17,21 @@ interface UserResponse {
   email: string;
 }
 
-export class AuthService {
-  private static instance: AuthService | undefined;
+// Supabase JWT payload structure
+interface SupabaseJWTPayload extends JWTPayload {
+  sub: string;
+  email?: string;
+  email_verified?: boolean;
+  phone?: string;
+  aud: string;
+  role: string;
+  aal?: string;
+  session_id?: string;
+  user_metadata?: Record<string, unknown>; // Additional user metadata
+  app_metadata?: Record<string, unknown>; // Application metadata
+}
 
+export class AuthService {
   private token: string | undefined;
   private refreshToken: string | undefined;
   private expiresAt: number | undefined;
@@ -38,7 +51,19 @@ export class AuthService {
   private readonly USER_ID_KEY = 'promptBank.supabase.user_id';
   private readonly USER_EMAIL_KEY = 'promptBank.supabase.user_email';
 
-  private constructor(
+  // JWKS verification settings
+  private readonly JWKS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes (matches Supabase Edge cache)
+  private readonly LAST_VERIFICATION_KEY = 'promptBank.lastTokenVerification';
+  private readonly OFFLINE_GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes for offline scenarios
+
+  /**
+   * Create a new AuthService instance using dependency injection.
+   *
+   * @param context - VS Code extension context
+   * @param publisher - Extension publisher name
+   * @param extensionName - Extension name
+   */
+  constructor(
     private context: vscode.ExtensionContext,
     publisher: string,
     extensionName: string
@@ -54,49 +79,54 @@ export class AuthService {
   }
 
   /**
-   * Initialise the singleton. Must be called once from extension activation.
-   */
-  public static initialize(
-    context: vscode.ExtensionContext,
-    publisher: string,
-    extensionName: string
-  ): AuthService {
-    if (!AuthService.instance) {
-      AuthService.instance = new AuthService(context, publisher, extensionName);
-    }
-    return AuthService.instance;
-  }
-
-  /**
-   * Retrieve the existing instance. Throws if not yet initialised.
-   */
-  public static get(): AuthService {
-    if (!AuthService.instance) {
-      throw new Error('AuthService not initialised. Call initialize() first.');
-    }
-    return AuthService.instance;
-  }
-
-  /**
    * Return a valid access token, triggering sign-in if required.
+   * Now includes JWKS verification for enhanced security.
    */
   public async getValidAccessToken(): Promise<string> {
     await this.loadFromSecretStorage();
 
-    // Check if token is valid and not expired
-    if (this.token && this.expiresAt && Date.now() < this.expiresAt) {
-      return this.token;
-    }
-
-    // Try to refresh if we have a refresh token
-    if (this.refreshToken) {
+    // Check if token exists and verify via JWKS
+    if (this.token) {
       try {
-        await this.refreshAccessToken();
-        if (this.token) {
+        const isValid = await this.verifyToken(this.token);
+
+        // Token is verified and not expired
+        if (isValid && this.expiresAt && Date.now() < this.expiresAt) {
           return this.token;
         }
       } catch (error) {
-        console.error('[AuthService] Failed to refresh token:', error);
+        // Check if this is an invalid JWT error (e.g., after key migration)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('signature') || errorMessage.includes('invalid')) {
+          console.warn(
+            '[AuthService] Detected invalid JWT (likely after key migration). Clearing tokens...'
+          );
+          await this.clearInvalidTokens();
+          // Continue to new auth flow below
+          return this.beginGoogleAuthFlow();
+        }
+        // For other errors, continue with refresh attempt
+      }
+    }
+
+    // Token invalid or expired, try refresh
+    if (this.refreshToken) {
+      try {
+        await this.refreshAccessToken();
+
+        // Verify refreshed token
+        if (this.token && (await this.verifyToken(this.token))) {
+          return this.token;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[AuthService] Failed to refresh token:', errorMessage);
+
+        // If refresh fails with invalid JWT, clear tokens
+        if (errorMessage.includes('signature') || errorMessage.includes('invalid')) {
+          console.warn('[AuthService] Refresh token also invalid. Clearing all tokens...');
+          await this.clearInvalidTokens();
+        }
       }
     }
 
@@ -105,11 +135,99 @@ export class AuthService {
   }
 
   /**
+   * Verify JWT token via JWKS endpoint
+   *
+   * Uses jose library with built-in JWKS caching for performance.
+   * Implements offline grace period for network failures.
+   *
+   * @param token - JWT access token to verify
+   * @returns true if token is valid and verified
+   */
+  public async verifyToken(token: string): Promise<boolean> {
+    try {
+      // Use jose's createRemoteJWKSet with built-in caching
+      const JWKS = createRemoteJWKSet(
+        new URL(`${this.supabaseUrl}/auth/v1/.well-known/jwks.json`),
+        {
+          cacheMaxAge: this.JWKS_CACHE_TTL, // 10 minutes
+          timeoutDuration: 5000, // 5 second timeout for network requests
+        }
+      );
+
+      // Verify JWT signature and claims
+      const { payload } = await jwtVerify<SupabaseJWTPayload>(token, JWKS, {
+        issuer: `${this.supabaseUrl}/auth/v1`,
+        audience: 'authenticated',
+        clockTolerance: 60, // Allow 1 minute clock skew
+      });
+
+      // Extract and cache user info from verified token
+      // This is more reliable than stored values
+      this.userId = payload.sub;
+      // Extract email - could be in payload.email or user_metadata
+      this.userEmail =
+        (payload.email as string) ||
+        (payload.user_metadata?.email as string | undefined) ||
+        undefined;
+      this.expiresAt = (payload.exp as number) * 1000; // Convert to milliseconds
+
+      // Track last successful verification for offline scenarios
+      await this.context.globalState.update(this.LAST_VERIFICATION_KEY, Date.now());
+
+      console.log(
+        `[AuthService] JWT verified successfully for user: ${this.userEmail} (expires: ${new Date(this.expiresAt).toISOString()})`
+      );
+
+      return true;
+    } catch (error) {
+      // More descriptive error logging for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AuthService] JWT verification failed:', errorMessage);
+
+      // Log specific error types for easier debugging
+      if (errorMessage.includes('expired')) {
+        console.warn('[AuthService] Token has expired');
+      } else if (errorMessage.includes('signature')) {
+        console.error('[AuthService] Token signature verification failed - possible key rotation');
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        console.warn('[AuthService] Network error during JWKS fetch');
+      }
+
+      // Offline/network failure handling: Check for recent verification
+      const lastVerification = this.context.globalState.get<number>(this.LAST_VERIFICATION_KEY);
+
+      if (lastVerification && Date.now() - lastVerification < this.OFFLINE_GRACE_PERIOD) {
+        // Token was recently verified successfully, allow offline use
+        console.warn(
+          '[AuthService] Network failure during verification, but token was recently verified. Allowing offline use.'
+        );
+        return true;
+      }
+
+      // Verification failed and no recent verification - token is invalid
+      return false;
+    }
+  }
+
+  /**
    * Get the current user's email if authenticated
    */
   public async getUserEmail(): Promise<string | undefined> {
+    // If email is already in memory (e.g., from verifyToken), return it
+    if (this.userEmail) {
+      return this.userEmail;
+    }
+    // Otherwise, load from storage
     await this.loadFromSecretStorage();
     return this.userEmail;
+  }
+
+  /**
+   * Get the current refresh token if authenticated
+   */
+  public async getRefreshToken(): Promise<string | undefined> {
+    await this.loadFromSecretStorage();
+    return this.refreshToken;
   }
 
   /**
@@ -145,7 +263,38 @@ export class AuthService {
     await this.context.secrets.delete(this.USER_ID_KEY);
     await this.context.secrets.delete(this.USER_EMAIL_KEY);
 
+    // Clear last verification timestamp to avoid stale state
+    await this.context.globalState.update(this.LAST_VERIFICATION_KEY, undefined);
+
     vscode.window.showInformationMessage('Signed out successfully');
+  }
+
+  /**
+   * Clear invalid tokens without calling Supabase logout endpoint
+   *
+   * Used for automatic recovery when tokens become invalid (e.g., after JWT key migration).
+   * Unlike signOut(), this doesn't attempt to call Supabase's logout endpoint since
+   * the token is already invalid.
+   */
+  public async clearInvalidTokens(): Promise<void> {
+    console.log('[AuthService] Clearing invalid tokens');
+
+    // Clear in-memory state
+    this.token = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.userId = undefined;
+    this.userEmail = undefined;
+
+    // Clear stored secrets
+    await this.context.secrets.delete(this.TOKEN_KEY);
+    await this.context.secrets.delete(this.REFRESH_KEY);
+    await this.context.secrets.delete(this.EXPIRY_KEY);
+    await this.context.secrets.delete(this.USER_ID_KEY);
+    await this.context.secrets.delete(this.USER_EMAIL_KEY);
+
+    // Clear last verification timestamp
+    await this.context.globalState.update(this.LAST_VERIFICATION_KEY, undefined);
   }
 
   // ────────────────────────────────────────────────────────────────────────────────
@@ -208,6 +357,13 @@ export class AuthService {
     this.refreshToken = data.refresh_token;
     this.expiresAt = Date.now() + data.expires_in * 1000;
 
+    // Verify the refreshed token immediately
+    const isValid = await this.verifyToken(data.access_token);
+    if (!isValid) {
+      throw new Error('Refreshed token verification failed');
+    }
+
+    // User info is now extracted by verifyToken, but keep fallback
     if (data.user) {
       this.userId = data.user.id;
       this.userEmail = data.user.email;
@@ -294,7 +450,13 @@ export class AuthService {
     this.refreshToken = refreshToken || undefined;
     this.expiresAt = expiresIn ? Date.now() + parseInt(expiresIn) * 1000 : undefined;
 
-    // Get user info
+    // Verify the token immediately after obtaining it
+    const isValid = await this.verifyToken(accessToken);
+    if (!isValid) {
+      throw new Error('Token verification failed after authentication');
+    }
+
+    // Get user info (this might be redundant now that verifyToken extracts it)
     await this.fetchUserInfo();
 
     // Save everything
@@ -332,6 +494,13 @@ export class AuthService {
     this.refreshToken = data.refresh_token;
     this.expiresAt = Date.now() + data.expires_in * 1000;
 
+    // Verify the token immediately after obtaining it
+    const isValid = await this.verifyToken(data.access_token);
+    if (!isValid) {
+      throw new Error('Token verification failed after code exchange');
+    }
+
+    // User info is now extracted by verifyToken, but keep fallback
     if (data.user) {
       this.userId = data.user.id;
       this.userEmail = data.user.email;
@@ -422,5 +591,27 @@ export class AuthService {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Lifecycle Management
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispose of this service and clean up resources
+   *
+   * Should be called when the workspace is closed or the extension is deactivated.
+   * Clears all authentication state from memory (not from SecretStorage).
+   */
+  public async dispose(): Promise<void> {
+    // Clear in-memory authentication state
+    this.token = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.userId = undefined;
+    this.userEmail = undefined;
+
+    // Note: We intentionally do NOT clear SecretStorage here
+    // Users expect their auth to persist across extension reloads
   }
 }

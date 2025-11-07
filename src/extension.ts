@@ -4,8 +4,14 @@ import { promptService } from './services/promptService';
 import { PromptTreeProvider, PromptDragAndDropController } from './views/promptTreeProvider';
 import { TreeCommands } from './commands/treeCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
-import { AuthService } from './services/authService';
+import { registerSyncCommands } from './commands/syncCommands';
+import { SupabaseClientManager } from './services/supabaseClient';
 import { WebViewCache } from './webview/WebViewCache';
+import { ServicesContainer, WorkspaceServices } from './services/servicesContainer';
+
+// Global services container instance
+// Manages services per workspace with proper lifecycle
+let servicesContainer: ServicesContainer | undefined;
 
 /**
  * Extension activation function
@@ -15,18 +21,26 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('Prompt Bank extension is activating...');
 
   try {
-    // Initialize the prompt service
+    // Create services container
+    servicesContainer = new ServicesContainer();
+
+    // Initialize the prompt service (legacy singleton for TreeProvider - TODO: migrate in future)
     await promptService.initialize();
 
-    // Get extension details for auth URI construction
+    // Get extension details for logging
     const extensionId = context.extension.id;
-    const publisher = extensionId.split('.')[0];
-    const extensionName = extensionId.split('.')[1];
+    console.log('[Extension] Activation details:', { extensionId });
 
-    console.log('[Extension] Activation details:', { extensionId, publisher, extensionName });
+    // Initialize Supabase client (shared singleton - required for all services)
+    SupabaseClientManager.initialize();
 
-    // Initialise authentication service
-    AuthService.initialize(context, publisher, extensionName);
+    // Get workspace root and initialize workspace-scoped services
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let workspaceServices: WorkspaceServices | undefined;
+
+    if (workspaceRoot) {
+      workspaceServices = await servicesContainer.getOrCreate(context, workspaceRoot);
+    }
 
     // Create and register tree view
     const treeProvider = new PromptTreeProvider(promptService);
@@ -41,12 +55,29 @@ export async function activate(context: vscode.ExtensionContext) {
     const treeCommands = new TreeCommands(treeProvider, promptService);
     treeCommands.registerCommands(context);
 
-    // Register context menu commands
-    const contextMenuCommands = new ContextMenuCommands(promptService, treeProvider);
-    contextMenuCommands.registerCommands(context);
+    // Register workspace-dependent commands only if workspace is available
+    if (workspaceRoot && workspaceServices) {
+      // Register context menu commands (requires auth service)
+      const contextMenuCommands = new ContextMenuCommands(
+        promptService,
+        treeProvider,
+        workspaceServices.auth
+      );
+      contextMenuCommands.registerCommands(context);
 
-    // Register all other commands
-    registerCommands(context, treeProvider);
+      // Register all other commands (with auth service for share functionality)
+      registerCommands(context, treeProvider, workspaceServices.auth);
+
+      // Register sync commands
+      const syncCommands = registerSyncCommands(context, promptService, workspaceServices.sync);
+      context.subscriptions.push(...syncCommands);
+    } else {
+      // Register commands without workspace-dependent features
+      registerCommands(context, treeProvider);
+      vscode.window.showWarningMessage(
+        'Prompt Bank: No workspace folder detected. Some features (sync, sharing) will be unavailable.'
+      );
+    }
 
     // Refresh tree when prompts change
     context.subscriptions.push(treeView);
@@ -65,8 +96,23 @@ export async function activate(context: vscode.ExtensionContext) {
  * Extension deactivation function
  * Called when the extension is deactivated
  */
-export function deactivate() {
+export async function deactivate() {
+  // Dispose services container (cleans up all workspace services)
+  if (servicesContainer) {
+    await servicesContainer.disposeAll();
+    servicesContainer = undefined;
+  }
+
   // Clear WebView cache to free memory
   WebViewCache.clear();
   console.log('Prompt Bank extension deactivated');
+}
+
+/**
+ * Get the services container instance
+ *
+ * @returns Services container, or undefined if not initialized
+ */
+export function getServicesContainer(): ServicesContainer | undefined {
+  return servicesContainer;
 }

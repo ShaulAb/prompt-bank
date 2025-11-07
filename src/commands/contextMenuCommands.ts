@@ -11,10 +11,15 @@ import { createShare } from '../services/shareService';
  */
 export class ContextMenuCommands {
   private extensionContext: vscode.ExtensionContext | undefined;
+  private authService: AuthService;
+
   constructor(
     private promptService: PromptService,
-    private treeProvider: PromptTreeProvider
-  ) {}
+    private treeProvider: PromptTreeProvider,
+    authService: AuthService
+  ) {
+    this.authService = authService;
+  }
 
   /**
    * Register all context menu commands
@@ -159,13 +164,13 @@ export class ContextMenuCommands {
 
     try {
       // Ensure user signed in
-      const accessToken = await AuthService.get().getValidAccessToken();
+      const accessToken = await this.authService.getValidAccessToken();
       if (!accessToken) {
-        vscode.window.showErrorMessage('You must be signed in with GitHub to share prompts.');
+        vscode.window.showErrorMessage('You must be signed in with Google to share prompts.');
         return;
       }
 
-      const result = await createShare(prompt, accessToken);
+      const result = await createShare(prompt, accessToken, this.authService);
       await vscode.env.clipboard.writeText(result.url);
       vscode.window.showInformationMessage('Share link copied to clipboard! Expires in 24h.');
     } catch (error) {
@@ -180,7 +185,7 @@ export class ContextMenuCommands {
     const categoryName = item.category;
     try {
       // Call the centralized promptService method with the specific category
-      await this.promptService.shareCollection(categoryName);
+      await this.promptService.shareCollection(categoryName, this.authService);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to share collection: ${error}`);
     }

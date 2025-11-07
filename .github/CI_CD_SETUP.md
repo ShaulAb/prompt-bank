@@ -4,20 +4,22 @@ This document describes the Continuous Integration and Continuous Deployment (CI
 
 ## 🏗️ Overview
 
-Our streamlined CI/CD pipeline consists of **2 core workflows** that ensure code quality and enable controlled releases:
+Our streamlined CI/CD pipeline consists of **3 core workflows** that ensure code quality and enable automated releases:
 
 1. **CI Workflow** (`main.yml`) - Automated testing and validation
-2. **Release Workflow** (`version-bump.yml`) - Consolidated version management and packaging
+2. **Release Workflow** (`version-bump.yml`) - Version management and packaging
+3. **Publish Workflow** (`publish.yml`) - Automated marketplace publishing
 
 ## 🌳 Dev-Centered Branching Strategy
 
 ```
-Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [Marketplace]
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [🤖 AUTO: Marketplaces]
 ```
 
 - **Feature branches**: Individual feature development
 - **dev branch**: Integration branch where all features are merged and tested
 - **main branch**: Stable/released code only, represents what users have
+- **Automation**: When dev merges to main, automatic publishing to VS Code Marketplace and Open VSX
 
 ## 🔄 Workflows
 
@@ -49,7 +51,26 @@ Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → 
 
 **Branch enforcement:** Only runs from `dev` branch (`if: github.ref == 'refs/heads/dev'`)
 
-### 3. Dependabot
+### 3. Publish Workflow (`publish.yml`)
+
+**Name:** "Publish to Marketplaces"
+**Triggers:** Push to `main` branch
+
+**What it does:**
+- ✅ **Version detection** - Compares current version with latest git tag
+- ✅ **Quality gates** - Full CI pipeline before publishing
+- ✅ **VS Code Marketplace** - Automatic publishing via vsce
+- ✅ **Open VSX Registry** - Automatic publishing via ovsx
+- ✅ **GitHub Release** - Creates release with VSIX artifact
+- ✅ **Idempotent** - Skips if version already published
+
+**Branch enforcement:** Only runs on `main` branch pushes
+
+**Required Secrets:**
+- `VSCE_TOKEN` - VS Code Marketplace Personal Access Token
+- `OVSX_TOKEN` - Open VSX Registry Access Token
+
+### 4. Dependabot
 
 **Configuration:** `.github/dependabot.yml`
 
@@ -120,7 +141,19 @@ code --install-extension prompt-bank-X.X.X.vsix
 gh pr create --base main --head dev --title "Release vX.X.X"
 
 # After merge to main:
-vsce publish  # Manual marketplace publishing
+# 🤖 Automatic publishing happens via GitHub Actions!
+# - Publishes to VS Code Marketplace
+# - Publishes to Open VSX Registry
+# - Creates GitHub Release with VSIX
+```
+
+### 4. Monitor Publishing
+```bash
+# Check workflow status
+gh run list --workflow=publish.yml
+
+# View specific run
+gh run view [run-id]
 ```
 
 ## 📈 Monitoring & Maintenance

@@ -38,6 +38,27 @@ vi.mock('vscode', () => {
         readText: vi.fn(),
         writeText: vi.fn(),
       },
+      uriScheme: 'vscode',
+      openExternal: vi.fn().mockResolvedValue(true),
+      appName: 'Code - Test',
+      machineId: 'test-machine-id-12345',
+    },
+    globalState: {
+      get: vi.fn((key: string) => undefined),
+      update: vi.fn().mockResolvedValue(undefined),
+      keys: vi.fn(() => []),
+      setKeysForSync: vi.fn(),
+    },
+    workspaceState: {
+      get: vi.fn((key: string) => undefined),
+      update: vi.fn().mockResolvedValue(undefined),
+      keys: vi.fn(() => []),
+    },
+    secrets: {
+      get: vi.fn((key: string) => Promise.resolve(undefined)),
+      store: vi.fn((key: string, value: string) => Promise.resolve()),
+      delete: vi.fn((key: string) => Promise.resolve()),
+      onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
     },
     workspace: {
       get workspaceFolders() {
@@ -53,22 +74,63 @@ vi.mock('vscode', () => {
           },
         ];
       },
-      getConfiguration: vi.fn().mockReturnValue({
-        get: vi.fn((key) => {
-          if (key === 'prompt-bank.storagePath') {
-            return undefined; // Simulate default behavior
-          }
-          return undefined;
-        }),
+      getConfiguration: vi.fn((section?: string) => {
+        // Handle promptBank configuration for Supabase
+        if (section === 'promptBank') {
+          return {
+            get: vi.fn((key: string, defaultValue?: any) => {
+              if (key === 'supabaseUrl') {
+                return defaultValue || 'https://xlqtowactrzmslpkzliq.supabase.co';
+              }
+              if (key === 'supabaseAnonKey') {
+                return (
+                  defaultValue ||
+                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
+                );
+              }
+              return defaultValue;
+            }),
+          };
+        }
+        // Default behavior for other configurations
+        return {
+          get: vi.fn((key: string) => {
+            if (key === 'prompt-bank.storagePath') {
+              return undefined; // Simulate default behavior
+            }
+            return undefined;
+          }),
+        };
       }),
     },
     ViewColumn: {
       One: 1,
     },
     Uri: {
+      file: vi.fn((path: string) => ({
+        fsPath: path,
+        scheme: 'file',
+        authority: '',
+        path: path,
+        query: '',
+        fragment: '',
+        toString: () => `file://${path}`,
+      })),
       joinPath: vi.fn((uri, ...paths) => ({
         fsPath: require('path').join(uri.fsPath, ...paths.join('/')),
       })),
+      parse: vi.fn((value: string) => {
+        const url = new URL(value);
+        return {
+          scheme: url.protocol.replace(':', ''),
+          authority: url.host,
+          path: url.pathname,
+          query: url.search.substring(1),
+          fragment: url.hash.substring(1),
+          fsPath: url.pathname,
+          toString: () => value,
+        };
+      }),
     },
   };
 });

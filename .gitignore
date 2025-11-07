@@ -3,3 +3,12 @@ node_modules
 dist/
 .vscode/
 checklists
+*.vsix
+reset-vscode-view.sh
+
+# Debugging artifacts (top-level only)
+/*.png
+
+# Supabase CLI temporary files
+supabase/.temp/
+*.vsix
