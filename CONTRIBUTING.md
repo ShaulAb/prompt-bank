@@ -548,257 +548,82 @@ curl -X POST 'https://xlqtowactrzmslpkzliq.supabase.co/functions/v1/share-prompt
 
 ### WebView Development
 
-The extension uses **LitElement** (Lit 3.x) for building the prompt editor UI with VS Code WebView API.
+The extension uses **LitElement** for building the prompt editor UI within VS Code WebViews.
 
 **Overview:**
 
-- **Framework**: LitElement (Web Components)
-- **Location**: `media/` directory (served to WebView)
+- **Framework**: LitElement (Web Components) loaded from CDN
+- **Location**: `media/` directory contains WebView HTML and JavaScript
 - **Communication**: Message passing between extension and WebView
-- **Styling**: VS Code theme-aware CSS with CSS variables
-
-**WebView Architecture:**
-
-```
-Extension Host (Node.js)                    WebView (Browser Context)
-─────────────────────────                   ──────────────────────────
-PromptEditorPanel                           prompt-form (LitElement)
-├─> createWebViewPanel()                    ├─> Render form UI
-├─> getHtmlContent()                        ├─> Handle user input
-│   └─> Inject <script src="form.js">      ├─> Validate form data
-└─> panel.webview.onDidReceiveMessage()     └─> postMessage() to extension
-    ↓                                           ↑
-    └───────── Message Passing ─────────────────┘
-    (save, cancel, getCategoryList)
-```
+- **Styling**: Automatically inherits VS Code theme colors
 
 **Key Components:**
 
 1. **PromptEditorPanel** (`src/webview/PromptEditorPanel.ts`)
-   - Creates and manages VS Code WebView panel
-   - Handles panel lifecycle (create, show, dispose)
-   - Implements message passing bridge
-   - Manages WebView state (edit mode vs create mode)
+   - Manages VS Code WebView panel lifecycle
+   - Handles message passing between extension and WebView
+   - Supports both create and edit modes
 
 2. **WebViewCache** (`src/webview/WebViewCache.ts`)
-   - Caches HTML template to avoid repeated file I/O
-   - Caches category list with 1-minute expiration
-   - DNS prefetching for CDN resources (Lit, VS Code icons)
+   - Caches HTML template and category list for performance
+   - Reduces load time by ~80%
 
 3. **prompt-form.js** (`media/form.js`)
-   - LitElement-based custom element `<prompt-form>`
-   - Reactive properties and state management
-   - Form validation and submission
+   - LitElement component for the prompt editor form
+   - Uses VS Code WebView UI Toolkit components
+   - Handles form validation and submission
 
-**LitElement Component Structure:**
+**Message Passing:**
 
-```typescript
-// media/form.js (simplified)
-import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
-
-class PromptForm extends LitElement {
-  // 1. Reactive properties (trigger re-render on change)
-  static properties = {
-    title: { type: String },
-    content: { type: String },
-    description: { type: String },
-    category: { type: String },
-    categories: { type: Array },
-    mode: { type: String }, // 'create' or 'edit'
-  };
-
-  // 2. Component styles (scoped to shadow DOM)
-  static styles = css`
-    :host {
-      display: block;
-      padding: 20px;
-      font-family: var(--vscode-font-family);
-      color: var(--vscode-foreground);
-    }
-    /* VS Code theme variables available */
-  `;
-
-  // 3. Lifecycle: component mounted
-  connectedCallback() {
-    super.connectedCallback();
-    // Request categories from extension
-    vscode.postMessage({ command: 'getCategoryList' });
-  }
-
-  // 4. Render method (declarative UI)
-  render() {
-    return html`
-      <form @submit=${this._handleSubmit}>
-        <vscode-text-field
-          label="Title"
-          .value=${this.title}
-          @input=${(e) => (this.title = e.target.value)}
-          required
-        ></vscode-text-field>
-
-        <vscode-text-area
-          label="Content"
-          .value=${this.content}
-          @input=${(e) => (this.content = e.target.value)}
-          rows="10"
-          required
-        ></vscode-text-area>
-
-        <!-- Category dropdown with inline creation -->
-        <div class="category-field">
-          <vscode-dropdown .value=${this.category} @change=${this._handleCategoryChange}>
-            ${this.categories.map(
-              (cat) => html`<vscode-option value="${cat}">${cat}</vscode-option>`
-            )}
-            <vscode-option value="__new__">+ Create New Category</vscode-option>
-          </vscode-dropdown>
-        </div>
-
-        <div class="button-group">
-          <vscode-button @click=${this._handleSave}>Save</vscode-button>
-          <vscode-button appearance="secondary" @click=${this._handleCancel}>Cancel</vscode-button>
-        </div>
-      </form>
-    `;
-  }
-
-  // 5. Event handlers
-  _handleSave() {
-    if (this._validate()) {
-      vscode.postMessage({
-        command: 'save',
-        prompt: {
-          title: this.title,
-          content: this.content,
-          description: this.description,
-          category: this.category,
-        },
-      });
-    }
-  }
-
-  _validate() {
-    // Validation logic
-    return true;
-  }
-}
-
-// 6. Register custom element
-customElements.define('prompt-form', PromptForm);
-
-// 7. Listen for messages from extension
-window.addEventListener('message', (event) => {
-  const message = event.data;
-  if (message.command === 'setCategories') {
-    document.querySelector('prompt-form').categories = message.categories;
-  }
-});
-```
-
-**Message Passing Protocol:**
-
-Extension → WebView:
+The WebView communicates with the extension via `postMessage`:
 
 ```typescript
-// Send data to WebView
-panel.webview.postMessage({
-  command: 'setCategories',
-  categories: ['General', 'Code', 'Docs'],
-});
-
-panel.webview.postMessage({
-  command: 'loadPrompt',
-  prompt: { title: 'Test', content: '...', category: 'General' },
-});
-```
-
-WebView → Extension:
-
-```typescript
-// WebView sends messages
+// WebView → Extension
 vscode.postMessage({
   command: 'save',
   prompt: { title: '...', content: '...', category: '...' },
 });
 
-vscode.postMessage({ command: 'cancel' });
-vscode.postMessage({ command: 'getCategoryList' });
+// Extension → WebView
+panel.webview.postMessage({
+  command: 'setCategories',
+  categories: ['General', 'Code', 'Docs'],
+});
 ```
 
-**VS Code WebView Components:**
+**Development Workflow:**
 
-The editor uses VS Code's WebView UI Toolkit for native look and feel:
+1. **Edit WebView code**: Modify files in `media/`
+2. **Build**: `npm run build:watch` (or `npm run build`)
+3. **Test**: Press `F5` to launch Extension Development Host
+4. **Debug**: Command Palette → "Developer: Open Webview Developer Tools"
+5. **Reload**: Close and reopen the prompt editor to see changes
 
-- `<vscode-text-field>` - Single-line text input
-- `<vscode-text-area>` - Multi-line text area
-- `<vscode-dropdown>` - Select dropdown
-- `<vscode-button>` - Action buttons
-- `<vscode-option>` - Dropdown options
+**Styling:**
 
-**Styling with VS Code Theme:**
+WebView automatically uses VS Code theme variables:
 
 ```css
-/* CSS variables automatically provided by VS Code */
-:host {
-  --vscode-font-family: 'Segoe UI', sans-serif;
-  --vscode-foreground: #cccccc;
-  --vscode-background: #1e1e1e;
-  --vscode-button-background: #0e639c;
-  --vscode-input-background: #3c3c3c;
-  /* 100+ theme variables available */
-}
+/* Available theme variables */
+--vscode-foreground
+--vscode-background
+--vscode-button-background
+--vscode-input-background
+/* ...and 100+ more */
 ```
 
-**Testing WebView Changes:**
+**Security:**
 
-1. **Local Development**:
-
-   ```bash
-   # Build extension
-   npm run build:watch
-
-   # Press F5 in VS Code to launch Extension Development Host
-   # Open prompt editor: Ctrl+Alt+P
-   ```
-
-2. **Debugging WebView**:
-
-   ```bash
-   # Open WebView DevTools
-   Command Palette → "Developer: Open Webview Developer Tools"
-
-   # Inspect elements, console logs, network requests
-   ```
-
-3. **Hot Reload**: Edit `media/form.js` → Save → Reload WebView panel
-
-**Key Implementation Details:**
-
-1. **Content Security Policy (CSP)**:
-   - WebView has strict CSP for security
-   - Only whitelisted CDN domains allowed
-   - Inline scripts disabled (use `<script src="...">`))
-
-2. **Resource URIs**: Files must use `webview.asWebviewUri()` for proper loading
-
-   ```typescript
-   const scriptUri = panel.webview.asWebviewUri(
-     vscode.Uri.joinPath(context.extensionUri, 'media', 'form.js')
-   );
-   ```
-
-3. **State Management**:
-   - WebView state persists via `getState()` / `setState()`
-   - Form data survives panel hide/show cycles
-
-4. **Performance**: WebViewCache reduces load time by 80% (HTML caching)
+- WebView has strict Content Security Policy (CSP)
+- Only whitelisted CDN domains allowed (Lit, VS Code toolkit)
+- Use `webview.asWebviewUri()` for local resource loading
 
 **Key Files:**
 
-- `src/webview/PromptEditorPanel.ts` - WebView panel controller
-- `src/webview/WebViewCache.ts` - Caching system
-- `media/form.js` - LitElement prompt form component
-- `media/prompt-editor.html` - HTML template (cached)
+- `src/webview/PromptEditorPanel.ts` - Panel controller
+- `src/webview/WebViewCache.ts` - Performance caching
+- `media/form.js` - LitElement form component
+- `media/prompt-editor.html` - HTML template
 
 ### Storage System
 
