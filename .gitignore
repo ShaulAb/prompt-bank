@@ -12,3 +12,8 @@ reset-vscode-view.sh
 # Supabase CLI temporary files
 supabase/.temp/
 *.vsix
+
+# Test/development prompt storage files (prevent accidental commits)
+/prompts.json
+/metadata.json
+/sync-state.json
