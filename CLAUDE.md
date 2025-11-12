@@ -142,6 +142,27 @@ Press `F5` to launch Extension Development Host for testing changes.
 - Key commands: `savePrompt`, `savePromptFromSelection`, `insertPrompt`, `listPrompts`, `importPrompt`, `shareCollection`
 - **New**: `savePromptFromSelection` - Right-click context menu command for saving selected text as prompt
 
+## Git Workflow
+
+### After PR Merge
+When a PR is merged to dev, always follow this cleanup process:
+
+```bash
+# 1. Switch back to dev
+git checkout dev
+
+# 2. Sync with remote
+git pull origin dev
+
+# 3. Delete local feature branch
+git branch -d feature-branch-name
+
+# 4. Delete remote feature branch
+git push origin --delete feature-branch-name
+```
+
+This keeps the repository clean and prevents branch clutter. The remote branch might already be auto-deleted by GitHub if that setting is enabled.
+
 ## Key Patterns
 
 1. **Prompt Content Source**: The extension can capture prompts from either editor selection or clipboard (fallback), implemented in `PromptService.getPromptContent()`
