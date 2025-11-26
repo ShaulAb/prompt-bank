@@ -16,6 +16,7 @@ import { AuthService } from '../src/services/authService';
 import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
+import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { computeContentHash } from '../src/utils/contentHash';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
@@ -26,6 +27,7 @@ describe('SyncService - 409 Conflict Error Handling', () => {
   let promptService: PromptService;
   let syncService: SyncService;
   let syncStateStorage: SyncStateStorage;
+  let workspaceMetadataService: WorkspaceMetadataService;
   let testStorageDir: string;
 
   beforeAll(() => {
@@ -82,7 +84,8 @@ describe('SyncService - 409 Conflict Error Handling', () => {
     await promptService.initialize();
 
     syncStateStorage = new SyncStateStorage(testStorageDir);
-    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
+    workspaceMetadataService = new WorkspaceMetadataService(testStorageDir, context);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage, workspaceMetadataService);
   });
 
   describe('PROMPT_DELETED Conflict', () => {
