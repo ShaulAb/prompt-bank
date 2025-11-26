@@ -5,6 +5,7 @@ import { SupabaseClientManager } from '../../src/services/supabaseClient';
 import { PromptService } from '../../src/services/promptService';
 import { FileStorageProvider } from '../../src/storage/fileStorage';
 import { SyncStateStorage } from '../../src/storage/syncStateStorage';
+import { WorkspaceMetadataService } from '../../src/services/workspaceMetadataService';
 import { createPrompt } from '../../src/models/prompt';
 import { generateUUID } from '../../src/models/prompt';
 import { server, syncTestHelpers } from '../e2e/helpers/msw-setup';
@@ -19,6 +20,7 @@ describe('Sync Integration - Versioning', () => {
   let authService: AuthService;
   let promptService: PromptService;
   let syncStateStorage: SyncStateStorage;
+  let workspaceMetadataService: WorkspaceMetadataService;
   let storageProvider: FileStorageProvider;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
@@ -96,7 +98,8 @@ describe('Sync Integration - Versioning', () => {
 
     // Create sync state storage and sync service with DI
     syncStateStorage = new SyncStateStorage(testStorageDir);
-    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
+    workspaceMetadataService = new WorkspaceMetadataService(testStorageDir, context);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage, workspaceMetadataService);
   });
 
   afterEach(async () => {

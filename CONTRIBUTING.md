@@ -390,7 +390,8 @@ const promptService = services.prompt;
 // Tests: direct instantiation with DI
 const authService = new AuthService(context, publisher, extensionName);
 const syncStateStorage = new SyncStateStorage(workspaceRoot);
-const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage);
+const workspaceMetadataService = new WorkspaceMetadataService(workspaceRoot, context);
+const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage, workspaceMetadataService);
 ```
 
 **Dependency Graph:**
@@ -403,8 +404,10 @@ ServicesContainer
 │   └─> injected into PromptService
 ├─> SyncStateStorage(workspaceRoot)
 │   └─> injected into SyncService
+├─> WorkspaceMetadataService(workspaceRoot, context)
+│   └─> injected into SyncService
 ├─> PromptService(storage, authService)
-└─> SyncService(context, root, auth, syncStorage)
+└─> SyncService(context, root, auth, syncStorage, workspaceMetadata)
 ```
 
 **Adding a New Service:**

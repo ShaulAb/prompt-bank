@@ -5,6 +5,7 @@ import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
+import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
@@ -18,6 +19,7 @@ describe('SyncService - Edge Cases', () => {
   let authService: AuthService;
   let promptService: PromptService;
   let syncStateStorage: SyncStateStorage;
+  let workspaceMetadataService: WorkspaceMetadataService;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
 
@@ -71,7 +73,8 @@ describe('SyncService - Edge Cases', () => {
     await promptService.initialize();
 
     syncStateStorage = new SyncStateStorage(testStorageDir);
-    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
+    workspaceMetadataService = new WorkspaceMetadataService(testStorageDir, context);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage, workspaceMetadataService);
   });
 
   afterEach(async () => {
@@ -434,10 +437,11 @@ describe('SyncService - Edge Cases', () => {
       // Setup sync state
       const SyncStateStorage = await import('../src/storage/syncStateStorage');
       const syncStateStorage = new SyncStateStorage.SyncStateStorage(testStorageDir);
+      const testWorkspaceId = await workspaceMetadataService.getOrCreateWorkspaceId();
       await syncStateStorage.initializeSyncState('test-user@promptbank.test', {
         id: 'device-1',
         name: 'Test Device',
-      });
+      }, testWorkspaceId);
       await syncStateStorage.setPromptSyncInfo(originalId, {
         cloudId: cloudPrompt.cloud_id,
         lastSyncedContentHash: originalHash,
@@ -451,7 +455,7 @@ describe('SyncService - Edge Cases', () => {
       vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
       vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
       // Act
       const localPrompts = await promptService.listPrompts();
