@@ -26,6 +26,7 @@ import type {
 import { SyncConflictType } from '../models/syncState';
 import { SyncStateStorage } from '../storage/syncStateStorage';
 import { AuthService } from './authService';
+import { WorkspaceMetadataService } from './workspaceMetadataService';
 import { SupabaseClientManager } from './supabaseClient';
 import { computeContentHash, matchesHash } from '../utils/contentHash';
 import { getDeviceInfo } from '../utils/deviceId';
@@ -40,6 +41,7 @@ import type { PromptService } from './promptService';
 export class SyncService {
   private syncStateStorage: SyncStateStorage;
   private authService: AuthService;
+  private workspaceMetadataService: WorkspaceMetadataService;
 
   /**
    * Create a new SyncService instance using dependency injection.
@@ -48,15 +50,27 @@ export class SyncService {
    * @param workspaceRoot - Absolute path to workspace root directory
    * @param authService - Injected auth service for authentication
    * @param syncStateStorage - Injected sync state storage for managing sync metadata
+   * @param workspaceMetadataService - Injected workspace metadata service for workspace identity
    */
   constructor(
     private context: vscode.ExtensionContext,
     _workspaceRoot: string,
     authService: AuthService,
-    syncStateStorage: SyncStateStorage
+    syncStateStorage: SyncStateStorage,
+    workspaceMetadataService: WorkspaceMetadataService
   ) {
     this.authService = authService;
     this.syncStateStorage = syncStateStorage;
+    this.workspaceMetadataService = workspaceMetadataService;
+  }
+
+  /**
+   * Get workspace ID from metadata file (creates if needed)
+   *
+   * @returns Workspace ID (UUID)
+   */
+  private async getWorkspaceId(): Promise<string> {
+    return this.workspaceMetadataService.getOrCreateWorkspaceId();
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -440,7 +454,8 @@ export class SyncService {
     if (!state) {
       // Initialize sync state for new device
       const deviceInfo = await getDeviceInfo(this.context);
-      state = await this.syncStateStorage!.initializeSyncState(userId, deviceInfo);
+      const workspaceId = await this.getWorkspaceId();
+      state = await this.syncStateStorage!.initializeSyncState(userId, deviceInfo, workspaceId);
     }
 
     return state;
@@ -487,9 +502,10 @@ export class SyncService {
   private async deletePrompt(cloudId: string): Promise<void> {
     const supabase = SupabaseClientManager.get();
     const deviceInfo = await getDeviceInfo(this.context);
+    const workspaceId = await this.getWorkspaceId();
 
     const { error } = await supabase.functions.invoke('delete-prompt', {
-      body: { cloudId, deviceId: deviceInfo.id },
+      body: { workspaceId, cloudId, deviceId: deviceInfo.id },
     });
 
     if (error) {
@@ -510,9 +526,10 @@ export class SyncService {
    */
   private async restorePrompt(cloudId: string): Promise<void> {
     const supabase = SupabaseClientManager.get();
+    const workspaceId = await this.getWorkspaceId();
 
     const { error } = await supabase.functions.invoke('restore-prompt', {
-      body: { cloudId },
+      body: { workspaceId, cloudId },
     });
 
     if (error) {
@@ -532,10 +549,12 @@ export class SyncService {
     includeDeleted = false
   ): Promise<readonly RemotePrompt[]> {
     const supabase = SupabaseClientManager.get();
+    const workspaceId = await this.getWorkspaceId();
 
     try {
       const { data, error } = await supabase.functions.invoke('get-user-prompts', {
         body: {
+          workspaceId,
           since: since?.toISOString(),
           includeDeleted,
         },
@@ -698,8 +717,10 @@ export class SyncService {
     const supabase = SupabaseClientManager.get();
     const contentHash = computeContentHash(prompt);
     const deviceInfo = await getDeviceInfo(this.context);
+    const workspaceId = await this.getWorkspaceId();
 
     const body = {
+      workspaceId,
       cloudId: syncInfo?.cloudId,
       expectedVersion: syncInfo?.version,
       contentHash: contentHash,

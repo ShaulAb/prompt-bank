@@ -59,13 +59,18 @@ export class SyncStateStorage {
   }
 
   /**
-   * Initialize sync state for a new device
+   * Initialize sync state for a new device/workspace
    *
    * @param userId - User email from OAuth
    * @param deviceInfo - Device information
+   * @param workspaceId - Workspace identifier (UUID from workspace-meta.json)
    */
-  async initializeSyncState(userId: string, deviceInfo: DeviceInfo): Promise<SyncState> {
-    const emptyState = createEmptySyncState(userId, deviceInfo.id, deviceInfo.name);
+  async initializeSyncState(
+    userId: string,
+    deviceInfo: DeviceInfo,
+    workspaceId: string
+  ): Promise<SyncState> {
+    const emptyState = createEmptySyncState(userId, deviceInfo.id, deviceInfo.name, workspaceId);
 
     await this.saveSyncState(emptyState);
     return emptyState;
