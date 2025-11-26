@@ -17,3 +17,7 @@ supabase/.temp/
 /prompts.json
 /metadata.json
 /sync-state.json
+
+# Internal implementation plans (not for version control)
+*_PLAN.md
+*_PLAN*.md
