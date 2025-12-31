@@ -71,16 +71,18 @@ export class PromptTreeItem extends BaseTreeItem {
 
 /**
  * Tree item representing an empty state (no prompts/categories)
+ * Clickable - opens the prompt editor when selected
  */
 export class EmptyStateTreeItem extends BaseTreeItem {
   constructor() {
-    super(
-      'No prompts yet. Click the + button above to create your first!',
-      vscode.TreeItemCollapsibleState.None
-    );
+    super('Click here to create your first prompt!', vscode.TreeItemCollapsibleState.None);
     this.contextValue = 'empty';
-    this.iconPath = new vscode.ThemeIcon('info');
-    this.tooltip = 'Prompt Bank is empty. Click the + button in the title bar to add a prompt!';
+    this.iconPath = new vscode.ThemeIcon('add');
+    this.tooltip = 'Click to create a new prompt';
+    this.command = {
+      command: 'promptBank.newPrompt',
+      title: 'Create New Prompt',
+    };
   }
 }
 

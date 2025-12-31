@@ -15,7 +15,32 @@ function generateWorkspacePath(): string {
 
 // Mock 'vscode' at the top level to ensure it's mocked before any imports
 vi.mock('vscode', () => {
+  // Mock TreeItem class
+  class MockTreeItem {
+    label: string;
+    collapsibleState: number;
+    tooltip?: string;
+    description?: string;
+    contextValue?: string;
+    iconPath?: any;
+    command?: any;
+
+    constructor(label: string, collapsibleState?: number) {
+      this.label = label;
+      this.collapsibleState = collapsibleState ?? 0;
+    }
+  }
+
   return {
+    TreeItem: MockTreeItem,
+    TreeItemCollapsibleState: {
+      None: 0,
+      Collapsed: 1,
+      Expanded: 2,
+    },
+    ThemeIcon: class {
+      constructor(public id: string) {}
+    },
     window: {
       showInputBox: vi.fn(),
       showQuickPick: vi.fn(),
