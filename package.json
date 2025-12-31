@@ -184,14 +184,14 @@
       ],
       "view/title": [
         {
-          "command": "promptBank.newPrompt",
+          "command": "promptBank.refreshTreeView",
           "when": "view == promptBank.promptsView",
           "group": "navigation@1"
         },
         {
-          "command": "promptBank.refreshTreeView",
+          "command": "promptBank.newPrompt",
           "when": "view == promptBank.promptsView",
-          "group": "navigation@0"
+          "group": "navigation@2"
         }
       ],
       "view/title/context": [
