@@ -75,12 +75,12 @@ export class PromptTreeItem extends BaseTreeItem {
 export class EmptyStateTreeItem extends BaseTreeItem {
   constructor() {
     super(
-      'No prompts found. Use the Command Palette (Ctrl+Shift+P) to add your first prompt!',
+      'No prompts yet. Click the + button above to create your first!',
       vscode.TreeItemCollapsibleState.None
     );
     this.contextValue = 'empty';
     this.iconPath = new vscode.ThemeIcon('info');
-    this.tooltip = 'Prompt Bank is empty. Start by adding a prompt from the Command Palette!';
+    this.tooltip = 'Prompt Bank is empty. Click the + button in the title bar to add a prompt!';
   }
 }
 

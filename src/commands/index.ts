@@ -273,6 +273,15 @@ export function registerCommands(
     }
   );
 
+  // Register new prompt command (tree view "+" button)
+  const newPromptCommand = vscode.commands.registerCommand('promptBank.newPrompt', async () => {
+    try {
+      await PromptEditorPanel.showForNewPrompt(context, '', promptService, treeProvider);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error creating new prompt: ${error}`);
+    }
+  });
+
   // Add all commands to context subscriptions
   context.subscriptions.push(
     savePromptCommand,
@@ -281,6 +290,7 @@ export function registerCommands(
     listPromptsCommand,
     showStatsCommand,
     importPromptCommand,
-    shareCollectionCommand
+    shareCollectionCommand,
+    newPromptCommand
   );
 }
