@@ -69,6 +69,12 @@
         "category": "Prompt Bank"
       },
       {
+        "command": "promptBank.newPromptInCategory",
+        "title": "New Prompt in Category",
+        "icon": "$(add)",
+        "commandPalette": false
+      },
+      {
         "command": "promptBank.refreshTreeView",
         "title": "Refresh Prompts",
         "icon": "$(refresh)",
@@ -190,9 +196,14 @@
       ],
       "view/title/context": [
         {
+          "command": "promptBank.newPrompt",
+          "when": "view == promptBank.promptsView",
+          "group": "1_add"
+        },
+        {
           "command": "promptBank.refreshTreeView",
           "when": "view == promptBank.promptsView",
-          "group": "refresh"
+          "group": "2_refresh"
         }
       ],
       "view/item/context": [
@@ -215,6 +226,11 @@
           "command": "promptBank.copyPromptContent",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@2"
+        },
+        {
+          "command": "promptBank.newPromptInCategory",
+          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
+          "group": "0_create@1"
         },
         {
           "command": "promptBank.renameCategory",

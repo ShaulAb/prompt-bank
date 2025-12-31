@@ -14,6 +14,7 @@ export class PromptEditorPanel {
   private readonly treeProvider: PromptTreeProvider;
   private disposables: vscode.Disposable[] = [];
   private categories: string[];
+  private readonly initialCategory: string | undefined;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -22,7 +23,8 @@ export class PromptEditorPanel {
     promptService: PromptService,
     treeProvider: PromptTreeProvider,
     categories: string[],
-    initialContent?: string
+    initialContent?: string,
+    initialCategory?: string
   ) {
     this.panel = panel;
     this.extensionUri = extensionUri;
@@ -31,6 +33,7 @@ export class PromptEditorPanel {
     this.treeProvider = treeProvider;
     this.categories = categories;
     this.initialContent = initialContent;
+    this.initialCategory = initialCategory;
 
     // Set the webview's HTML content
     this.panel.webview.html = this.getHtmlForWebview();
@@ -116,7 +119,8 @@ export class PromptEditorPanel {
     context: vscode.ExtensionContext,
     initialContent: string,
     promptService: PromptService,
-    treeProvider: PromptTreeProvider
+    treeProvider: PromptTreeProvider,
+    initialCategory?: string
   ) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
@@ -148,7 +152,8 @@ export class PromptEditorPanel {
       promptService,
       treeProvider,
       categories,
-      initialContent
+      initialContent,
+      initialCategory
     );
   }
 
@@ -160,13 +165,13 @@ export class PromptEditorPanel {
     let promptJson = 'null';
     if (this.promptData) {
       promptJson = JSON.stringify(this.promptData);
-    } else if (this.initialContent) {
-      // Create a temporary prompt object with the initial content
+    } else if (this.initialContent || this.initialCategory) {
+      // Create a temporary prompt object with the initial content/category
       const tempPrompt = {
-        content: this.initialContent,
+        content: this.initialContent || '',
         title: '',
         description: '',
-        category: 'General',
+        category: this.initialCategory || 'General',
       };
       promptJson = JSON.stringify(tempPrompt);
     }
