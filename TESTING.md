@@ -7,8 +7,8 @@ This document provides a comprehensive overview of the testing strategy, test ca
 ## 📊 Test Overview
 
 ```
-Total Tests: 141 tests across 22 test files
-Status: ✅ 132 passing | ⏭️ 9 skipped
+Total Tests: 181 tests across 24 test files
+Status: ✅ 172 passing | ⏭️ 9 skipped
 Success Rate: 100% (all tests passing)
 CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 ```
@@ -59,7 +59,7 @@ CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 
 **Purpose**: Test individual components in isolation with mocked dependencies
 
-**Location**: `test/*.test.ts` (14 files)
+**Location**: `test/*.test.ts` (24 files)
 
 **Coverage**:
 - **PromptService**: Business logic (`prompt-service.test.ts` - 18 tests)
@@ -69,10 +69,10 @@ CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 - **Sharing**: Share prompts and collections (2 files, 15 tests)
 - **Save Selection**: Save from editor selection (`save-selection-prompt.test.ts` - 9 tests)
 - **WebView**: Editor panel (`webview-editor-panel.test.ts` - 10 tests, 7 skipped)
-- **Sync Features**: Three-way merge, edge cases, integration, conflict resolution (4 files, 46 tests)
+- **Sync Features**: Three-way merge, edge cases, integration, conflict resolution, state migration (5 files, 51 tests)
 - **Versioning**: Version creation, pruning, restoration, sync integration, helper functions (5 files, 18 tests)
 
-**Status**: ✅ **121 tests passing, 9 skipped**
+**Status**: ✅ **154 tests passing, 9 skipped**
 
 **Run Command**:
 ```bash
@@ -165,7 +165,8 @@ Secondary: test-user-002 (test-secondary@promptbank.test)
 
 **Run Command**:
 ```bash
-npm run test:e2e
+# E2E tests require manual setup with VS Code Extension Development Host
+# Press F5 in VS Code to launch and test manually
 ```
 
 **Why Excluded from CI?**
@@ -307,7 +308,7 @@ npm run test -- test/versioning
 ```bash
 # Run all unit tests and integration tests (recommended for PR)
 npm test
-# Expected: "Test Files 17 passed (17)" and "Tests 114 passed | 9 skipped (123)"
+# Expected: "Test Files 24 passed (24)" and "Tests 172 passed | 9 skipped (181)"
 
 # Run with watch mode (for development)
 npm run test:watch
@@ -315,17 +316,11 @@ npm run test:watch
 # Run with Vitest UI (for debugging)
 npm run test:ui
 
-# Run E2E tests (requires VS Code, manual testing)
-npm run test:e2e
-
-# Run E2E tests in watch mode
-npm run test:e2e:watch
-
 # Run production JWKS validation
 npx tsx scripts/test-real-jwks.ts
 
-# Run all tests including E2E (comprehensive)
-npm run test:integration
+# E2E tests (requires VS Code Extension Development Host)
+# Press F5 in VS Code to launch and test manually
 ```
 
 ### Pre-PR Checklist
@@ -335,7 +330,7 @@ Before opening a Pull Request, ensure:
 ```bash
 # 1. Run unit and integration tests
 npm test
-# ✅ Expected: "Test Files 17 passed (17)" and "Tests 114 passed | 9 skipped (123)"
+# ✅ Expected: "Test Files 24 passed (24)" and "Tests 172 passed | 9 skipped (181)"
 
 # 2. Run TypeScript type checking
 npx tsc --noEmit
@@ -420,10 +415,10 @@ export default defineConfig({
 
 ### All Tests Passing!
 
-All 114 tests are currently passing, including all 11 JWKS verification tests and 5 new sync conflict resolution tests. Previous test infrastructure issues have been resolved.
+All 172 tests are currently passing, including all 11 JWKS verification tests, 5 sync conflict resolution tests, and 5 sync state migration tests. Previous test infrastructure issues have been resolved.
 
 **How to Verify**:
-1. ✅ Run test suite: `npm test` → All tests pass (114 passing, 9 skipped)
+1. ✅ Run test suite: `npm test` → All tests pass (172 passing, 9 skipped)
 2. ✅ Run production JWKS script: `npx tsx scripts/test-real-jwks.ts` → All checks pass
 3. ✅ Manual testing in VS Code Extension Development Host (F5)
 
@@ -536,10 +531,11 @@ Each test should:
 ## ✅ Summary for PR Review
 
 ### What's Working
-- ✅ **114 tests passing** (100% success rate)
+- ✅ **172 tests passing** (100% success rate)
 - ✅ **All critical features covered** (CRUD, auth, sharing, sync, conflict resolution)
 - ✅ **All JWKS verification tests passing** (11/11)
 - ✅ **All sync conflict resolution tests passing** (5/5)
+- ✅ **All sync state migration tests passing** (5/5)
 - ✅ **Production JWKS validation** passing
 - ✅ **Fast CI pipeline** (~30s total)
 - ✅ **Zero TypeScript errors**
@@ -551,11 +547,10 @@ Each test should:
 - ⏭️ E2E tests excluded from CI (require real VS Code)
 
 ### Pre-Release Checklist
-1. ✅ Run `npm test` → 114 passing, 9 skipped
+1. ✅ Run `npm test` → 172 passing, 9 skipped
 2. ✅ Run `npx tsx scripts/test-real-jwks.ts` → All checks pass
 3. ✅ Run `npx tsc --noEmit` → No errors
 4. ✅ Run `npm run build` → Successful build
 5. ⚠️ Manual testing in Extension Development Host (F5) → Recommended
-6. ⚠️ Optional: `npm run test:e2e` → Full E2E validation
 
 **This codebase is ready for production!** 🚀
