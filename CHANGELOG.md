@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.1](https://github.com/ShaulAb/prompt-bank/compare/v0.8.0...v0.8.1) (2025-12-31)
+
+### 🐛 Bug Fixes
+
+- **sync:** 🐛 auto-migrate sync state to add missing workspaceId ([#55](https://github.com/ShaulAb/prompt-bank/issues/55)) ([db30c6c](https://github.com/ShaulAb/prompt-bank/commit/db30c6c9a3df13e5cf40af205c70245e15954169))
+
 ## [0.8.0](https://github.com/ShaulAb/prompt-bank/compare/v0.7.0...v0.8.0) (2025-12-31)
 
 ### 🐛 Bug Fixes
