@@ -19,13 +19,16 @@ export interface SyncState {
   /** Human-readable device name (e.g., "MacBook Pro (Mac)") */
   readonly deviceName: string;
 
+  /** Workspace identifier (UUID from workspace-meta.json) */
+  readonly workspaceId: string;
+
   /** Last successful sync timestamp */
   lastSyncedAt?: Date;
 
   /** Map: promptId → sync information for that prompt */
   promptSyncMap: Readonly<Record<string, PromptSyncInfo>>;
 
-  /** Schema version for future migrations (default: 2 with deletion support) */
+  /** Schema version for future migrations (default: 3 with workspace support) */
   schemaVersion?: number;
 }
 
@@ -60,6 +63,7 @@ export interface PromptSyncInfo {
 export interface RemotePrompt {
   readonly id: string;
   readonly user_id: string;
+  readonly workspace_id: string;
   readonly cloud_id: string;
   readonly local_id: string;
   readonly title: string;
@@ -188,17 +192,20 @@ export interface SyncConflictError {
 }
 
 /**
- * Create an empty sync state for a new device
+ * Create an empty sync state for a new device/workspace
  */
 export const createEmptySyncState = (
   userId: string,
   deviceId: string,
-  deviceName: string
+  deviceName: string,
+  workspaceId: string
 ): SyncState => ({
   userId,
   deviceId,
   deviceName,
+  workspaceId,
   promptSyncMap: Object.freeze({}),
+  schemaVersion: 3, // Version 3 adds workspace support
 });
 
 /**

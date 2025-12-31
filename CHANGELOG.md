@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.1](https://github.com/ShaulAb/prompt-bank/compare/v0.8.0...v0.8.1) (2025-12-31)
+
+### 🐛 Bug Fixes
+
+- **sync:** 🐛 auto-migrate sync state to add missing workspaceId ([#55](https://github.com/ShaulAb/prompt-bank/issues/55)) ([db30c6c](https://github.com/ShaulAb/prompt-bank/commit/db30c6c9a3df13e5cf40af205c70245e15954169))
+
+## [0.8.0](https://github.com/ShaulAb/prompt-bank/compare/v0.7.0...v0.8.0) (2025-12-31)
+
+### 🐛 Bug Fixes
+
+- **ci:** add manual trigger and force publish option to publish workflow ([c828847](https://github.com/ShaulAb/prompt-bank/commit/c828847d96cfac9928057ce4824386562f61dcca))
+- **ci:** update existing GitHub release instead of creating new one ([e79ee4e](https://github.com/ShaulAb/prompt-bank/commit/e79ee4e25c03b9df94d3b781f2cccd763a42b1d9))
+
+### 🔧 Chores
+
+- **gitignore:** 🙈 add root-level storage files to gitignore ([62100ce](https://github.com/ShaulAb/prompt-bank/commit/62100ce55d8f0776bc1a9a5d19a460ecad2902ee))
+- **gitignore:** 🙈 ignore internal implementation plan files ([6667984](https://github.com/ShaulAb/prompt-bank/commit/666798454d4b249a75d848a1b52c83dede148e34))
+- **release:** merge dev to main for v0.7.0 release ([7bdcafd](https://github.com/ShaulAb/prompt-bank/commit/7bdcafd80bdf373cfda5241fac15e693a7272c97))
+
+### ✨ Features
+
+- **sync:** ✨ add workspace metadata model and ID validation utilities ([cf8a5aa](https://github.com/ShaulAb/prompt-bank/commit/cf8a5aa9a4d52e8b61aabbee9b45d20d22d2fe6f)), closes [#53](https://github.com/ShaulAb/prompt-bank/issues/53)
+- **sync:** ✨ add WorkspaceMetadataService for workspace identity ([244bd76](https://github.com/ShaulAb/prompt-bank/commit/244bd76432fe7d74bbfdd866540eb8ee3b20267a)), closes [#53](https://github.com/ShaulAb/prompt-bank/issues/53)
+- **sync:** ✨ integrate workspace ID into sync operations ([22cbfb3](https://github.com/ShaulAb/prompt-bank/commit/22cbfb32d423400f3ad2f9d3c507272851044d51)), closes [#53](https://github.com/ShaulAb/prompt-bank/issues/53)
+
+### ✅ Tests
+
+- **sync:** ✅ update sync tests for WorkspaceMetadataService ([c2be9f1](https://github.com/ShaulAb/prompt-bank/commit/c2be9f1f39ffa088d38040ea2a5bd5c587e73957)), closes [#53](https://github.com/ShaulAb/prompt-bank/issues/53)
+
+### 📝 Documentation
+
+- **claude:** 📝 streamline CLAUDE.md to workflow playbook ([a64f1b5](https://github.com/ShaulAb/prompt-bank/commit/a64f1b571fbdbd14d01b79aa207ee2b4315e09b6))
+- **contributing:** 📝 enhance documentation with architecture details ([ed169b0](https://github.com/ShaulAb/prompt-bank/commit/ed169b06c67e99ee16798c4915b92e294b964540))
+- **contributing:** 📝 simplify WebView section for better readability ([9460fab](https://github.com/ShaulAb/prompt-bank/commit/9460fab0d99c20601a44f8a58e92d1840d2864b2))
+- **sync:** 📝 add detailed implementation plan for workspace isolation fix ([eaa1a40](https://github.com/ShaulAb/prompt-bank/commit/eaa1a40f22943bc612bc29403d7f21616a02cd3a)), closes [#53](https://github.com/ShaulAb/prompt-bank/issues/53)
+- **sync:** 📝 update dependency graph for WorkspaceMetadataService ([0511cdd](https://github.com/ShaulAb/prompt-bank/commit/0511cddc227b85236a450ae19cbc0231ccf7d2d6))
+- **workflow:** 📝 add post-PR merge cleanup workflow to CLAUDE.md ([4ec39d6](https://github.com/ShaulAb/prompt-bank/commit/4ec39d68082ea09511cdd87e47ffe2b870f54a28))
+
 ## [0.7.0](https://github.com/ShaulAb/prompt-bank/compare/v0.6.2...v0.7.0) (2025-11-07)
 
 ### ⚠ BREAKING CHANGES

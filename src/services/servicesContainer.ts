@@ -15,6 +15,7 @@ import { AuthService } from './authService';
 import { SupabaseClientManager, Database } from './supabaseClient';
 import { SyncService } from './syncService';
 import { PromptService } from './promptService';
+import { WorkspaceMetadataService } from './workspaceMetadataService';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { SyncStateStorage } from '../storage/syncStateStorage';
 
@@ -27,6 +28,9 @@ export interface WorkspaceServices {
 
   /** Supabase client instance (not the manager class) */
   supabase: SupabaseClient<Database>;
+
+  /** Workspace metadata service for workspace identity */
+  workspaceMetadata: WorkspaceMetadataService;
 
   /** Sync service for cloud synchronization */
   sync: SyncService;
@@ -156,23 +160,32 @@ export class ServicesContainer {
     // 2. Supabase client (static singleton - no DI needed)
     const supabaseClient = SupabaseClientManager.initialize();
 
-    // 3. Storage providers
+    // 3. Workspace metadata service (for workspace identity)
+    const workspaceMetadataService = new WorkspaceMetadataService(workspaceRoot, context);
+
+    // 4. Storage providers
     const storageProvider = new FileStorageProvider({ storagePath: workspaceRoot });
     await storageProvider.initialize();
 
     const syncStateStorage = new SyncStateStorage(workspaceRoot);
 
-    // 4. Prompt service (depends on storage and auth)
+    // 5. Prompt service (depends on storage and auth)
     const promptService = new PromptService(storageProvider, authService);
     await promptService.initialize();
 
-    // 5. Sync service (depends on auth, syncStateStorage)
-    // Use constructor with dependency injection
-    const syncService = new SyncService(context, workspaceRoot, authService, syncStateStorage);
+    // 6. Sync service (depends on auth, syncStateStorage, workspaceMetadata)
+    const syncService = new SyncService(
+      context,
+      workspaceRoot,
+      authService,
+      syncStateStorage,
+      workspaceMetadataService
+    );
 
     return {
       auth: authService,
       supabase: supabaseClient,
+      workspaceMetadata: workspaceMetadataService,
       sync: syncService,
       prompt: promptService,
     };
@@ -188,7 +201,7 @@ export class ServicesContainer {
    */
   private async disposeServices(services: WorkspaceServices): Promise<void> {
     // Dispose in reverse dependency order
-    // (Sync depends on Auth/Supabase, so dispose sync first)
+    // (Sync depends on Auth/Supabase/WorkspaceMetadata, so dispose sync first)
     // Use Promise.allSettled to ensure all dispose attempts complete
 
     const disposeResults = await Promise.allSettled([
@@ -200,6 +213,8 @@ export class ServicesContainer {
         console.error('[ServicesContainer] Error disposing PromptService:', err);
         throw err;
       }),
+      // WorkspaceMetadataService.dispose() is synchronous
+      Promise.resolve(services.workspaceMetadata.dispose()),
       services.auth.dispose().catch((err) => {
         console.error('[ServicesContainer] Error disposing AuthService:', err);
         throw err;

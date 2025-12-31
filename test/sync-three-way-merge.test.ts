@@ -5,6 +5,7 @@ import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
+import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
@@ -18,6 +19,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
   let authService: AuthService;
   let promptService: PromptService;
   let syncStateStorage: SyncStateStorage;
+  let workspaceMetadataService: WorkspaceMetadataService;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
 
@@ -71,7 +73,8 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
     await promptService.initialize();
 
     syncStateStorage = new SyncStateStorage(testStorageDir);
-    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
+    workspaceMetadataService = new WorkspaceMetadataService(testStorageDir, context);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage, workspaceMetadataService);
   });
 
   afterEach(async () => {
@@ -722,7 +725,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
       vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test@example.com');
 
-      syncService = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+      syncService = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
       // Modify local prompt
       prompt.content = 'Modified Locally';
@@ -814,7 +817,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
       vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
       // Act
       const localPrompts = await promptService.listPrompts();
@@ -878,7 +881,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       vi.spyOn(authServiceFresh, 'getRefreshToken').mockResolvedValue('mock-refresh-token');
       vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
-      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage);
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
       // Act
       const localPrompts = await promptService.listPrompts();

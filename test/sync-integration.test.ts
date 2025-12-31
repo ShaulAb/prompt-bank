@@ -5,6 +5,7 @@ import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { PromptService } from '../src/services/promptService';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
+import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { createPrompt } from './helpers/prompt-factory';
 import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
@@ -18,6 +19,7 @@ describe('SyncService - Integration', () => {
   let authService: AuthService;
   let promptService: PromptService;
   let syncStateStorage: SyncStateStorage;
+  let workspaceMetadataService: WorkspaceMetadataService;
   let testStorageDir: string;
   let context: vscode.ExtensionContext;
 
@@ -76,7 +78,8 @@ describe('SyncService - Integration', () => {
 
     // Create sync state storage and sync service with DI
     syncStateStorage = new SyncStateStorage(testStorageDir);
-    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage);
+    workspaceMetadataService = new WorkspaceMetadataService(testStorageDir, context);
+    syncService = new SyncService(context, testStorageDir, authService, syncStateStorage, workspaceMetadataService);
   });
 
   afterEach(async () => {
@@ -171,7 +174,8 @@ describe('SyncService - Integration', () => {
       await promptServiceB.initialize();
 
       const syncStateStorageB = new SyncStateStorage(testStorageDirB);
-      const syncServiceB = new SyncService(context, testStorageDirB, authServiceB, syncStateStorageB);
+      const workspaceMetadataServiceB = new WorkspaceMetadataService(testStorageDirB, context);
+      const syncServiceB = new SyncService(context, testStorageDirB, authServiceB, syncStateStorageB, workspaceMetadataServiceB);
 
       // Device B syncs (should download from cloud)
       const deviceBLocalPrompts = await promptServiceB.listPrompts();
@@ -294,7 +298,8 @@ describe('SyncService - Integration', () => {
       // Create new SyncService instance with same storage (simulates app restart)
       const authService2 = new AuthService(context, 'test-publisher', 'test-extension');
       const syncStateStorage2 = new SyncStateStorage(testStorageDir);
-      const syncService2 = new SyncService(context, testStorageDir, authService2, syncStateStorage2);
+      const workspaceMetadataService2 = new WorkspaceMetadataService(testStorageDir, context);
+      const syncService2 = new SyncService(context, testStorageDir, authService2, syncStateStorage2, workspaceMetadataService2);
 
       // Get sync state info
       const syncInfo = await syncService2.getSyncStateInfo();
@@ -343,7 +348,8 @@ describe('SyncService - Integration', () => {
       vi.spyOn(authServiceFresh, 'getUserEmail').mockResolvedValue('test-user@promptbank.test');
 
       const syncStateStorageFresh = new SyncStateStorage(testStorageDir);
-      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorageFresh);
+      const workspaceMetadataServiceFresh = new WorkspaceMetadataService(testStorageDir, context);
+      const syncServiceFresh = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorageFresh, workspaceMetadataServiceFresh);
 
       // Next sync should be treated as first sync
       const localPrompts = await promptService.listPrompts();

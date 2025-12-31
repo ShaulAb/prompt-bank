@@ -24,9 +24,13 @@ import {
  * Handles reading and writing sync state with atomic operations
  * to prevent file corruption during concurrent access.
  */
+/** Current schema version - increment when making breaking changes */
+const CURRENT_SCHEMA_VERSION = 3;
+
 export class SyncStateStorage {
   private readonly syncStateFile: string;
   private readonly syncStateDir: string;
+  private readonly workspaceMetaFile: string;
 
   /**
    * Create a new sync state storage instance
@@ -36,10 +40,13 @@ export class SyncStateStorage {
   constructor(workspaceRoot: string) {
     this.syncStateDir = path.join(workspaceRoot, '.vscode', 'prompt-bank');
     this.syncStateFile = path.join(this.syncStateDir, 'sync-state.json');
+    this.workspaceMetaFile = path.join(this.syncStateDir, 'workspace-meta.json');
   }
 
   /**
    * Get current sync state (or null if never synced)
+   *
+   * Automatically migrates older sync states to current schema version.
    *
    * @returns Sync state or null if file doesn't exist
    */
@@ -49,7 +56,12 @@ export class SyncStateStorage {
       const parsed = JSON.parse(content) as SyncState;
 
       // Convert ISO date strings back to Date objects
-      return this.deserializeDates(parsed);
+      let state = this.deserializeDates(parsed);
+
+      // Migrate older sync states if needed
+      state = await this.migrateIfNeeded(state);
+
+      return state;
     } catch (error: unknown) {
       if (this.isFileNotFoundError(error)) {
         return null; // File doesn't exist yet - first sync
@@ -59,13 +71,18 @@ export class SyncStateStorage {
   }
 
   /**
-   * Initialize sync state for a new device
+   * Initialize sync state for a new device/workspace
    *
    * @param userId - User email from OAuth
    * @param deviceInfo - Device information
+   * @param workspaceId - Workspace identifier (UUID from workspace-meta.json)
    */
-  async initializeSyncState(userId: string, deviceInfo: DeviceInfo): Promise<SyncState> {
-    const emptyState = createEmptySyncState(userId, deviceInfo.id, deviceInfo.name);
+  async initializeSyncState(
+    userId: string,
+    deviceInfo: DeviceInfo,
+    workspaceId: string
+  ): Promise<SyncState> {
+    const emptyState = createEmptySyncState(userId, deviceInfo.id, deviceInfo.name, workspaceId);
 
     await this.saveSyncState(emptyState);
     return emptyState;
@@ -388,5 +405,67 @@ export class SyncStateStorage {
     return (
       typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
     );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Migration helpers
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Migrate sync state to current schema version if needed
+   *
+   * Handles:
+   * - Schema v2 → v3: Add workspaceId from workspace-meta.json
+   */
+  private async migrateIfNeeded(state: SyncState): Promise<SyncState> {
+    const currentVersion = state.schemaVersion ?? 2; // Assume v2 if not present
+
+    if (currentVersion >= CURRENT_SCHEMA_VERSION && state.workspaceId) {
+      return state; // Already up to date
+    }
+
+    let migratedState = state;
+
+    // Migration: v2 → v3 (add workspaceId)
+    if (!state.workspaceId) {
+      const workspaceId = await this.readWorkspaceIdFromMeta();
+      if (workspaceId) {
+        migratedState = {
+          ...migratedState,
+          workspaceId,
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+        };
+        console.log(
+          `[SyncStateStorage] Migrated sync state to v${CURRENT_SCHEMA_VERSION} with workspaceId: ${workspaceId.substring(0, 8)}...`
+        );
+      } else {
+        // No workspace-meta.json exists yet - will be created on next sync
+        console.log('[SyncStateStorage] No workspace-meta.json found, skipping workspaceId migration');
+        return state;
+      }
+    }
+
+    // Save migrated state
+    await this.saveSyncState(migratedState);
+
+    return migratedState;
+  }
+
+  /**
+   * Read workspace ID from workspace-meta.json
+   *
+   * @returns Workspace ID or null if file doesn't exist
+   */
+  private async readWorkspaceIdFromMeta(): Promise<string | null> {
+    try {
+      const content = await fs.readFile(this.workspaceMetaFile, 'utf8');
+      const parsed = JSON.parse(content) as { workspaceId?: string };
+      return parsed.workspaceId ?? null;
+    } catch (error: unknown) {
+      if (this.isFileNotFoundError(error)) {
+        return null;
+      }
+      throw error;
+    }
   }
 }
