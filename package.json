@@ -63,6 +63,12 @@
         "category": "Prompt Bank"
       },
       {
+        "command": "promptBank.newPrompt",
+        "title": "New Prompt",
+        "icon": "$(add)",
+        "category": "Prompt Bank"
+      },
+      {
         "command": "promptBank.refreshTreeView",
         "title": "Refresh Prompts",
         "icon": "$(refresh)",
@@ -171,6 +177,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "promptBank.newPrompt",
+          "when": "view == promptBank.promptsView",
+          "group": "navigation@1"
+        },
         {
           "command": "promptBank.refreshTreeView",
           "when": "view == promptBank.promptsView",
