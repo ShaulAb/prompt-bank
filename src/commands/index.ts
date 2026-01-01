@@ -111,7 +111,7 @@ export function registerCommands(
       // Step 2: choose action
       const actionItems: { label: string; action: 'view' | 'insert' | 'edit' | 'delete' }[] = [
         { label: 'View', action: 'view' },
-        { label: 'Insert', action: 'insert' },
+        { label: 'Copy', action: 'insert' },
         { label: 'Edit', action: 'edit' },
         { label: 'Delete', action: 'delete' },
       ];

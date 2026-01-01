@@ -54,7 +54,7 @@
       },
       {
         "command": "promptBank.insertPrompt",
-        "title": "💬 Insert Prompt",
+        "title": "💬 Copy Prompt",
         "category": "Prompt Bank"
       },
       {
@@ -89,11 +89,6 @@
       {
         "command": "promptBank.editPromptFromTree",
         "title": "Edit Prompt",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.copyPromptContent",
-        "title": "Copy Content",
         "commandPalette": false
       },
       {
@@ -216,11 +211,6 @@
           "command": "promptBank.editPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@1"
-        },
-        {
-          "command": "promptBank.copyPromptContent",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@2"
         },
         {
           "command": "promptBank.newPromptInCategory",
