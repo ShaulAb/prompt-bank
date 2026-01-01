@@ -6,12 +6,16 @@ This document provides a comprehensive overview of the testing strategy, test ca
 
 ## 📊 Test Overview
 
+Run `npm test` to see current test statistics. All tests should pass with 100% success rate.
+
+```bash
+# Quick test run
+npm test
+
+# Expected output shows: Test Files, Tests passed/skipped, Duration
 ```
-Total Tests: 181 tests across 24 test files
-Status: ✅ 172 passing | ⏭️ 9 skipped
-Success Rate: 100% (all tests passing)
-CI Runtime: ~30 seconds (optimized from 10-15 minutes)
-```
+
+**CI Runtime**: ~30 seconds (optimized from 10-15 minutes)
 
 ---
 
@@ -72,7 +76,7 @@ CI Runtime: ~30 seconds (optimized from 10-15 minutes)
 - **Sync Features**: Three-way merge, edge cases, integration, conflict resolution, state migration (5 files, 51 tests)
 - **Versioning**: Version creation, pruning, restoration, sync integration, helper functions (5 files, 18 tests)
 
-**Status**: ✅ **154 tests passing, 9 skipped**
+**Status**: ✅ All tests passing (some skipped for browser-only features)
 
 **Run Command**:
 ```bash
@@ -134,7 +138,7 @@ describe('PromptService - Create Prompt', () => {
 10. ✅ JWKS caching
 11. ✅ Extract expiry from JWT
 
-**Status**: ✅ **18 tests passing** (all tests passing)
+**Status**: ✅ All tests passing
 
 **Run Command**:
 ```bash
@@ -267,7 +271,7 @@ npx tsx scripts/test-real-jwks.ts
 "promptBank.versioning.debounceMinutes": 5  // 1-60 range
 ```
 
-**Status**: ✅ **18 tests passing** (all tests passing)
+**Status**: ✅ All tests passing
 
 **Run Command**:
 ```bash
@@ -308,7 +312,7 @@ npm run test -- test/versioning
 ```bash
 # Run all unit tests and integration tests (recommended for PR)
 npm test
-# Expected: "Test Files 24 passed (24)" and "Tests 172 passed | 9 skipped (181)"
+# ✅ All test files should pass, some tests may be skipped (browser-only features)
 
 # Run with watch mode (for development)
 npm run test:watch
@@ -330,7 +334,7 @@ Before opening a Pull Request, ensure:
 ```bash
 # 1. Run unit and integration tests
 npm test
-# ✅ Expected: "Test Files 24 passed (24)" and "Tests 172 passed | 9 skipped (181)"
+# ✅ All test files should pass
 
 # 2. Run TypeScript type checking
 npx tsc --noEmit
@@ -415,10 +419,10 @@ export default defineConfig({
 
 ### All Tests Passing!
 
-All 172 tests are currently passing, including all 11 JWKS verification tests, 5 sync conflict resolution tests, and 5 sync state migration tests. Previous test infrastructure issues have been resolved.
+All tests are currently passing, including JWKS verification, sync conflict resolution, and sync state migration tests. Previous test infrastructure issues have been resolved.
 
 **How to Verify**:
-1. ✅ Run test suite: `npm test` → All tests pass (172 passing, 9 skipped)
+1. ✅ Run test suite: `npm test` → All test files pass
 2. ✅ Run production JWKS script: `npx tsx scripts/test-real-jwks.ts` → All checks pass
 3. ✅ Manual testing in VS Code Extension Development Host (F5)
 
@@ -531,23 +535,23 @@ Each test should:
 ## ✅ Summary for PR Review
 
 ### What's Working
-- ✅ **172 tests passing** (100% success rate)
+- ✅ **All tests passing** (100% success rate)
 - ✅ **All critical features covered** (CRUD, auth, sharing, sync, conflict resolution)
-- ✅ **All JWKS verification tests passing** (11/11)
-- ✅ **All sync conflict resolution tests passing** (5/5)
-- ✅ **All sync state migration tests passing** (5/5)
+- ✅ **JWKS verification tests** passing
+- ✅ **Sync conflict resolution tests** passing
+- ✅ **Sync state migration tests** passing
 - ✅ **Production JWKS validation** passing
 - ✅ **Fast CI pipeline** (~30s total)
 - ✅ **Zero TypeScript errors**
 - ✅ **Code properly formatted**
 
 ### What's Intentionally Skipped
-- ⏭️ 7 WebView tests intentionally skipped (requires browser env)
-- ⏭️ 2 PromptService tests skipped (requires complex mock setup)
+- ⏭️ Some WebView tests skipped (requires browser env)
+- ⏭️ Some PromptService tests skipped (requires complex mock setup)
 - ⏭️ E2E tests excluded from CI (require real VS Code)
 
 ### Pre-Release Checklist
-1. ✅ Run `npm test` → 172 passing, 9 skipped
+1. ✅ Run `npm test` → All test files pass
 2. ✅ Run `npx tsx scripts/test-real-jwks.ts` → All checks pass
 3. ✅ Run `npx tsc --noEmit` → No errors
 4. ✅ Run `npm run build` → Successful build
