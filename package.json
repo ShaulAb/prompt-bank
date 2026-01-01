@@ -54,7 +54,7 @@
       },
       {
         "command": "promptBank.insertPrompt",
-        "title": "💬 Insert Prompt",
+        "title": "💬 Copy Prompt",
         "category": "Prompt Bank"
       },
       {
@@ -89,11 +89,6 @@
       {
         "command": "promptBank.editPromptFromTree",
         "title": "Edit Prompt",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.copyPromptContent",
-        "title": "Copy Content",
         "commandPalette": false
       },
       {
@@ -203,11 +198,6 @@
       ],
       "view/item/context": [
         {
-          "command": "promptBank.deletePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "inline@1"
-        },
-        {
           "command": "promptBank.insertPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "inline@2"
@@ -218,7 +208,7 @@
           "group": "1_modification@1"
         },
         {
-          "command": "promptBank.copyPromptContent",
+          "command": "promptBank.insertPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@2"
         },
@@ -253,24 +243,18 @@
           "group": "1_modification@0"
         },
         {
+          "command": "promptBank.deletePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+          "group": "2_danger@1"
+        },
+        {
           "command": "promptBank.shareCollectionFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@0"
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "promptBank.savePrompt",
-        "key": "ctrl+alt+p",
-        "mac": "cmd+alt+p"
-      },
-      {
-        "command": "promptBank.insertPrompt",
-        "key": "ctrl+alt+i",
-        "mac": "cmd+alt+i"
-      }
-    ],
+    "keybindings": [],
     "configuration": {
       "title": "Prompt Bank",
       "properties": {

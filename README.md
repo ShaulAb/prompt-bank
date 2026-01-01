@@ -27,7 +27,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 ## 🚀 Key Features
 
-- **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category using a simple keyboard shortcut (`Ctrl+Alt+P`).
+- **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category via the context menu or Command Palette.
 - **Save from Selection**: Right-click selected text in the editor and choose "Save Selection as Prompt" to quickly save with prefilled content.
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
@@ -36,8 +36,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
-- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, View Version History, and Rename Category.
-- **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
+- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Copy, Delete, Share, View Version History, and Rename Category.
+- **Inline Actions**: Use the convenient copy icon in the tree view for quick prompt copying.
 - **Authentication**: Secure Google OAuth integration for sharing and sync features.
 - **Prompt Versioning**: Automatic version history for every prompt edit with an intuitive UI to view and restore previous versions.
   - **View History**: Right-click any prompt → "View Version History" to browse all versions
@@ -52,13 +52,13 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 ## 🎯 Quick Start
 
 1.  **Save a Prompt**:
-    - **Option 1**: Select text in your editor OR copy text from anywhere to your clipboard, then press `Ctrl+Alt+P` (or `Cmd+Alt+P` on Mac).
-    - **Option 2**: Select text in the editor, right-click, and choose "Save Selection as Prompt" from the context menu.
+    - **Option 1**: Select text in the editor, right-click, and choose "Save Selection as Prompt" from the context menu.
+    - **Option 2**: Use Command Palette (`Ctrl+Shift+P`) → "Prompt Bank: Save Prompt" to save from clipboard.
     - Fill in the details in the prompt editor and save.
 
-2.  **Insert a Prompt**:
-    - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click it.
-    - **With a Shortcut**: Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac) and select a prompt from the list. Start typing to search and filter prompts.
+2.  **Copy a Prompt**:
+    - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click the copy icon.
+    - **From Command Palette**: Use "Prompt Bank: List All Prompts" to search and select a prompt to copy.
 
 3.  **Manage Prompts**:
     - Right-click any item in the tree view to see all management options.
@@ -93,9 +93,9 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save text from selection or clipboard as a new prompt.        |
+| `promptBank.savePrompt`    | -            | Save text from selection or clipboard as a new prompt.            |
 | `promptBank.savePromptFromSelection` | Right-click | Save selected text as prompt (editor context menu only).  |
-| `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Insert prompt from the collection.                                 |
+| `promptBank.insertPrompt`  | -              | Copy prompt from the collection.                                  |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
 | `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
@@ -104,7 +104,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | `promptBank.viewSyncStatus` | -             | View current sync status (user, device, last sync time).          |
 | `promptBank.clearSyncState` | -             | Reset sync metadata for fresh start.                               |
 | `promptBank.refreshTree`   | -              | Manually refresh the tree view.                                   |
-| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Insert`, `Delete`, `Share`, `View Version History`, `Rename Category`.           |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Copy`, `Delete`, `Share`, `View Version History`, `Rename Category`.             |
 
 ## 📁 Storage
 

@@ -31,11 +31,6 @@ export class ContextMenuCommands {
       (item: PromptTreeItem) => this.editPrompt(item)
     );
 
-    const copyContentCommand = vscode.commands.registerCommand(
-      'promptBank.copyPromptContent',
-      (item: PromptTreeItem) => this.copyPromptContent(item)
-    );
-
     const duplicatePromptCommand = vscode.commands.registerCommand(
       'promptBank.duplicatePromptFromTree',
       (item: PromptTreeItem) => this.duplicatePrompt(item)
@@ -68,7 +63,6 @@ export class ContextMenuCommands {
 
     context.subscriptions.push(
       editPromptCommand,
-      copyContentCommand,
       duplicatePromptCommand,
       deletePromptCommand,
       renameCategoryCommand,
@@ -94,18 +88,6 @@ export class ContextMenuCommands {
       this.promptService,
       this.treeProvider
     );
-  }
-
-  /**
-   * Copy prompt content to clipboard
-   */
-  private async copyPromptContent(item: PromptTreeItem): Promise<void> {
-    try {
-      await vscode.env.clipboard.writeText(item.prompt.content);
-      vscode.window.showInformationMessage(`Copied "${item.prompt.title}" to clipboard`);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to copy content: ${error}`);
-    }
   }
 
   /**
