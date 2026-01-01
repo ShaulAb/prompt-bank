@@ -37,7 +37,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
 - **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, View Version History, and Rename Category.
-- **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
+- **Inline Actions**: Use the convenient copy icon in the tree view for quick prompt copying.
 - **Authentication**: Secure Google OAuth integration for sharing and sync features.
 - **Prompt Versioning**: Automatic version history for every prompt edit with an intuitive UI to view and restore previous versions.
   - **View History**: Right-click any prompt → "View Version History" to browse all versions
