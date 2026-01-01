@@ -63,6 +63,11 @@
           font-family: var(--vscode-font-family);
         }
 
+        select option {
+          background: var(--vscode-dropdown-background, var(--vscode-input-background));
+          color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+        }
+
         input:focus, select:focus, textarea:focus {
           outline: none;
           border-color: var(--vscode-focusBorder);
