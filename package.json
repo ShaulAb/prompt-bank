@@ -208,6 +208,11 @@
           "group": "1_modification@1"
         },
         {
+          "command": "promptBank.insertPromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+          "group": "1_modification@2"
+        },
+        {
           "command": "promptBank.newPromptInCategory",
           "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "0_create@1"
