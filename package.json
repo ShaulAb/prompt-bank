@@ -249,18 +249,7 @@
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "promptBank.savePrompt",
-        "key": "ctrl+alt+p",
-        "mac": "cmd+alt+p"
-      },
-      {
-        "command": "promptBank.insertPrompt",
-        "key": "ctrl+alt+i",
-        "mac": "cmd+alt+i"
-      }
-    ],
+    "keybindings": [],
     "configuration": {
       "title": "Prompt Bank",
       "properties": {
