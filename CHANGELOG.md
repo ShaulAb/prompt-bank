@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.9.0](https://github.com/ShaulAb/prompt-bank/compare/v0.8.1...v0.9.0) (2026-01-01)
+
+### 🔧 Chores
+
+- **ci:** 🔧 remove dead E2E workflow job and broken scripts ([#57](https://github.com/ShaulAb/prompt-bank/issues/57)) ([3c11040](https://github.com/ShaulAb/prompt-bank/commit/3c11040e7baef2db2912347fa1ca87ad17b863b7)), closes [#56](https://github.com/ShaulAb/prompt-bank/issues/56) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#55](https://github.com/ShaulAb/prompt-bank/issues/55)
+
+### ✨ Features
+
+- **ux:** ✨ add "+" button to tree view for quick prompt creation ([#59](https://github.com/ShaulAb/prompt-bank/issues/59)) ([8197357](https://github.com/ShaulAb/prompt-bank/commit/81973572948e9fa501390ccf2376d046fcc322a0)), closes [#56](https://github.com/ShaulAb/prompt-bank/issues/56) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#53](https://github.com/ShaulAb/prompt-bank/issues/53) [#55](https://github.com/ShaulAb/prompt-bank/issues/55)
+- **ux:** ✨ add context menu options for creating new prompts ([#61](https://github.com/ShaulAb/prompt-bank/issues/61)) ([be46a4c](https://github.com/ShaulAb/prompt-bank/commit/be46a4ca2e47acebca27424cc349962bad4546b1))
+- **ux:** ✨ make empty state clickable to create new prompt ([#60](https://github.com/ShaulAb/prompt-bank/issues/60)) ([a618268](https://github.com/ShaulAb/prompt-bank/commit/a618268a24f98deaa260227dd74c2e8c519c899e))
+
+### 📝 Documentation
+
+- 📝 automate test documentation to prevent stale counts ([#62](https://github.com/ShaulAb/prompt-bank/issues/62)) ([9ce71a9](https://github.com/ShaulAb/prompt-bank/commit/9ce71a9c630e922c6a084ac5157dce3f9db33c2a)), closes [#58](https://github.com/ShaulAb/prompt-bank/issues/58)
+
+### ♻️ Code Refactoring
+
+- **ux:** ♻️ streamline prompt actions - rename Insert to Copy and consolidate delete ([#65](https://github.com/ShaulAb/prompt-bank/issues/65)) ([9339012](https://github.com/ShaulAb/prompt-bank/commit/933901293bb930c10d328e13ca469a9bcafbbcb3))
+
 ### [0.8.1](https://github.com/ShaulAb/prompt-bank/compare/v0.8.0...v0.8.1) (2025-12-31)
 
 ### 🐛 Bug Fixes
