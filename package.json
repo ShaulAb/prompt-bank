@@ -199,11 +199,6 @@
           "command": "promptBank.newPrompt",
           "when": "view == promptBank.promptsView",
           "group": "1_add"
-        },
-        {
-          "command": "promptBank.refreshTreeView",
-          "when": "view == promptBank.promptsView",
-          "group": "2_refresh"
         }
       ],
       "view/item/context": [
