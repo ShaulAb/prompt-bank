@@ -111,7 +111,7 @@ export function registerCommands(
       // Step 2: choose action
       const actionItems: { label: string; action: 'view' | 'insert' | 'edit' | 'delete' }[] = [
         { label: 'View', action: 'view' },
-        { label: 'Insert', action: 'insert' },
+        { label: 'Copy', action: 'insert' },
         { label: 'Edit', action: 'edit' },
         { label: 'Delete', action: 'delete' },
       ];
@@ -273,6 +273,15 @@ export function registerCommands(
     }
   );
 
+  // Register new prompt command (tree view "+" button)
+  const newPromptCommand = vscode.commands.registerCommand('promptBank.newPrompt', async () => {
+    try {
+      await PromptEditorPanel.showForNewPrompt(context, '', promptService, treeProvider);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error creating new prompt: ${error}`);
+    }
+  });
+
   // Add all commands to context subscriptions
   context.subscriptions.push(
     savePromptCommand,
@@ -281,6 +290,7 @@ export function registerCommands(
     listPromptsCommand,
     showStatsCommand,
     importPromptCommand,
-    shareCollectionCommand
+    shareCollectionCommand,
+    newPromptCommand
   );
 }

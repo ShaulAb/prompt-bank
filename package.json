@@ -2,7 +2,7 @@
   "name": "prompt-bank",
   "displayName": "Prompt Bank",
   "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-  "version": "0.8.1",
+  "version": "0.9.1",
   "icon": "assets/logo.png",
   "publisher": "prestissimo",
   "repository": {
@@ -54,13 +54,25 @@
       },
       {
         "command": "promptBank.insertPrompt",
-        "title": "💬 Insert Prompt",
+        "title": "💬 Copy Prompt",
         "category": "Prompt Bank"
       },
       {
         "command": "promptBank.listPrompts",
         "title": "💬 List All Prompts",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.newPrompt",
+        "title": "New Prompt",
+        "icon": "$(add)",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.newPromptInCategory",
+        "title": "New Prompt in Category",
+        "icon": "$(add)",
+        "commandPalette": false
       },
       {
         "command": "promptBank.refreshTreeView",
@@ -77,11 +89,6 @@
       {
         "command": "promptBank.editPromptFromTree",
         "title": "Edit Prompt",
-        "commandPalette": false
-      },
-      {
-        "command": "promptBank.copyPromptContent",
-        "title": "Copy Content",
         "commandPalette": false
       },
       {
@@ -174,22 +181,22 @@
         {
           "command": "promptBank.refreshTreeView",
           "when": "view == promptBank.promptsView",
-          "group": "navigation@0"
+          "group": "navigation@1"
+        },
+        {
+          "command": "promptBank.newPrompt",
+          "when": "view == promptBank.promptsView",
+          "group": "navigation@2"
         }
       ],
       "view/title/context": [
         {
-          "command": "promptBank.refreshTreeView",
+          "command": "promptBank.newPrompt",
           "when": "view == promptBank.promptsView",
-          "group": "refresh"
+          "group": "1_add"
         }
       ],
       "view/item/context": [
-        {
-          "command": "promptBank.deletePromptFromTree",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "inline@1"
-        },
         {
           "command": "promptBank.insertPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
@@ -201,9 +208,14 @@
           "group": "1_modification@1"
         },
         {
-          "command": "promptBank.copyPromptContent",
+          "command": "promptBank.insertPromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@2"
+        },
+        {
+          "command": "promptBank.newPromptInCategory",
+          "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
+          "group": "0_create@1"
         },
         {
           "command": "promptBank.renameCategory",
@@ -231,24 +243,18 @@
           "group": "1_modification@0"
         },
         {
+          "command": "promptBank.deletePromptFromTree",
+          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
+          "group": "2_danger@1"
+        },
+        {
           "command": "promptBank.shareCollectionFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@0"
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "promptBank.savePrompt",
-        "key": "ctrl+alt+p",
-        "mac": "cmd+alt+p"
-      },
-      {
-        "command": "promptBank.insertPrompt",
-        "key": "ctrl+alt+i",
-        "mac": "cmd+alt+i"
-      }
-    ],
+    "keybindings": [],
     "configuration": {
       "title": "Prompt Bank",
       "properties": {
@@ -321,9 +327,6 @@
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:ui": "vitest --config vitest.config.ts --ui",
-    "test:e2e": "npm run build:dev && tsx ./test/e2e/runTests.ts",
-    "test:e2e:watch": "npm run build:dev && tsx ./test/e2e/runTests.ts --watch",
-    "test:integration": "npm run test && npm run test:e2e",
     "lint": "eslint src --ext ts",
     "format": "prettier --write src",
     "package": "vsce package",
