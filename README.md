@@ -36,8 +36,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
-- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Insert, Delete, Share, View Version History, and Rename Category.
-- **Inline Actions**: Use convenient inline icons in the tree view for quick insert and delete operations.
+- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Copy, Delete, Share, View Version History, and Rename Category.
+- **Inline Actions**: Use convenient inline icons in the tree view for quick copy and delete operations.
 - **Authentication**: Secure Google OAuth integration for sharing and sync features.
 - **Prompt Versioning**: Automatic version history for every prompt edit with an intuitive UI to view and restore previous versions.
   - **View History**: Right-click any prompt → "View Version History" to browse all versions
@@ -56,9 +56,9 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
     - **Option 2**: Select text in the editor, right-click, and choose "Save Selection as Prompt" from the context menu.
     - Fill in the details in the prompt editor and save.
 
-2.  **Insert a Prompt**:
-    - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click it.
-    - **With a Shortcut**: Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac) and select a prompt from the list. Start typing to search and filter prompts.
+2.  **Copy a Prompt**:
+    - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click the copy icon.
+    - **With a Shortcut**: Press `Ctrl+Alt+I` (or `Cmd+Alt+I` on Mac) and select a prompt from the list. Start typing to search and filter prompts.
 
 3.  **Manage Prompts**:
     - Right-click any item in the tree view to see all management options.
@@ -95,7 +95,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
 | `promptBank.savePrompt`    | `Ctrl+Alt+P` | Save text from selection or clipboard as a new prompt.        |
 | `promptBank.savePromptFromSelection` | Right-click | Save selected text as prompt (editor context menu only).  |
-| `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Insert prompt from the collection.                                 |
+| `promptBank.insertPrompt`  | `Ctrl+Alt+I` | Copy prompt from the collection.                                   |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
 | `promptBank.shareCollection` | -           | Share a category or the entire collection.                         |
@@ -104,7 +104,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | `promptBank.viewSyncStatus` | -             | View current sync status (user, device, last sync time).          |
 | `promptBank.clearSyncState` | -             | Reset sync metadata for fresh start.                               |
 | `promptBank.refreshTree`   | -              | Manually refresh the tree view.                                   |
-| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Insert`, `Delete`, `Share`, `View Version History`, `Rename Category`.           |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Copy`, `Delete`, `Share`, `View Version History`, `Rename Category`.             |
 
 ## 📁 Storage
 
