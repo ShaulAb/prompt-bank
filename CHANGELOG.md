@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.9.1](https://github.com/ShaulAb/prompt-bank/compare/v0.9.0...v0.9.1) (2026-01-01)
+
+### 🐛 Bug Fixes
+
+- **ui:** 🐛 fix white background on dropdown options in Cursor ([0502c2b](https://github.com/ShaulAb/prompt-bank/commit/0502c2b4156f7b2c790e8160c2763b2956e85c59))
+
 ## [0.9.0](https://github.com/ShaulAb/prompt-bank/compare/v0.8.1...v0.9.0) (2026-01-01)
 
 ### 🔧 Chores
