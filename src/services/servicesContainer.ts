@@ -163,8 +163,9 @@ export class ServicesContainer {
     // 3. Workspace metadata service (for workspace identity)
     const workspaceMetadataService = new WorkspaceMetadataService(workspaceRoot, context);
 
-    // 4. Storage providers
-    const storageProvider = new FileStorageProvider({ storagePath: workspaceRoot });
+    // 4. Storage providers (store in .vscode/prompt-bank subdirectory)
+    const storagePath = path.join(workspaceRoot, '.vscode', 'prompt-bank');
+    const storageProvider = new FileStorageProvider({ storagePath });
     await storageProvider.initialize();
 
     const syncStateStorage = new SyncStateStorage(workspaceRoot);
