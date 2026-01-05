@@ -22,17 +22,6 @@ interface RawPromptData {
     lastUsed?: string;
     context?: FileContext;
   };
-  versions?: Array<{
-    versionId: string;
-    timestamp: string;
-    deviceId: string;
-    deviceName: string;
-    content: string;
-    title: string;
-    description?: string;
-    category: string;
-    changeReason?: string;
-  }>;
 }
 
 /**
@@ -277,13 +266,6 @@ export class FileStorageProvider implements IStorageProvider {
           modified: new Date(p.metadata.modified),
           lastUsed: p.metadata.lastUsed ? new Date(p.metadata.lastUsed) : undefined,
         },
-        // Ensure versions array exists and convert timestamps
-        versions: p.versions
-          ? p.versions.map((v) => ({
-              ...v,
-              timestamp: new Date(v.timestamp),
-            }))
-          : [],
       }));
     } catch (error) {
       // Log error for debugging in development

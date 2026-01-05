@@ -11,7 +11,6 @@ Prompt Bank is a VS Code extension for managing, reusing, and sharing AI prompts
 - Local storage in `.vscode/prompt-bank/`
 - Multi-device sync with three-way merge algorithm
 - Cloud sharing via Google OAuth
-- Prompt versioning with history
 - WebView editor with LitElement
 
 **Current Version**: v0.7.0
@@ -138,7 +137,7 @@ npm run release:dry-run        # Preview version bump
 
 ### Core Services
 
-- `PromptService` - CRUD operations, versioning
+- `PromptService` - CRUD operations
 - `AuthService` - Google OAuth, JWT verification (ES256)
 - `ShareService` - Share prompts/collections
 - `SyncService` - Multi-device sync (three-way merge)
@@ -212,7 +211,6 @@ These won't trigger version bumps or appear prominently in release notes.
 - **Version numbers**: Never edit manually in package.json - use release scripts
 - **Sync architecture**: Uses three-way merge to handle conflicts intelligently
 - **JWT tokens**: Use ES256 (ECC P-256) with JWKS for verification
-- **Prompt versioning**: Already implemented in v0.7.0 with history UI
 
 ## For More Information
 
