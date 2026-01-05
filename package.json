@@ -113,12 +113,6 @@
         "commandPalette": false
       },
       {
-        "command": "promptBank.viewVersionHistory",
-        "title": "View Version History",
-        "icon": "$(history)",
-        "commandPalette": false
-      },
-      {
         "command": "promptBank.sharePromptFromTree",
         "title": "Share Prompt"
       },
@@ -233,11 +227,6 @@
           "group": "1_modification@3"
         },
         {
-          "command": "promptBank.viewVersionHistory",
-          "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
-          "group": "1_modification@4"
-        },
-        {
           "command": "promptBank.sharePromptFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankPrompt",
           "group": "1_modification@0"
@@ -277,40 +266,6 @@
           "type": "number",
           "default": 300000,
           "description": "Auto-sync interval in milliseconds (default: 5 minutes)"
-        },
-        "promptBank.versioning.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable automatic version history for prompts"
-        },
-        "promptBank.versioning.strategy": {
-          "type": "string",
-          "enum": [
-            "on-save",
-            "time-debounce",
-            "manual"
-          ],
-          "default": "on-save",
-          "enumDescriptions": [
-            "Create a new version on every save",
-            "Create a new version only if enough time has passed since last version",
-            "Create versions manually only (user must explicitly request)"
-          ],
-          "description": "Version creation strategy"
-        },
-        "promptBank.versioning.maxVersions": {
-          "type": "number",
-          "default": 10,
-          "minimum": 5,
-          "maximum": 50,
-          "description": "Maximum number of versions to keep per prompt (older versions are pruned automatically)"
-        },
-        "promptBank.versioning.debounceMinutes": {
-          "type": "number",
-          "default": 5,
-          "minimum": 1,
-          "maximum": 60,
-          "description": "Minimum minutes between versions when using time-debounce strategy"
         }
       }
     }
