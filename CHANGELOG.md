@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.10.0](https://github.com/ShaulAb/prompt-bank/compare/v0.9.1...v0.10.0) (2026-01-05)
+
+### 🐛 Bug Fixes
+
+- **storage:** 🐛 use correct .vscode/prompt-bank path in ServicesContainer ([#66](https://github.com/ShaulAb/prompt-bank/issues/66)) ([a550a11](https://github.com/ShaulAb/prompt-bank/commit/a550a116ce2726c7fde49d670fb8d19c61529ae4))
+
+### ♻️ Code Refactoring
+
+- ♻️ remove prompt version control feature ([#67](https://github.com/ShaulAb/prompt-bank/issues/67)) ([6b22475](https://github.com/ShaulAb/prompt-bank/commit/6b22475d80b3b5da8f3d8f54881050ce05d62a42))
+
 ### [0.9.1](https://github.com/ShaulAb/prompt-bank/compare/v0.9.0...v0.9.1) (2026-01-01)
 
 ### 🐛 Bug Fixes
