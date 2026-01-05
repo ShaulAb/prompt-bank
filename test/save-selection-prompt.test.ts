@@ -91,10 +91,6 @@ describe('Save Selection as Prompt', () => {
       expect(savedPrompt.metadata.created).toEqual(createdDate);
       expect(savedPrompt.metadata.modified).toEqual(modifiedDate);
       expect(savedPrompt.metadata.usageCount).toBe(0);
-      // Version might not be set on new prompts, so check if it exists or is 1
-      if (savedPrompt.metadata.version !== undefined) {
-        expect(savedPrompt.metadata.version).toBe(1);
-      }
     });
 
     it('should handle multiple categories correctly', async () => {

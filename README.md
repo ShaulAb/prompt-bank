@@ -36,16 +36,9 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 - **Drag & Drop**: Reorder categories and prompts with intuitive drag & drop interface. Move prompts between categories seamlessly.
 - **Category Management**: Create, rename, and organize prompts into categories. Categories are automatically managed and sorted.
 - **Powerful Search**: Find prompts quickly with integrated search that scans titles, content, descriptions, and categories.
-- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Copy, Delete, Share, View Version History, and Rename Category.
+- **Context Menus**: Right-click on any prompt or category for all actions: Edit, Copy, Delete, Share, and Rename Category.
 - **Inline Actions**: Use the convenient copy icon in the tree view for quick prompt copying.
 - **Authentication**: Secure Google OAuth integration for sharing and sync features.
-- **Prompt Versioning**: Automatic version history for every prompt edit with an intuitive UI to view and restore previous versions.
-  - **View History**: Right-click any prompt → "View Version History" to browse all versions
-  - **Version Details**: See version number (v1, v2, etc.), timestamp, device name, and current version indicator
-  - **One-Click Restore**: Select any version to restore it with confirmation dialog
-  - **Smart States**: Clear messaging when versioning is disabled or no history exists yet
-  - **Cross-Device Tracking**: Each version shows which device created it
-  - **Configurable**: Control strategy (on-save/time-debounce/manual), max versions (5-50), and debounce interval
 - **Persistence**: All data persists across VS Code sessions with atomic file operations.
 
 
@@ -104,7 +97,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | `promptBank.viewSyncStatus` | -             | View current sync status (user, device, last sync time).          |
 | `promptBank.clearSyncState` | -             | Reset sync metadata for fresh start.                               |
 | `promptBank.refreshTree`   | -              | Manually refresh the tree view.                                   |
-| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Copy`, `Delete`, `Share`, `View Version History`, `Rename Category`.             |
+| **Context Menu Actions**   | (Right-Click)  | `Edit`, `Copy`, `Delete`, `Share`, `Rename Category`.             |
 
 ## 📁 Storage
 
