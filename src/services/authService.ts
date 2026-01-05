@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
+import { getSupabaseConfig } from '../config/supabase';
 
 // Supabase API response types
 interface TokenResponse {
@@ -68,12 +69,9 @@ export class AuthService {
     publisher: string,
     extensionName: string
   ) {
-    const cfg = vscode.workspace.getConfiguration('promptBank');
-    this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
-    this.supabaseAnonKey = cfg.get<string>(
-      'supabaseAnonKey',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
-    );
+    const config = getSupabaseConfig();
+    this.supabaseUrl = config.url;
+    this.supabaseAnonKey = config.publishableKey;
     this.publisher = publisher;
     this.extensionName = extensionName;
   }
