@@ -255,7 +255,7 @@
         "promptBank.supabaseAnonKey": {
           "type": "string",
           "default": "sb_publishable_4YWhPqX2HleOm9-vCKVSEA_daIYTGwZ",
-          "description": "Supabase publishable API key (safe to expose - security enforced via RLS policies)"
+          "description": "Supabase publishable API key"
         },
         "promptBank.publicShareBase": {
           "type": "string",
