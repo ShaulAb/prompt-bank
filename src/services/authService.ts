@@ -380,7 +380,8 @@ export class AuthService {
    * 4. Return access token once complete
    */
   private async beginGoogleAuthFlow(): Promise<string> {
-    const websiteUrl = 'https://prestissimo.ai';
+    const config = getSupabaseConfig();
+    const websiteUrl = config.websiteUrl;
 
     // Step 1: Initiate device flow
     console.log('[AuthService] Initiating device flow...');
@@ -388,10 +389,19 @@ export class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'PromptBank-VSCode/0.10.0',
       },
     });
 
     if (!initiateResponse.ok) {
+      // Handle rate limiting
+      if (initiateResponse.status === 429) {
+        const errorData = await initiateResponse.json().catch(() => ({}));
+        const retryAfter = errorData.retry_after || 600;
+        throw new Error(
+          `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
+        );
+      }
       const error = await initiateResponse.text();
       throw new Error(`Failed to initiate device flow: ${error}`);
     }
@@ -410,12 +420,19 @@ export class AuthService {
       'A browser window has opened. Please sign in with Google to connect your account.'
     );
 
-    // Step 3: Poll for completion
-    const pollInterval = (interval || 2) * 1000; // Convert to milliseconds
-    const maxAttempts = Math.floor((expires_in || 600) / (interval || 2));
+    // Step 3: Poll for completion with validated parameters
+    // Validate polling parameters to prevent malformed data issues
+    const rawInterval = typeof interval === 'number' ? interval : 2;
+    const rawExpiresIn = typeof expires_in === 'number' ? expires_in : 600;
+    const pollIntervalSeconds = Math.max(1, Math.min(rawInterval, 10)); // 1-10 seconds
+    const expiresInSeconds = Math.max(60, Math.min(rawExpiresIn, 3600)); // 1-60 minutes
+    const pollInterval = pollIntervalSeconds * 1000;
+    const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
     let attempts = 0;
 
-    console.log('[AuthService] Starting to poll for authentication...');
+    console.log(
+      `[AuthService] Starting to poll (interval: ${pollIntervalSeconds}s, max attempts: ${maxAttempts})...`
+    );
 
     return new Promise((resolve, reject) => {
       const poll = async () => {
@@ -433,6 +450,7 @@ export class AuthService {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
+                'User-Agent': 'PromptBank-VSCode/0.10.0',
               },
             }
           );
