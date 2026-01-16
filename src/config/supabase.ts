@@ -30,6 +30,9 @@ export const SUPABASE_DEFAULTS = {
 
   /** Base URL for public share links */
   publicShareBase: 'https://prestissimo.ai/share/',
+
+  /** Website URL for device flow authentication */
+  websiteUrl: 'https://prestissimo.ai',
 } as const;
 
 /**
@@ -51,5 +54,6 @@ export function getSupabaseConfig() {
     // with existing user configurations, but now uses publishable key
     publishableKey: cfg.get<string>('supabaseAnonKey', SUPABASE_DEFAULTS.publishableKey),
     publicShareBase: cfg.get<string>('publicShareBase', SUPABASE_DEFAULTS.publicShareBase),
+    websiteUrl: cfg.get<string>('websiteUrl', SUPABASE_DEFAULTS.websiteUrl),
   };
 }
