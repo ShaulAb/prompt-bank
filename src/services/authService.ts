@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
+import { getSupabaseConfig } from '../config/supabase';
 
 // Supabase API response types
 interface TokenResponse {
@@ -68,12 +69,9 @@ export class AuthService {
     publisher: string,
     extensionName: string
   ) {
-    const cfg = vscode.workspace.getConfiguration('promptBank');
-    this.supabaseUrl = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
-    this.supabaseAnonKey = cfg.get<string>(
-      'supabaseAnonKey',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
-    );
+    const config = getSupabaseConfig();
+    this.supabaseUrl = config.url;
+    this.supabaseAnonKey = config.publishableKey;
     this.publisher = publisher;
     this.extensionName = extensionName;
   }
@@ -372,53 +370,142 @@ export class AuthService {
     await this.saveToSecretStorage();
   }
 
+  /**
+   * Begin Device Flow authentication
+   *
+   * Uses OAuth Device Flow (RFC 8628) for reliable authentication:
+   * 1. Request device code from website API
+   * 2. Open browser to website's device auth page
+   * 3. Poll for completion while user authenticates
+   * 4. Return access token once complete
+   */
   private async beginGoogleAuthFlow(): Promise<string> {
-    const redirectUri = await this.getRedirectUri();
+    const config = getSupabaseConfig();
+    const websiteUrl = config.websiteUrl;
 
-    // Generate PKCE challenge
-    const codeVerifier = this.generateCodeVerifier();
-    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+    // Step 1: Initiate device flow
+    console.log('[AuthService] Initiating device flow...');
+    const initiateResponse = await fetch(`${websiteUrl}/api/auth/device/initiate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'PromptBank-VSCode/0.10.0',
+      },
+    });
 
-    // Store code verifier for later
-    await this.context.globalState.update('promptBank.pkce.verifier', codeVerifier);
+    if (!initiateResponse.ok) {
+      // Handle rate limiting
+      if (initiateResponse.status === 429) {
+        const errorData = await initiateResponse.json().catch(() => ({}));
+        const retryAfter = errorData.retry_after || 600;
+        throw new Error(
+          `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
+        );
+      }
+      const error = await initiateResponse.text();
+      throw new Error(`Failed to initiate device flow: ${error}`);
+    }
 
-    // Build Google OAuth URL via Supabase
-    const authUrl = new URL(`${this.supabaseUrl}/auth/v1/authorize`);
-    authUrl.searchParams.set('provider', 'google');
-    authUrl.searchParams.set('redirect_to', redirectUri);
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
+    const deviceData = await initiateResponse.json();
+    const { device_code, verification_url, expires_in, interval } = deviceData;
 
-    // Open browser for authentication
-    const authUri = vscode.Uri.parse(authUrl.toString());
-    await vscode.env.openExternal(authUri);
+    console.log('[AuthService] Device flow initiated, opening browser...');
 
-    // Wait for callback
+    // Step 2: Open browser to verification URL
+    const verificationUri = vscode.Uri.parse(verification_url);
+    await vscode.env.openExternal(verificationUri);
+
+    // Show user instructions
+    vscode.window.showInformationMessage(
+      'A browser window has opened. Please sign in with Google to connect your account.'
+    );
+
+    // Step 3: Poll for completion with validated parameters
+    // Validate polling parameters to prevent malformed data issues
+    const rawInterval = typeof interval === 'number' ? interval : 2;
+    const rawExpiresIn = typeof expires_in === 'number' ? expires_in : 600;
+    const pollIntervalSeconds = Math.max(1, Math.min(rawInterval, 10)); // 1-10 seconds
+    const expiresInSeconds = Math.max(60, Math.min(rawExpiresIn, 3600)); // 1-60 minutes
+    const pollInterval = pollIntervalSeconds * 1000;
+    const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
+    let attempts = 0;
+
+    console.log(
+      `[AuthService] Starting to poll (interval: ${pollIntervalSeconds}s, max attempts: ${maxAttempts})...`
+    );
+
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Authentication timeout'));
-      }, 120000); // 2 minute timeout
+      const poll = async () => {
+        attempts++;
 
-      // Register URI handler for callback
-      const disposable = vscode.window.registerUriHandler({
-        handleUri: async (uri: vscode.Uri) => {
-          if (uri.path === '/auth-callback') {
-            clearTimeout(timeout);
-            disposable.dispose();
+        if (attempts > maxAttempts) {
+          reject(new Error('Authentication timeout. Please try again.'));
+          return;
+        }
 
-            try {
-              await this.handleAuthCallback(uri, codeVerifier);
-              if (this.token) {
-                resolve(this.token);
-              } else {
-                reject(new Error('Failed to obtain access token'));
-              }
-            } catch (error) {
-              reject(error);
+        try {
+          const pollResponse = await fetch(
+            `${websiteUrl}/api/auth/device/poll?device_code=${device_code}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'PromptBank-VSCode/0.10.0',
+              },
             }
+          );
+
+          const pollData = await pollResponse.json();
+
+          if (pollResponse.ok) {
+            // Authentication complete! Store tokens
+            console.log('[AuthService] Device flow completed successfully!');
+
+            this.token = pollData.access_token;
+            this.refreshToken = pollData.refresh_token;
+            this.expiresAt = Date.now() + (pollData.expires_in || 3600) * 1000;
+
+            // Verify the token
+            const isValid = await this.verifyToken(this.token);
+            if (!isValid) {
+              reject(new Error('Token verification failed after device flow'));
+              return;
+            }
+
+            // Save to storage
+            await this.saveToSecretStorage();
+
+            vscode.window.showInformationMessage(
+              `✅ Signed in successfully as ${this.userEmail || 'user'}`
+            );
+
+            resolve(this.token);
+            return;
           }
-        },
-      });
+
+          // Check error type
+          if (pollData.error === 'authorization_pending') {
+            // User hasn't completed auth yet, keep polling
+            setTimeout(poll, pollInterval);
+            return;
+          }
+
+          if (pollData.error === 'expired_token') {
+            reject(new Error('Authorization link expired. Please try again.'));
+            return;
+          }
+
+          // Unknown error
+          reject(new Error(pollData.error_description || pollData.error || 'Authentication failed'));
+        } catch (error) {
+          console.error('[AuthService] Poll error:', error);
+          // Network error, retry
+          setTimeout(poll, pollInterval);
+        }
+      };
+
+      // Start polling
+      setTimeout(poll, pollInterval);
     });
   }
 

@@ -101,17 +101,18 @@ vi.mock('vscode', () => {
       },
       getConfiguration: vi.fn((section?: string) => {
         // Handle promptBank configuration for Supabase
+        // These values must match SUPABASE_DEFAULTS in src/config/supabase.ts
         if (section === 'promptBank') {
           return {
             get: vi.fn((key: string, defaultValue?: any) => {
               if (key === 'supabaseUrl') {
-                return defaultValue || 'https://xlqtowactrzmslpkzliq.supabase.co';
+                return defaultValue || 'https://ejolajleumgrgnmygxmz.supabase.co';
               }
               if (key === 'supabaseAnonKey') {
-                return (
-                  defaultValue ||
-                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
-                );
+                return defaultValue || 'sb_publishable_4YWhPqX2HleOm9-vCKVSEA_daIYTGwZ';
+              }
+              if (key === 'publicShareBase') {
+                return defaultValue || 'https://prestissimo.ai/share/';
               }
               return defaultValue;
             }),

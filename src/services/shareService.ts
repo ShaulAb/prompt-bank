@@ -1,21 +1,22 @@
 import { Buffer } from 'buffer';
-import * as vscode from 'vscode';
 import { Prompt } from '../models/prompt';
 import { AuthService } from './authService';
+import { getSupabaseConfig } from '../config/supabase';
 
 /**
- * Read backend URLs from Prompt Bank configuration with sensible fallbacks.
+ * Get Supabase configuration from centralized config module.
+ * Uses lazy initialization to ensure VS Code workspace is available.
  */
-const cfg = vscode.workspace.getConfiguration('promptBank');
-const SUPABASE_URL = cfg.get<string>('supabaseUrl', 'https://xlqtowactrzmslpkzliq.supabase.co');
-const SUPABASE_ANON_KEY = cfg.get<string>(
-  'supabaseAnonKey',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM4ODU5MzQsImV4cCI6MjA0OTQ2MTkzNH0.YsBIzHdwCuHbOuTBwj5Tv6Sq1FJHPy-i8b1lOu6Qfuo'
-);
-const PUBLIC_VIEW_BASE = cfg.get<string>('publicShareBase', 'https://prestissimo.ai/share/');
-
-const CREATE_URL = `${SUPABASE_URL}/functions/v1/create-share`;
-const GET_URL_BASE = `${SUPABASE_URL}/functions/v1/get-share`;
+function getConfig() {
+  const config = getSupabaseConfig();
+  return {
+    supabaseUrl: config.url,
+    supabaseKey: config.publishableKey,
+    publicShareBase: config.publicShareBase,
+    createUrl: `${config.url}/functions/v1/create-share`,
+    getUrlBase: `${config.url}/functions/v1/get-share`,
+  };
+}
 
 export interface ShareResult {
   url: string;
@@ -51,9 +52,10 @@ export function parseShareUrl(raw: string): { id: string } | null {
 }
 
 export async function fetchShare(id: string): Promise<Prompt | Prompt[]> {
-  const res = await fetch(`${GET_URL_BASE}/${id}`, {
+  const config = getConfig();
+  const res = await fetch(`${config.getUrlBase}/${id}`, {
     headers: {
-      apikey: SUPABASE_ANON_KEY,
+      apikey: config.supabaseKey,
     },
   });
 
@@ -87,17 +89,19 @@ export async function createShare(
   accessToken: string,
   authService: AuthService
 ): Promise<ShareResult> {
+  const config = getConfig();
+
   // Encode the full prompt object as base64 (UTF-8)
   const payload = Buffer.from(JSON.stringify(prompt), 'utf8').toString('base64');
 
   // Use the proper JWT token from Google OAuth
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: SUPABASE_ANON_KEY,
+    apikey: config.supabaseKey,
     Authorization: `Bearer ${accessToken}`,
   };
 
-  const res = await fetch(CREATE_URL, {
+  const res = await fetch(config.createUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({ payload }),
@@ -124,7 +128,7 @@ export async function createShare(
     throw new Error('create-share response missing id or expiresAt');
   }
 
-  return { url: `${PUBLIC_VIEW_BASE}${id}`, expiresAt: new Date(expiresAt) };
+  return { url: `${config.publicShareBase}${id}`, expiresAt: new Date(expiresAt) };
 }
 
 export async function createShareMulti(
@@ -132,17 +136,19 @@ export async function createShareMulti(
   accessToken: string,
   authService: AuthService
 ): Promise<ShareResult> {
+  const config = getConfig();
+
   // Encode the array of prompts as base64 (UTF-8)
   const payload = Buffer.from(JSON.stringify({ prompts }), 'utf8').toString('base64');
 
   // Use the proper JWT token from Google OAuth
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: SUPABASE_ANON_KEY,
+    apikey: config.supabaseKey,
     Authorization: `Bearer ${accessToken}`,
   };
 
-  const res = await fetch(CREATE_URL, {
+  const res = await fetch(config.createUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({ payload }),
@@ -169,5 +175,5 @@ export async function createShareMulti(
     throw new Error('create-share response missing id or expiresAt');
   }
 
-  return { url: `${PUBLIC_VIEW_BASE}${id}`, expiresAt: new Date(expiresAt) };
+  return { url: `${config.publicShareBase}${id}`, expiresAt: new Date(expiresAt) };
 }

@@ -6,7 +6,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as vscode from 'vscode';
+import { getSupabaseConfig } from '../config/supabase';
 
 /**
  * Database schema types for type-safe queries
@@ -56,17 +56,9 @@ class SupabaseClientManager {
    */
   public static initialize(): SupabaseClient<Database> {
     if (!SupabaseClientManager.instance) {
-      const cfg = vscode.workspace.getConfiguration('promptBank');
-      const supabaseUrl = cfg.get<string>(
-        'supabaseUrl',
-        'https://xlqtowactrzmslpkzliq.supabase.co'
-      );
-      const supabaseAnonKey = cfg.get<string>(
-        'supabaseAnonKey',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscXRvd2FjdHJ6bXNscGt6bGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMDAzMzQsImV4cCI6MjA2Nzc3NjMzNH0.cUVLqlGGWfaxDs49AQ57rHxruj52MphG9jV1e0F1UYo'
-      );
+      const config = getSupabaseConfig();
 
-      SupabaseClientManager.instance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      SupabaseClientManager.instance = createClient<Database>(config.url, config.publishableKey, {
         auth: {
           // Disable auto-refresh since we handle tokens manually in AuthService
           autoRefreshToken: false,
