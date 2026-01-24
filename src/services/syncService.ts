@@ -242,16 +242,33 @@ export class SyncService {
 
   /**
    * Generate a new unique ID for prompts
+   *
+   * Format: prompt_{timestamp}_{9-char-random}
+   * Example: prompt_1738012345678_abc123def
+   *
+   * @returns Unique prompt ID string
    */
   private generateNewId(): string {
-    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).slice(2, 11); // Skip '0.' prefix, take 9 chars
+    return `prompt_${timestamp}_${randomSuffix}`;
   }
 
   /**
    * Resolve conflict by creating two separate prompts with device names
    *
-   * CRITICAL: Strips existing conflict suffixes to prevent nesting
-   * CRITICAL: Both prompts get NEW IDs (no reuse)
+   * CRITICAL BEHAVIOR:
+   * 1. The original local prompt will be DELETED from prompts.json (by caller)
+   * 2. Two NEW prompts are created with NEW IDs (neither reuses the original ID)
+   * 3. The original prompt ID will be marked as deleted in sync state (by caller)
+   * 4. localCopy is uploaded as NEW cloud prompt
+   * 5. remoteCopy is linked to EXISTING cloud prompt (avoids 409 conflicts)
+   * 6. Strips existing conflict suffixes to prevent nesting
+   *
+   * This ensures users never lose data - they can manually review and merge copies.
+   *
+   * Title format: "Original Title (from DeviceName - Mon DD HH:MM)"
+   * Example: "My Prompt (from MacBook - Jan 24 15:30)"
    *
    * @param local - Local version of prompt
    * @param remote - Remote version of prompt
