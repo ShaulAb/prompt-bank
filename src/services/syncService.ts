@@ -32,6 +32,9 @@ import { computeContentHash, matchesHash } from '../utils/contentHash';
 import { getDeviceInfo } from '../utils/deviceId';
 import type { PromptService } from './promptService';
 
+/** Default category for prompts when none is specified or value is null */
+const DEFAULT_CATEGORY = 'General';
+
 /**
  * Sync service using dependency injection
  *
@@ -344,7 +347,7 @@ export class SyncService {
       id: remote.local_id,
       title: remote.title,
       content: remote.content,
-      category: remote.category || 'General', // Ensure never null
+      category: remote.category || DEFAULT_CATEGORY,
       variables: variables,
       metadata: {
         created: new Date(metadata.created),
