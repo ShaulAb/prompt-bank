@@ -870,37 +870,40 @@ export class SyncService {
         const localHash = computeContentHash(localCopy);
         const remoteHash = computeContentHash(remoteCopy);
 
+        // Upload localCopy as a NEW cloud prompt (representing the local version)
         try {
-          // Upload localCopy as a NEW cloud prompt (representing the local version)
           const localCloudId = await this.uploadPrompt(localCopy);
-
-          // Create sync info for localCopy pointing to its NEW cloud ID
           await this.syncStateStorage!.setPromptSyncInfo(localCopy.id, {
             cloudId: localCloudId.cloudId,
             lastSyncedContentHash: localHash,
             lastSyncedAt: new Date(),
             version: localCloudId.version,
           });
-        } catch (error) {
-          // If localCopy upload fails, we should still continue with remoteCopy
-          // The localCopy exists locally, and we can retry upload on next sync
+        } catch (uploadError) {
+          // localCopy exists locally and will be uploaded on next sync
+          console.warn(
+            `[SyncService] Failed to upload local conflict copy "${localCopy.title}" (${localCopy.id}). ` +
+              `Will retry on next sync.`,
+            uploadError
+          );
         }
 
+        // Link remoteCopy to the EXISTING cloud prompt
+        // DON'T upload - it already exists in cloud as conflict.remote (avoids 409)
         try {
-          // Link remoteCopy to the EXISTING cloud prompt (representing the remote version)
-          // DON'T upload remoteCopy - it already exists in the cloud as conflict.remote
-          // This avoids 409 conflicts and preserves the remote prompt in the cloud
-
-          // Create sync info for remoteCopy pointing to the EXISTING cloud ID
           await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
             cloudId: conflict.remote.cloud_id,
             lastSyncedContentHash: remoteHash,
             lastSyncedAt: new Date(),
             version: conflict.remote.version,
           });
-        } catch (error) {
-          // Edge case: If the remote cloud prompt was deleted by another device
-          // between fetch and conflict resolution, we should upload remoteCopy as NEW
+        } catch (linkError) {
+          // Edge case: remote cloud prompt may have been deleted by another device
+          console.warn(
+            `[SyncService] Failed to link remote conflict copy to cloud_id ${conflict.remote.cloud_id}. ` +
+              `Attempting to upload as new prompt.`,
+            linkError
+          );
           try {
             const remoteCloudId = await this.uploadPrompt(remoteCopy);
             await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
@@ -909,9 +912,13 @@ export class SyncService {
               lastSyncedAt: new Date(),
               version: remoteCloudId.version,
             });
-          } catch {
-            // If this also fails, remoteCopy still exists locally
-            // It will be uploaded on next sync
+          } catch (fallbackError) {
+            // remoteCopy exists locally and will be uploaded on next sync
+            console.warn(
+              `[SyncService] Failed to upload remote conflict copy "${remoteCopy.title}" (${remoteCopy.id}). ` +
+                `Will retry on next sync.`,
+              fallbackError
+            );
           }
         }
 
