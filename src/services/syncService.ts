@@ -241,29 +241,71 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Resolve conflict using "latest wins" strategy
+   * Generate a new unique ID for prompts
+   */
+  private generateNewId(): string {
+    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  }
+
+  /**
+   * Resolve conflict by creating two separate prompts with device names
    *
-   * Compares timestamps and returns only the newer version.
-   * This prevents duplicate prompts from accumulating.
+   * CRITICAL: Strips existing conflict suffixes to prevent nesting
+   * CRITICAL: Both prompts get NEW IDs (no reuse)
    *
    * @param local - Local version of prompt
    * @param remote - Remote version of prompt
-   * @returns Object with winner ('local' | 'remote') and the winning prompt
+   * @returns Array of [localCopy, remoteCopy] with new IDs and suffixed names
    */
-  private resolveConflict(
+  private async resolveConflict(
     local: Prompt,
     remote: RemotePrompt
-  ): { winner: 'local' | 'remote'; prompt: Prompt } {
-    const localModified = local.metadata.modified.getTime();
-    const remoteModified = new Date(remote.updated_at).getTime();
+  ): Promise<readonly [Prompt, Prompt]> {
+    // Strip existing conflict suffixes to prevent nesting
+    // Pattern matches: " (from Device Name - Oct 27)" or " (from Device - Jan 1)"
+    const suffixPattern = / \(from .+ - \w{3} \d{1,2}\)$/;
+    const baseTitle = local.title.replace(suffixPattern, '');
 
-    if (localModified >= remoteModified) {
-      // Local is newer or same time - keep local
-      return { winner: 'local', prompt: local };
-    } else {
-      // Remote is newer - convert and keep remote
-      return { winner: 'remote', prompt: this.convertRemoteToLocal(remote) };
-    }
+    const syncState = await this.syncStateStorage!.getSyncState();
+    const localDeviceName = syncState?.deviceName || 'Unknown Device';
+
+    // Parse remote device name from sync_metadata
+    const remoteSyncMeta = remote.sync_metadata as { lastModifiedDeviceName?: string } | null;
+    const remoteDeviceName = remoteSyncMeta?.lastModifiedDeviceName || 'Unknown Device';
+
+    // Format date with time to ensure uniqueness
+    const formatDateTime = (date: Date): string => {
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${months[date.getMonth()]} ${date.getDate()} ${hours}:${minutes}`;
+    };
+
+    // Create two separate prompts with NEW IDs for both
+    const localCopy: Prompt = {
+      ...local,
+      id: this.generateNewId(), // NEW ID (don't reuse original)
+      title: `${baseTitle} (from ${localDeviceName} - ${formatDateTime(local.metadata.modified)})`,
+    };
+
+    const remoteCopy: Prompt = this.convertRemoteToLocal(remote);
+    remoteCopy.id = this.generateNewId(); // NEW ID (don't reuse remote's ID)
+    remoteCopy.title = `${baseTitle} (from ${remoteDeviceName} - ${formatDateTime(new Date(remote.updated_at))})`;
+
+    return [localCopy, remoteCopy] as const;
   }
 
   /**
@@ -312,13 +354,6 @@ export class SyncService {
     }
 
     return prompt;
-  }
-
-  /**
-   * Generate a new unique ID for prompts
-   */
-  private generateNewId(): string {
-    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -798,40 +833,69 @@ export class SyncService {
     const startTime = Date.now();
 
     try {
-      // 1. Handle conflicts using "latest wins" strategy
+      // 1. Handle conflicts first (create local duplicates)
       for (const conflict of plan.conflicts) {
         const localPrompt = conflict.local as Prompt;
-        const { winner, prompt: winningPrompt } = this.resolveConflict(localPrompt, conflict.remote);
+        const [localCopy, remoteCopy] = await this.resolveConflict(localPrompt, conflict.remote);
 
-        if (winner === 'local') {
-          // Local is newer - upload to overwrite remote
-          const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(localPrompt.id);
-          const uploaded = await this.uploadWithConflictHandling(localPrompt, syncInfo ?? undefined);
-          const contentHash = computeContentHash(localPrompt);
+        // Save both conflict copies locally with device-specific names
+        await promptService.savePromptDirectly(localCopy);
+        await promptService.savePromptDirectly(remoteCopy);
 
-          await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
-            cloudId: uploaded.cloudId,
-            lastSyncedContentHash: contentHash,
+        // Delete the original LOCAL prompt from prompts.json
+        // (it's being replaced by two new copies with device-specific names)
+        await promptService.deletePromptById(localPrompt.id);
+
+        // Mark the original local prompt as deleted in sync state
+        await this.syncStateStorage!.markPromptAsDeleted(localPrompt.id);
+
+        // Compute content hashes for both copies
+        const localHash = computeContentHash(localCopy);
+        const remoteHash = computeContentHash(remoteCopy);
+
+        try {
+          // Upload localCopy as a NEW cloud prompt (representing the local version)
+          const localCloudId = await this.uploadPrompt(localCopy);
+
+          // Create sync info for localCopy pointing to its NEW cloud ID
+          await this.syncStateStorage!.setPromptSyncInfo(localCopy.id, {
+            cloudId: localCloudId.cloudId,
+            lastSyncedContentHash: localHash,
             lastSyncedAt: new Date(),
-            version: uploaded.version,
+            version: localCloudId.version,
           });
-        } else {
-          // Remote is newer - download to overwrite local
-          // Update the existing local prompt with remote content
-          const updatedPrompt: Prompt = {
-            ...winningPrompt,
-            id: localPrompt.id, // Keep the original local ID
-          };
+        } catch (error) {
+          // If localCopy upload fails, we should still continue with remoteCopy
+          // The localCopy exists locally, and we can retry upload on next sync
+        }
 
-          await promptService.savePromptDirectly(updatedPrompt);
+        try {
+          // Link remoteCopy to the EXISTING cloud prompt (representing the remote version)
+          // DON'T upload remoteCopy - it already exists in the cloud as conflict.remote
+          // This avoids 409 conflicts and preserves the remote prompt in the cloud
 
-          const contentHash = computeContentHash(updatedPrompt);
-          await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
+          // Create sync info for remoteCopy pointing to the EXISTING cloud ID
+          await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
             cloudId: conflict.remote.cloud_id,
-            lastSyncedContentHash: contentHash,
+            lastSyncedContentHash: remoteHash,
             lastSyncedAt: new Date(),
             version: conflict.remote.version,
           });
+        } catch (error) {
+          // Edge case: If the remote cloud prompt was deleted by another device
+          // between fetch and conflict resolution, we should upload remoteCopy as NEW
+          try {
+            const remoteCloudId = await this.uploadPrompt(remoteCopy);
+            await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
+              cloudId: remoteCloudId.cloudId,
+              lastSyncedContentHash: remoteHash,
+              lastSyncedAt: new Date(),
+              version: remoteCloudId.version,
+            });
+          } catch {
+            // If this also fails, remoteCopy still exists locally
+            // It will be uploaded on next sync
+          }
         }
 
         result.stats.conflicts++;
