@@ -483,16 +483,39 @@ export class AuthService {
       'A browser window has opened. Please sign in with Google to connect your account.'
     );
 
-    // Step 3: Poll for completion with validated parameters
+    // Step 3: Poll for completion
+    return this.pollForDeviceFlowCompletion(websiteUrl, device_code, interval, expires_in);
+  }
+
+  /**
+   * Poll for device flow completion
+   *
+   * Continuously polls the device flow API until:
+   * - User completes authentication (returns access token)
+   * - Device code expires (throws error)
+   * - Maximum attempts exceeded (throws error)
+   *
+   * @param websiteUrl - Base URL for the website API
+   * @param deviceCode - Device code from initiate response
+   * @param interval - Server-specified polling interval in seconds
+   * @param expiresIn - Server-specified expiry time in seconds
+   * @returns Promise resolving to access token on success
+   */
+  private async pollForDeviceFlowCompletion(
+    websiteUrl: string,
+    deviceCode: string,
+    interval: number,
+    expiresIn: number
+  ): Promise<string> {
     // Validate polling parameters to prevent malformed data issues
     const rawInterval = typeof interval === 'number' ? interval : DEFAULT_POLL_INTERVAL_SECONDS;
-    const rawExpiresIn = typeof expires_in === 'number' ? expires_in : DEFAULT_EXPIRY_SECONDS;
+    const rawExpiresIn = typeof expiresIn === 'number' ? expiresIn : DEFAULT_EXPIRY_SECONDS;
     const pollIntervalSeconds = Math.max(
       MIN_POLL_INTERVAL_SECONDS,
       Math.min(rawInterval, MAX_POLL_INTERVAL_SECONDS)
     );
     const expiresInSeconds = Math.max(MIN_EXPIRY_SECONDS, Math.min(rawExpiresIn, MAX_EXPIRY_SECONDS));
-    const pollInterval = pollIntervalSeconds * 1000;
+    const pollIntervalMs = pollIntervalSeconds * 1000;
     const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
     let attempts = 0;
 
@@ -511,7 +534,7 @@ export class AuthService {
 
         try {
           const pollResponse = await fetch(
-            `${websiteUrl}/api/auth/device/poll?device_code=${device_code}`,
+            `${websiteUrl}/api/auth/device/poll?device_code=${deviceCode}`,
             {
               method: 'GET',
               headers: {
@@ -552,7 +575,7 @@ export class AuthService {
           // Check error type
           if (pollData.error === 'authorization_pending') {
             // User hasn't completed auth yet, keep polling
-            setTimeout(poll, pollInterval);
+            setTimeout(poll, pollIntervalMs);
             return;
           }
 
@@ -566,12 +589,12 @@ export class AuthService {
         } catch (error) {
           console.error('[AuthService] Poll error:', error);
           // Network error, retry
-          setTimeout(poll, pollInterval);
+          setTimeout(poll, pollIntervalMs);
         }
       };
 
       // Start polling
-      setTimeout(poll, pollInterval);
+      setTimeout(poll, pollIntervalMs);
     });
   }
 
