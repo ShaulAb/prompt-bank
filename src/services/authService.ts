@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import { getSupabaseConfig } from '../config/supabase';
+import { getUserAgent } from '../config/extension';
 
 // Supabase API response types
 interface TokenResponse {
@@ -401,7 +402,7 @@ export class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'PromptBank-VSCode/0.10.0',
+        'User-Agent': getUserAgent(),
       },
     });
 
@@ -462,7 +463,7 @@ export class AuthService {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'PromptBank-VSCode/0.10.0',
+                'User-Agent': getUserAgent(),
               },
             }
           );
