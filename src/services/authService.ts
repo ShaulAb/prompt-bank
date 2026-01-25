@@ -13,9 +13,25 @@ interface TokenResponse {
   };
 }
 
-interface UserResponse {
-  id: string;
-  email: string;
+// Device flow API response types
+interface DeviceFlowInitResponse {
+  device_code: string;
+  verification_url: string;
+  expires_in: number;
+  interval: number;
+}
+
+interface DeviceFlowPollResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  error?: string;
+  error_description?: string;
+}
+
+interface DeviceFlowErrorResponse {
+  retry_after?: number;
+  error?: string;
 }
 
 // Supabase JWT payload structure
@@ -42,8 +58,6 @@ export class AuthService {
   // Supabase project URL and anon key
   private readonly supabaseUrl: string;
   private readonly supabaseAnonKey: string;
-  private readonly publisher: string;
-  private readonly extensionName: string;
 
   // SecretStorage keys
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
@@ -61,19 +75,17 @@ export class AuthService {
    * Create a new AuthService instance using dependency injection.
    *
    * @param context - VS Code extension context
-   * @param publisher - Extension publisher name
-   * @param extensionName - Extension name
+   * @param _publisher - Extension publisher name (kept for backward compatibility)
+   * @param _extensionName - Extension name (kept for backward compatibility)
    */
   constructor(
     private context: vscode.ExtensionContext,
-    publisher: string,
-    extensionName: string
+    _publisher: string,
+    _extensionName: string
   ) {
     const config = getSupabaseConfig();
     this.supabaseUrl = config.url;
     this.supabaseAnonKey = config.publishableKey;
-    this.publisher = publisher;
-    this.extensionName = extensionName;
   }
 
   /**
@@ -396,7 +408,7 @@ export class AuthService {
     if (!initiateResponse.ok) {
       // Handle rate limiting
       if (initiateResponse.status === 429) {
-        const errorData = await initiateResponse.json().catch(() => ({}));
+        const errorData = (await initiateResponse.json().catch(() => ({}))) as DeviceFlowErrorResponse;
         const retryAfter = errorData.retry_after || 600;
         throw new Error(
           `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
@@ -406,7 +418,7 @@ export class AuthService {
       throw new Error(`Failed to initiate device flow: ${error}`);
     }
 
-    const deviceData = await initiateResponse.json();
+    const deviceData = (await initiateResponse.json()) as DeviceFlowInitResponse;
     const { device_code, verification_url, expires_in, interval } = deviceData;
 
     console.log('[AuthService] Device flow initiated, opening browser...');
@@ -455,9 +467,9 @@ export class AuthService {
             }
           );
 
-          const pollData = await pollResponse.json();
+          const pollData = (await pollResponse.json()) as DeviceFlowPollResponse;
 
-          if (pollResponse.ok) {
+          if (pollResponse.ok && pollData.access_token) {
             // Authentication complete! Store tokens
             console.log('[AuthService] Device flow completed successfully!');
 
@@ -507,177 +519,6 @@ export class AuthService {
       // Start polling
       setTimeout(poll, pollInterval);
     });
-  }
-
-  private async handleAuthCallback(uri: vscode.Uri, codeVerifier: string): Promise<void> {
-    const params = new URLSearchParams(uri.query);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const expiresIn = params.get('expires_in');
-    const error = params.get('error');
-    const errorDescription = params.get('error_description');
-
-    if (error) {
-      throw new Error(`Authentication failed: ${errorDescription || error}`);
-    }
-
-    if (!accessToken) {
-      // If no direct token, try to exchange code
-      const code = params.get('code');
-      if (!code) {
-        throw new Error('No access token or authorization code received');
-      }
-
-      await this.exchangeCodeForToken(code, codeVerifier);
-      return;
-    }
-
-    // Store tokens
-    this.token = accessToken;
-    this.refreshToken = refreshToken || undefined;
-    this.expiresAt = expiresIn ? Date.now() + parseInt(expiresIn) * 1000 : undefined;
-
-    // Verify the token immediately after obtaining it
-    const isValid = await this.verifyToken(accessToken);
-    if (!isValid) {
-      throw new Error('Token verification failed after authentication');
-    }
-
-    // Get user info (this might be redundant now that verifyToken extracts it)
-    await this.fetchUserInfo();
-
-    // Save everything
-    await this.saveToSecretStorage();
-
-    vscode.window.showInformationMessage(
-      `✅ Signed in successfully as ${this.userEmail || 'user'}`
-    );
-  }
-
-  private async exchangeCodeForToken(code: string, codeVerifier: string): Promise<void> {
-    const redirectUri = await this.getRedirectUri();
-
-    const response = await fetch(`${this.supabaseUrl}/auth/v1/token?grant_type=pkce`, {
-      method: 'POST',
-      headers: {
-        apikey: this.supabaseAnonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        auth_code: code,
-        code_verifier: codeVerifier,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to exchange code for token: ${errorText}`);
-    }
-
-    const data = (await response.json()) as TokenResponse;
-
-    this.token = data.access_token;
-    this.refreshToken = data.refresh_token;
-    this.expiresAt = Date.now() + data.expires_in * 1000;
-
-    // Verify the token immediately after obtaining it
-    const isValid = await this.verifyToken(data.access_token);
-    if (!isValid) {
-      throw new Error('Token verification failed after code exchange');
-    }
-
-    // User info is now extracted by verifyToken, but keep fallback
-    if (data.user) {
-      this.userId = data.user.id;
-      this.userEmail = data.user.email;
-    }
-
-    await this.saveToSecretStorage();
-
-    vscode.window.showInformationMessage(
-      `✅ Signed in successfully as ${this.userEmail || 'user'}`
-    );
-  }
-
-  private async fetchUserInfo(): Promise<void> {
-    if (!this.token) return;
-
-    try {
-      const response = await fetch(`${this.supabaseUrl}/auth/v1/user`, {
-        headers: {
-          apikey: this.supabaseAnonKey,
-          Authorization: `Bearer ${this.token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = (await response.json()) as UserResponse;
-        this.userId = data.id;
-        this.userEmail = data.email;
-      }
-    } catch (error) {
-      console.error('[AuthService] Failed to fetch user info:', error);
-    }
-  }
-
-  private async getRedirectUri(): Promise<string> {
-    const extensionId = `${this.publisher}.${this.extensionName}`;
-
-    // Detect editor type and use appropriate URI scheme
-    const uriScheme = this.detectEditorUriScheme();
-
-    console.log('[AuthService] Using extension ID for redirect:', extensionId);
-    console.log('[AuthService] Using URI scheme:', uriScheme);
-
-    return `${uriScheme}://${extensionId}/auth-callback`;
-  }
-
-  private detectEditorUriScheme(): string {
-    // PROPER SOLUTION: Use the official VS Code API to get URI scheme
-    // This works correctly in both VS Code and Cursor without system modifications
-    try {
-      if (vscode.env.uriScheme) {
-        console.log('[AuthService] Using official vscode.env.uriScheme:', vscode.env.uriScheme);
-        return vscode.env.uriScheme;
-      }
-    } catch (error) {
-      console.log('[AuthService] Could not access vscode.env.uriScheme:', error);
-    }
-
-    // Fallback: Check app name for debugging info, but still use vscode scheme
-    try {
-      if (vscode.env.appName) {
-        const appName = vscode.env.appName.toLowerCase();
-        console.log('[AuthService] Detected app name:', appName);
-      }
-    } catch (error) {
-      console.log('[AuthService] Could not access vscode.env.appName:', error);
-    }
-
-    // Safe fallback to vscode scheme
-    console.log('[AuthService] Falling back to vscode URI scheme');
-    return 'vscode';
-  }
-
-  private generateCodeVerifier(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return this.base64UrlEncode(array);
-  }
-
-  private async generateCodeChallenge(verifier: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return this.base64UrlEncode(new Uint8Array(hash));
-  }
-
-  private base64UrlEncode(array: Uint8Array): string {
-    return btoa(String.fromCharCode(...array))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '');
   }
 
   // ────────────────────────────────────────────────────────────────────────────
