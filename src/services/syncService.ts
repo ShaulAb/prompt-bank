@@ -928,11 +928,10 @@ export class SyncService {
         result.stats.conflicts++;
       }
 
-      // 2. Process deletions
+      // 2. Process deletions (soft-delete cloud prompts that were deleted locally)
       for (const { cloudId } of plan.toDelete) {
         await this.deletePrompt(cloudId);
 
-        // Mark as deleted in sync state
         const promptId = await this.syncStateStorage!.findLocalPromptId(cloudId);
         if (promptId) {
           await this.syncStateStorage!.markPromptAsDeleted(promptId);
@@ -941,15 +940,14 @@ export class SyncService {
         result.stats.deleted++;
       }
 
-      // 3. Upload prompts
+      // 3. Upload prompts (local changes -> cloud)
       for (const promptUnknown of plan.toUpload) {
         const prompt = promptUnknown as Prompt;
         const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
 
-        // VALIDATION: Check for corrupted sync state
-        // If syncInfo exists but points to a soft-deleted cloud prompt, clear it
+        // Handle corrupted sync state: syncInfo points to soft-deleted cloud prompt
         if (syncInfo?.cloudId && syncInfo.isDeleted) {
-          // Clear the corrupted sync info to force a fresh upload
+          // Clear corrupted sync info and upload as new prompt
           await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
             cloudId: '',
             lastSyncedContentHash: '',
@@ -957,10 +955,9 @@ export class SyncService {
             version: 0,
             isDeleted: false,
           });
-          // Now upload as NEW (no sync info)
+
           const uploaded = await this.uploadPrompt(prompt);
           const contentHash = computeContentHash(prompt);
-
           await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
             cloudId: uploaded.cloudId,
             lastSyncedContentHash: contentHash,
@@ -969,14 +966,12 @@ export class SyncService {
           });
 
           result.stats.uploaded++;
-          continue; // Skip to next prompt
+          continue;
         }
 
-        // Normal upload flow with intelligent conflict handling
+        // Normal upload with conflict handling (optimistic locking)
         const uploaded = await this.uploadWithConflictHandling(prompt, syncInfo ?? undefined);
         const contentHash = computeContentHash(prompt);
-
-        // Update sync state (clear deletion flag if re-uploading)
         await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
           cloudId: uploaded.cloudId,
           lastSyncedContentHash: contentHash,
@@ -988,14 +983,13 @@ export class SyncService {
         result.stats.uploaded++;
       }
 
-      // 4. Download prompts
+      // 4. Download prompts (cloud changes -> local)
       for (const remotePrompt of plan.toDownload) {
-        const remoteLocalPrompt = this.convertRemoteToLocal(remotePrompt);
+        const localPrompt = this.convertRemoteToLocal(remotePrompt);
+        await promptService.savePromptDirectly(localPrompt);
 
-        await promptService.savePromptDirectly(remoteLocalPrompt);
-
-        const contentHash = computeContentHash(remoteLocalPrompt);
-        await this.syncStateStorage!.setPromptSyncInfo(remoteLocalPrompt.id, {
+        const contentHash = computeContentHash(localPrompt);
+        await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
           cloudId: remotePrompt.cloud_id,
           lastSyncedContentHash: contentHash,
           lastSyncedAt: new Date(),
