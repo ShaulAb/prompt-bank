@@ -459,7 +459,9 @@ export class AuthService {
     if (!initiateResponse.ok) {
       // Handle rate limiting
       if (initiateResponse.status === 429) {
-        const errorData = (await initiateResponse.json().catch(() => ({}))) as DeviceFlowErrorResponse;
+        const errorData = (await initiateResponse
+          .json()
+          .catch(() => ({}))) as DeviceFlowErrorResponse;
         const retryAfter = errorData.retry_after || 600;
         throw new Error(
           `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
@@ -514,7 +516,10 @@ export class AuthService {
       MIN_POLL_INTERVAL_SECONDS,
       Math.min(rawInterval, MAX_POLL_INTERVAL_SECONDS)
     );
-    const expiresInSeconds = Math.max(MIN_EXPIRY_SECONDS, Math.min(rawExpiresIn, MAX_EXPIRY_SECONDS));
+    const expiresInSeconds = Math.max(
+      MIN_EXPIRY_SECONDS,
+      Math.min(rawExpiresIn, MAX_EXPIRY_SECONDS)
+    );
     const pollIntervalMs = pollIntervalSeconds * 1000;
     const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
     let attempts = 0;
@@ -585,7 +590,9 @@ export class AuthService {
           }
 
           // Unknown error
-          reject(new Error(pollData.error_description || pollData.error || 'Authentication failed'));
+          reject(
+            new Error(pollData.error_description || pollData.error || 'Authentication failed')
+          );
         } catch (error) {
           console.error('[AuthService] Poll error:', error);
           // Network error, retry

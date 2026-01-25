@@ -440,7 +440,9 @@ export class SyncStateStorage {
         );
       } else {
         // No workspace-meta.json exists yet - will be created on next sync
-        console.log('[SyncStateStorage] No workspace-meta.json found, skipping workspaceId migration');
+        console.log(
+          '[SyncStateStorage] No workspace-meta.json found, skipping workspaceId migration'
+        );
         return state;
       }
     }
