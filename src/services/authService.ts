@@ -448,13 +448,28 @@ export class AuthService {
 
     // Step 1: Initiate device flow
     console.log('[AuthService] Initiating device flow...');
-    const initiateResponse = await fetch(`${websiteUrl}/api/auth/device/initiate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': getUserAgent(),
-      },
-    });
+    console.log(`[AuthService] Website URL: ${websiteUrl}`);
+    console.log(`[AuthService] User-Agent: ${getUserAgent()}`);
+
+    let initiateResponse: Response;
+    try {
+      initiateResponse = await fetch(`${websiteUrl}/api/auth/device/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': getUserAgent(),
+        },
+      });
+    } catch (fetchError) {
+      // Network-level error (DNS, connection refused, etc.)
+      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      console.error('[AuthService] Network error during device flow initiation:', errorMessage);
+      throw new Error(`Failed to connect to authentication server: ${errorMessage}`);
+    }
+
+    console.log(
+      `[AuthService] Response status: ${initiateResponse.status} ${initiateResponse.statusText}`
+    );
 
     if (!initiateResponse.ok) {
       // Handle rate limiting
@@ -467,8 +482,13 @@ export class AuthService {
           `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
         );
       }
-      const error = await initiateResponse.text();
-      throw new Error(`Failed to initiate device flow: ${error}`);
+      const errorText = await initiateResponse.text();
+      console.error(
+        `[AuthService] Device flow initiation failed: status=${initiateResponse.status}, body=${errorText || '(empty)'}`
+      );
+      throw new Error(
+        `Failed to initiate device flow (HTTP ${initiateResponse.status}): ${errorText || 'No error details provided'}`
+      );
     }
 
     const deviceData = (await initiateResponse.json()) as DeviceFlowInitResponse;
