@@ -259,12 +259,12 @@
         },
         "promptBank.websiteUrl": {
           "type": "string",
-          "default": "https://prestissimo.ai",
+          "default": "https://www.prompt-bank.io",
           "description": "Website URL for device flow authentication and public features"
         },
         "promptBank.publicShareBase": {
           "type": "string",
-          "default": "https://prestissimo.ai/share/",
+          "default": "https://www.prompt-bank.io/share/",
           "description": "Base URL used to construct public share links"
         },
         "promptBank.sync.autoSync": {

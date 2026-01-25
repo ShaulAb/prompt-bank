@@ -29,10 +29,10 @@ export const SUPABASE_DEFAULTS = {
   publishableKey: 'sb_publishable_4YWhPqX2HleOm9-vCKVSEA_daIYTGwZ',
 
   /** Base URL for public share links */
-  publicShareBase: 'https://prestissimo.ai/share/',
+  publicShareBase: 'https://www.prompt-bank.io/share/',
 
   /** Website URL for device flow authentication */
-  websiteUrl: 'https://prestissimo.ai',
+  websiteUrl: 'https://www.prompt-bank.io',
 } as const;
 
 /**
