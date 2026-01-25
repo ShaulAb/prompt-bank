@@ -5,7 +5,7 @@
  * maintaining compatibility with the actual createPrompt() function.
  */
 
-import { createPrompt as baseCreatePrompt } from '../../src/models/prompt';
+import { createPrompt as baseCreatePrompt, DEFAULT_CATEGORY } from '../../src/models/prompt';
 import type { Prompt } from '../../src/models/prompt';
 
 /**
@@ -32,7 +32,7 @@ export function createPrompt(options: PromptOptions): Prompt {
   const prompt = baseCreatePrompt(
     options.title,
     options.content,
-    options.category || 'General',
+    options.category || DEFAULT_CATEGORY,
     options.description
   );
 
