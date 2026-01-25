@@ -544,4 +544,111 @@ describe('SyncService - Edge Cases', () => {
       }
     });
   });
+
+  describe('Default Category Handling', () => {
+    it('should default to DEFAULT_CATEGORY when remote prompt has null category', async () => {
+      // Arrange - Add cloud prompt with null category
+      const cloudPrompt = syncTestHelpers.addCloudPrompt({
+        local_id: 'prompt-null-cat',
+        title: 'Prompt With Null Category',
+        content: 'Test content',
+        category: null as unknown as string, // Simulate null from database
+        description: null,
+        prompt_order: null,
+        category_order: null,
+        content_hash: 'hash-123',
+        variables: [],
+        metadata: {
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          usageCount: 0,
+        },
+        sync_metadata: null,
+        deleted_at: null,
+      });
+
+      // Act - Sync should download the prompt
+      const localPrompts = await promptService.listPrompts();
+      const result = await syncService.performSync(localPrompts, promptService);
+
+      // Assert - Downloaded prompt should have DEFAULT_CATEGORY
+      expect(result.stats.downloaded).toBe(1);
+
+      const finalPrompts = await promptService.listPrompts();
+      const downloadedPrompt = finalPrompts.find((p) => p.id === 'prompt-null-cat');
+
+      expect(downloadedPrompt).toBeDefined();
+      expect(downloadedPrompt!.category).toBe('General'); // DEFAULT_CATEGORY value
+    });
+
+    it('should default to DEFAULT_CATEGORY when remote prompt has undefined category', async () => {
+      // Arrange - Add cloud prompt with undefined category
+      const cloudPrompt = syncTestHelpers.addCloudPrompt({
+        local_id: 'prompt-undef-cat',
+        title: 'Prompt With Undefined Category',
+        content: 'Test content',
+        category: undefined as unknown as string, // Simulate undefined
+        description: null,
+        prompt_order: null,
+        category_order: null,
+        content_hash: 'hash-456',
+        variables: [],
+        metadata: {
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          usageCount: 0,
+        },
+        sync_metadata: null,
+        deleted_at: null,
+      });
+
+      // Act
+      const localPrompts = await promptService.listPrompts();
+      const result = await syncService.performSync(localPrompts, promptService);
+
+      // Assert
+      expect(result.stats.downloaded).toBe(1);
+
+      const finalPrompts = await promptService.listPrompts();
+      const downloadedPrompt = finalPrompts.find((p) => p.id === 'prompt-undef-cat');
+
+      expect(downloadedPrompt).toBeDefined();
+      expect(downloadedPrompt!.category).toBe('General'); // DEFAULT_CATEGORY value
+    });
+
+    it('should default to DEFAULT_CATEGORY when remote prompt has empty string category', async () => {
+      // Arrange - Add cloud prompt with empty string category
+      const cloudPrompt = syncTestHelpers.addCloudPrompt({
+        local_id: 'prompt-empty-cat',
+        title: 'Prompt With Empty Category',
+        content: 'Test content',
+        category: '', // Empty string
+        description: null,
+        prompt_order: null,
+        category_order: null,
+        content_hash: 'hash-789',
+        variables: [],
+        metadata: {
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          usageCount: 0,
+        },
+        sync_metadata: null,
+        deleted_at: null,
+      });
+
+      // Act
+      const localPrompts = await promptService.listPrompts();
+      const result = await syncService.performSync(localPrompts, promptService);
+
+      // Assert
+      expect(result.stats.downloaded).toBe(1);
+
+      const finalPrompts = await promptService.listPrompts();
+      const downloadedPrompt = finalPrompts.find((p) => p.id === 'prompt-empty-cat');
+
+      expect(downloadedPrompt).toBeDefined();
+      expect(downloadedPrompt!.category).toBe('General'); // DEFAULT_CATEGORY value
+    });
+  });
 });
