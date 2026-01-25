@@ -12,6 +12,7 @@
  */
 
 import * as vscode from 'vscode';
+import { DEFAULT_CATEGORY } from '../models/prompt';
 import type { Prompt, TemplateVariable, FileContext } from '../models/prompt';
 import type {
   SyncState,
@@ -31,9 +32,6 @@ import { SupabaseClientManager } from './supabaseClient';
 import { computeContentHash, matchesHash } from '../utils/contentHash';
 import { getDeviceInfo } from '../utils/deviceId';
 import type { PromptService } from './promptService';
-
-/** Default category for prompts when none is specified or value is null */
-const DEFAULT_CATEGORY = 'General';
 
 /**
  * Sync service using dependency injection

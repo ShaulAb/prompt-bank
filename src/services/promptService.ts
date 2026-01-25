@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Prompt, createPrompt } from '../models/prompt';
+import { Prompt, createPrompt, PREDEFINED_CATEGORIES } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { createShareMulti } from './shareService';
@@ -582,7 +582,7 @@ export class PromptService {
     const prompts = await this.storage.list();
     const existingCategories = [...new Set(prompts.map((p) => p.category))];
 
-    const predefinedCategories = ['General', 'Architecture', 'UI/UX', 'Testing'];
+    const predefinedCategories = PREDEFINED_CATEGORIES;
 
     // Combine and deduplicate categories
     const allCategories = [...new Set([...predefinedCategories, ...existingCategories])];

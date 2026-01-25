@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Prompt } from '../models/prompt';
+import { Prompt, DEFAULT_CATEGORY } from '../models/prompt';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
 import { PromptService } from '../services/promptService';
 import { PromptTreeItem, CategoryTreeItem } from '../views/promptTreeItem';
@@ -36,7 +36,7 @@ export class TreeCommands {
           vscode.window.showErrorMessage('Extension context not available');
           return;
         }
-        const category = item?.category || 'General';
+        const category = item?.category || DEFAULT_CATEGORY;
         await PromptEditorPanel.showForNewPrompt(
           this.context,
           '',

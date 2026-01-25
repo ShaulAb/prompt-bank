@@ -1,5 +1,19 @@
 import { randomUUID } from 'crypto';
 
+// ────────────────────────────────────────────────────────────────────────────
+// Constants
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Default category for prompts when none is specified */
+export const DEFAULT_CATEGORY = 'General';
+
+/** Predefined categories shown in the UI */
+export const PREDEFINED_CATEGORIES = [DEFAULT_CATEGORY, 'Architecture', 'UI/UX', 'Testing'];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Interfaces
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
  * Core prompt model with extensible structure for future features
  */
@@ -89,8 +103,8 @@ export interface FileContext {
 export function createPrompt(
   title: string,
   content: string,
-  category: string = 'General',
-  description?: string // Add description as an optional parameter
+  category: string = DEFAULT_CATEGORY,
+  description?: string
 ): Prompt {
   const newPrompt: Prompt = {
     id: generateId(),

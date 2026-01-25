@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { PromptService } from '../services/promptService';
 import { PromptTreeProvider } from '../views/promptTreeProvider';
-import { Prompt, createPrompt } from '../models/prompt';
+import { Prompt, createPrompt, DEFAULT_CATEGORY } from '../models/prompt';
 import { WebViewCache } from './WebViewCache';
 
 export class PromptEditorPanel {
@@ -92,7 +92,7 @@ export class PromptEditorPanel {
       categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
       // Ensure we always have at least one category
       if (categories.length === 0) {
-        categories = ['General'];
+        categories = [DEFAULT_CATEGORY];
       }
       WebViewCache.setCategoriesCache(categories);
     }
@@ -132,7 +132,7 @@ export class PromptEditorPanel {
       categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
       // Ensure we always have at least one category
       if (categories.length === 0) {
-        categories = ['General'];
+        categories = [DEFAULT_CATEGORY];
       }
       WebViewCache.setCategoriesCache(categories);
     }
@@ -171,7 +171,7 @@ export class PromptEditorPanel {
         content: this.initialContent || '',
         title: '',
         description: '',
-        category: this.initialCategory || 'General',
+        category: this.initialCategory || DEFAULT_CATEGORY,
       };
       promptJson = JSON.stringify(tempPrompt);
     }
