@@ -12,6 +12,7 @@
  */
 
 import * as vscode from 'vscode';
+import { DEFAULT_CATEGORY } from '../models/prompt';
 import type { Prompt, TemplateVariable, FileContext } from '../models/prompt';
 import type {
   SyncState,
@@ -241,10 +242,34 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Generate a new unique ID for prompts
+   *
+   * Format: prompt_{timestamp}_{9-char-random}
+   * Example: prompt_1738012345678_abc123def
+   *
+   * @returns Unique prompt ID string
+   */
+  private generateNewId(): string {
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).slice(2, 11); // Skip '0.' prefix, take 9 chars
+    return `prompt_${timestamp}_${randomSuffix}`;
+  }
+
+  /**
    * Resolve conflict by creating two separate prompts with device names
    *
-   * CRITICAL: Strips existing conflict suffixes to prevent nesting
-   * CRITICAL: Both prompts get NEW IDs (no reuse)
+   * CRITICAL BEHAVIOR:
+   * 1. The original local prompt will be DELETED from prompts.json (by caller)
+   * 2. Two NEW prompts are created with NEW IDs (neither reuses the original ID)
+   * 3. The original prompt ID will be marked as deleted in sync state (by caller)
+   * 4. localCopy is uploaded as NEW cloud prompt
+   * 5. remoteCopy is linked to EXISTING cloud prompt (avoids 409 conflicts)
+   * 6. Strips existing conflict suffixes to prevent nesting
+   *
+   * This ensures users never lose data - they can manually review and merge copies.
+   *
+   * Title format: "Original Title (from DeviceName - Mon DD HH:MM)"
+   * Example: "My Prompt (from MacBook - Jan 24 15:30)"
    *
    * @param local - Local version of prompt
    * @param remote - Remote version of prompt
@@ -320,7 +345,7 @@ export class SyncService {
       id: remote.local_id,
       title: remote.title,
       content: remote.content,
-      category: remote.category,
+      category: remote.category || DEFAULT_CATEGORY,
       variables: variables,
       metadata: {
         created: new Date(metadata.created),
@@ -347,13 +372,6 @@ export class SyncService {
     }
 
     return prompt;
-  }
-
-  /**
-   * Generate a new unique ID for prompts
-   */
-  private generateNewId(): string {
-    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -853,60 +871,65 @@ export class SyncService {
         const localHash = computeContentHash(localCopy);
         const remoteHash = computeContentHash(remoteCopy);
 
+        // Upload localCopy as a NEW cloud prompt (representing the local version)
         try {
-          // Upload localCopy as a NEW cloud prompt (representing the local version)
           const localCloudId = await this.uploadPrompt(localCopy);
-
-          // Create sync info for localCopy pointing to its NEW cloud ID
           await this.syncStateStorage!.setPromptSyncInfo(localCopy.id, {
             cloudId: localCloudId.cloudId,
             lastSyncedContentHash: localHash,
             lastSyncedAt: new Date(),
             version: localCloudId.version,
           });
-        } catch (error) {
-          // If localCopy upload fails, we should still continue with remoteCopy
-          // The localCopy exists locally, and we can retry upload on next sync
+        } catch (uploadError) {
+          // localCopy exists locally and will be uploaded on next sync
+          console.warn(
+            `[SyncService] Failed to upload local conflict copy "${localCopy.title}" (${localCopy.id}). ` +
+              `Will retry on next sync.`,
+            uploadError
+          );
         }
 
+        // Link remoteCopy to the EXISTING cloud prompt
+        // DON'T upload - it already exists in cloud as conflict.remote (avoids 409)
         try {
-          // Link remoteCopy to the EXISTING cloud prompt (representing the remote version)
-          // DON'T upload remoteCopy - it already exists in the cloud as conflict.remote
-          // This avoids 409 conflicts and preserves the remote prompt in the cloud
-
-          // Create sync info for remoteCopy pointing to the EXISTING cloud ID
           await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
             cloudId: conflict.remote.cloud_id,
             lastSyncedContentHash: remoteHash,
             lastSyncedAt: new Date(),
             version: conflict.remote.version,
           });
-        } catch (error) {
-          // Edge case: If the remote cloud prompt was deleted by another device
-          // between fetch and conflict resolution, we should upload remoteCopy as NEW
+        } catch (linkError) {
+          // Edge case: remote cloud prompt may have been deleted by another device
+          console.warn(
+            `[SyncService] Failed to link remote conflict copy to cloud_id ${conflict.remote.cloud_id}. ` +
+              `Attempting to upload as new prompt.`,
+            linkError
+          );
           try {
             const remoteCloudId = await this.uploadPrompt(remoteCopy);
-
             await this.syncStateStorage!.setPromptSyncInfo(remoteCopy.id, {
               cloudId: remoteCloudId.cloudId,
               lastSyncedContentHash: remoteHash,
               lastSyncedAt: new Date(),
               version: remoteCloudId.version,
             });
-          } catch (uploadError) {
-            // If both linking and uploading fail, remoteCopy exists locally
-            // We can retry on next sync
+          } catch (fallbackError) {
+            // remoteCopy exists locally and will be uploaded on next sync
+            console.warn(
+              `[SyncService] Failed to upload remote conflict copy "${remoteCopy.title}" (${remoteCopy.id}). ` +
+                `Will retry on next sync.`,
+              fallbackError
+            );
           }
         }
 
         result.stats.conflicts++;
       }
 
-      // 2. Process deletions
+      // 2. Process deletions (soft-delete cloud prompts that were deleted locally)
       for (const { cloudId } of plan.toDelete) {
         await this.deletePrompt(cloudId);
 
-        // Mark as deleted in sync state
         const promptId = await this.syncStateStorage!.findLocalPromptId(cloudId);
         if (promptId) {
           await this.syncStateStorage!.markPromptAsDeleted(promptId);
@@ -915,15 +938,14 @@ export class SyncService {
         result.stats.deleted++;
       }
 
-      // 3. Upload prompts
+      // 3. Upload prompts (local changes -> cloud)
       for (const promptUnknown of plan.toUpload) {
         const prompt = promptUnknown as Prompt;
         const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
 
-        // VALIDATION: Check for corrupted sync state
-        // If syncInfo exists but points to a soft-deleted cloud prompt, clear it
+        // Handle corrupted sync state: syncInfo points to soft-deleted cloud prompt
         if (syncInfo?.cloudId && syncInfo.isDeleted) {
-          // Clear the corrupted sync info to force a fresh upload
+          // Clear corrupted sync info and upload as new prompt
           await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
             cloudId: '',
             lastSyncedContentHash: '',
@@ -931,10 +953,9 @@ export class SyncService {
             version: 0,
             isDeleted: false,
           });
-          // Now upload as NEW (no sync info)
+
           const uploaded = await this.uploadPrompt(prompt);
           const contentHash = computeContentHash(prompt);
-
           await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
             cloudId: uploaded.cloudId,
             lastSyncedContentHash: contentHash,
@@ -943,14 +964,12 @@ export class SyncService {
           });
 
           result.stats.uploaded++;
-          continue; // Skip to next prompt
+          continue;
         }
 
-        // Normal upload flow with intelligent conflict handling
+        // Normal upload with conflict handling (optimistic locking)
         const uploaded = await this.uploadWithConflictHandling(prompt, syncInfo ?? undefined);
         const contentHash = computeContentHash(prompt);
-
-        // Update sync state (clear deletion flag if re-uploading)
         await this.syncStateStorage!.setPromptSyncInfo(prompt.id, {
           cloudId: uploaded.cloudId,
           lastSyncedContentHash: contentHash,
@@ -962,14 +981,13 @@ export class SyncService {
         result.stats.uploaded++;
       }
 
-      // 4. Download prompts
+      // 4. Download prompts (cloud changes -> local)
       for (const remotePrompt of plan.toDownload) {
-        const remoteLocalPrompt = this.convertRemoteToLocal(remotePrompt);
+        const localPrompt = this.convertRemoteToLocal(remotePrompt);
+        await promptService.savePromptDirectly(localPrompt);
 
-        await promptService.savePromptDirectly(remoteLocalPrompt);
-
-        const contentHash = computeContentHash(remoteLocalPrompt);
-        await this.syncStateStorage!.setPromptSyncInfo(remoteLocalPrompt.id, {
+        const contentHash = computeContentHash(localPrompt);
+        await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
           cloudId: remotePrompt.cloud_id,
           lastSyncedContentHash: contentHash,
           lastSyncedAt: new Date(),

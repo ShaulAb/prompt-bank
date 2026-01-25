@@ -32,10 +32,11 @@ import type { Prompt } from '../models/prompt';
  */
 export const computeContentHash = (prompt: Prompt): string => {
   // Canonical representation - order matters for consistent hashing
+  // CRITICAL: Must match web's implementation in promptbank-website/src/lib/utils/content-hash.ts
   const canonical = JSON.stringify({
     title: prompt.title.trim(),
     content: prompt.content.trim(),
-    category: prompt.category.trim(),
+    category: (prompt.category || '').trim(), // Handle null/undefined to match web
     // Note: We intentionally exclude:
     // - metadata (created, modified, usageCount) - these change frequently
     // - variables - these are derived from content
