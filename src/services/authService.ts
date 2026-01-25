@@ -14,26 +14,76 @@ interface TokenResponse {
   };
 }
 
-// Device flow API response types
+/**
+ * Device Flow initiation response from the website API.
+ * Returned by POST /api/auth/device/initiate
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628 - OAuth 2.0 Device Authorization Grant
+ */
 interface DeviceFlowInitResponse {
+  /** Unique device code for polling */
   device_code: string;
+  /** URL to open in browser for user authentication */
   verification_url: string;
+  /** Seconds until the device code expires */
   expires_in: number;
+  /** Minimum polling interval in seconds */
   interval: number;
 }
 
+/**
+ * Device Flow poll response from the website API.
+ * Returned by GET /api/auth/device/poll
+ *
+ * On success: contains access_token, refresh_token, expires_in
+ * On pending: contains error='authorization_pending'
+ * On failure: contains error and optional error_description
+ */
 interface DeviceFlowPollResponse {
+  /** JWT access token (present on success) */
   access_token?: string;
+  /** Refresh token for obtaining new access tokens (present on success) */
   refresh_token?: string;
+  /** Token expiry in seconds (present on success) */
   expires_in?: number;
+  /** Error code: 'authorization_pending', 'expired_token', etc. */
   error?: string;
+  /** Human-readable error description */
   error_description?: string;
 }
 
+/**
+ * Device Flow error response for rate limiting.
+ * Returned with HTTP 429 status
+ */
 interface DeviceFlowErrorResponse {
+  /** Seconds to wait before retrying */
   retry_after?: number;
+  /** Error code */
   error?: string;
 }
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Device Flow Polling Constants
+// ────────────────────────────────────────────────────────────────────────────────
+
+/** Minimum polling interval in seconds (RFC 8628 recommends >= 5 seconds) */
+const MIN_POLL_INTERVAL_SECONDS = 1;
+
+/** Maximum polling interval in seconds (prevent excessively slow polling) */
+const MAX_POLL_INTERVAL_SECONDS = 10;
+
+/** Default polling interval if server doesn't specify */
+const DEFAULT_POLL_INTERVAL_SECONDS = 2;
+
+/** Minimum device code expiry in seconds */
+const MIN_EXPIRY_SECONDS = 60;
+
+/** Maximum device code expiry in seconds (1 hour) */
+const MAX_EXPIRY_SECONDS = 3600;
+
+/** Default device code expiry if server doesn't specify */
+const DEFAULT_EXPIRY_SECONDS = 600;
 
 // Supabase JWT payload structure
 interface SupabaseJWTPayload extends JWTPayload {
@@ -435,10 +485,13 @@ export class AuthService {
 
     // Step 3: Poll for completion with validated parameters
     // Validate polling parameters to prevent malformed data issues
-    const rawInterval = typeof interval === 'number' ? interval : 2;
-    const rawExpiresIn = typeof expires_in === 'number' ? expires_in : 600;
-    const pollIntervalSeconds = Math.max(1, Math.min(rawInterval, 10)); // 1-10 seconds
-    const expiresInSeconds = Math.max(60, Math.min(rawExpiresIn, 3600)); // 1-60 minutes
+    const rawInterval = typeof interval === 'number' ? interval : DEFAULT_POLL_INTERVAL_SECONDS;
+    const rawExpiresIn = typeof expires_in === 'number' ? expires_in : DEFAULT_EXPIRY_SECONDS;
+    const pollIntervalSeconds = Math.max(
+      MIN_POLL_INTERVAL_SECONDS,
+      Math.min(rawInterval, MAX_POLL_INTERVAL_SECONDS)
+    );
+    const expiresInSeconds = Math.max(MIN_EXPIRY_SECONDS, Math.min(rawExpiresIn, MAX_EXPIRY_SECONDS));
     const pollInterval = pollIntervalSeconds * 1000;
     const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
     let attempts = 0;
