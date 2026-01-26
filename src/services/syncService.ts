@@ -235,13 +235,16 @@ export class SyncService {
       if (localPromptId && localMap.has(localPromptId)) {
         const syncInfo = promptSyncMap[localPromptId];
 
+        // Delete locally if sync state doesn't already mark it as deleted.
+        // Note: syncInfo may be undefined for prompts that exist locally but haven't
+        // been synced yet. In that case, isDeleted is falsy, and we should still
+        // delete the local copy since the authoritative cloud version was deleted.
         if (!syncInfo?.isDeleted) {
-          // Remote was deleted and local exists but wasn't queued for upload
-          // This means local wasn't modified after deletion - delete locally
           plan.toDeleteLocally.push({
             localPromptId,
             cloudId: remotePrompt.cloud_id,
-            deletedAt: remotePrompt.deleted_at,
+            // Non-null assertion safe: we filter for deleted_at on line 225
+            deletedAt: remotePrompt.deleted_at!,
           });
         }
       }
