@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import { getSupabaseConfig } from '../config/supabase';
+import { getUserAgent } from '../config/extension';
 
 // Supabase API response types
 interface TokenResponse {
@@ -13,10 +14,76 @@ interface TokenResponse {
   };
 }
 
-interface UserResponse {
-  id: string;
-  email: string;
+/**
+ * Device Flow initiation response from the website API.
+ * Returned by POST /api/auth/device/initiate
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628 - OAuth 2.0 Device Authorization Grant
+ */
+interface DeviceFlowInitResponse {
+  /** Unique device code for polling */
+  device_code: string;
+  /** URL to open in browser for user authentication */
+  verification_url: string;
+  /** Seconds until the device code expires */
+  expires_in: number;
+  /** Minimum polling interval in seconds */
+  interval: number;
 }
+
+/**
+ * Device Flow poll response from the website API.
+ * Returned by GET /api/auth/device/poll
+ *
+ * On success: contains access_token, refresh_token, expires_in
+ * On pending: contains error='authorization_pending'
+ * On failure: contains error and optional error_description
+ */
+interface DeviceFlowPollResponse {
+  /** JWT access token (present on success) */
+  access_token?: string;
+  /** Refresh token for obtaining new access tokens (present on success) */
+  refresh_token?: string;
+  /** Token expiry in seconds (present on success) */
+  expires_in?: number;
+  /** Error code: 'authorization_pending', 'expired_token', etc. */
+  error?: string;
+  /** Human-readable error description */
+  error_description?: string;
+}
+
+/**
+ * Device Flow error response for rate limiting.
+ * Returned with HTTP 429 status
+ */
+interface DeviceFlowErrorResponse {
+  /** Seconds to wait before retrying */
+  retry_after?: number;
+  /** Error code */
+  error?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Device Flow Polling Constants
+// ────────────────────────────────────────────────────────────────────────────────
+
+/** Minimum polling interval in seconds (RFC 8628 recommends >= 5 seconds) */
+const MIN_POLL_INTERVAL_SECONDS = 1;
+
+/** Maximum polling interval in seconds (prevent excessively slow polling) */
+const MAX_POLL_INTERVAL_SECONDS = 10;
+
+/** Default polling interval if server doesn't specify */
+const DEFAULT_POLL_INTERVAL_SECONDS = 2;
+
+/** Minimum device code expiry in seconds */
+const MIN_EXPIRY_SECONDS = 60;
+
+/** Maximum device code expiry in seconds (1 hour) */
+const MAX_EXPIRY_SECONDS = 3600;
+
+/** Default device code expiry if server doesn't specify */
+const DEFAULT_EXPIRY_SECONDS = 600;
 
 // Supabase JWT payload structure
 interface SupabaseJWTPayload extends JWTPayload {
@@ -42,8 +109,6 @@ export class AuthService {
   // Supabase project URL and anon key
   private readonly supabaseUrl: string;
   private readonly supabaseAnonKey: string;
-  private readonly publisher: string;
-  private readonly extensionName: string;
 
   // SecretStorage keys
   private readonly TOKEN_KEY = 'promptBank.supabase.access_token';
@@ -61,19 +126,17 @@ export class AuthService {
    * Create a new AuthService instance using dependency injection.
    *
    * @param context - VS Code extension context
-   * @param publisher - Extension publisher name
-   * @param extensionName - Extension name
+   * @param _publisher - Extension publisher name (kept for backward compatibility)
+   * @param _extensionName - Extension name (kept for backward compatibility)
    */
   constructor(
     private context: vscode.ExtensionContext,
-    publisher: string,
-    extensionName: string
+    _publisher: string,
+    _extensionName: string
   ) {
     const config = getSupabaseConfig();
     this.supabaseUrl = config.url;
     this.supabaseAnonKey = config.publishableKey;
-    this.publisher = publisher;
-    this.extensionName = extensionName;
   }
 
   /**
@@ -370,225 +433,196 @@ export class AuthService {
     await this.saveToSecretStorage();
   }
 
+  /**
+   * Begin Device Flow authentication
+   *
+   * Uses OAuth Device Flow (RFC 8628) for reliable authentication:
+   * 1. Request device code from website API
+   * 2. Open browser to website's device auth page
+   * 3. Poll for completion while user authenticates
+   * 4. Return access token once complete
+   */
   private async beginGoogleAuthFlow(): Promise<string> {
-    const redirectUri = await this.getRedirectUri();
+    const config = getSupabaseConfig();
+    const websiteUrl = config.websiteUrl;
 
-    // Generate PKCE challenge
-    const codeVerifier = this.generateCodeVerifier();
-    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+    // Step 1: Initiate device flow
+    console.log('[AuthService] Initiating device flow...');
+    console.log(`[AuthService] Website URL: ${websiteUrl}`);
+    console.log(`[AuthService] User-Agent: ${getUserAgent()}`);
 
-    // Store code verifier for later
-    await this.context.globalState.update('promptBank.pkce.verifier', codeVerifier);
-
-    // Build Google OAuth URL via Supabase
-    const authUrl = new URL(`${this.supabaseUrl}/auth/v1/authorize`);
-    authUrl.searchParams.set('provider', 'google');
-    authUrl.searchParams.set('redirect_to', redirectUri);
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
-
-    // Open browser for authentication
-    const authUri = vscode.Uri.parse(authUrl.toString());
-    await vscode.env.openExternal(authUri);
-
-    // Wait for callback
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Authentication timeout'));
-      }, 120000); // 2 minute timeout
-
-      // Register URI handler for callback
-      const disposable = vscode.window.registerUriHandler({
-        handleUri: async (uri: vscode.Uri) => {
-          if (uri.path === '/auth-callback') {
-            clearTimeout(timeout);
-            disposable.dispose();
-
-            try {
-              await this.handleAuthCallback(uri, codeVerifier);
-              if (this.token) {
-                resolve(this.token);
-              } else {
-                reject(new Error('Failed to obtain access token'));
-              }
-            } catch (error) {
-              reject(error);
-            }
-          }
-        },
-      });
-    });
-  }
-
-  private async handleAuthCallback(uri: vscode.Uri, codeVerifier: string): Promise<void> {
-    const params = new URLSearchParams(uri.query);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const expiresIn = params.get('expires_in');
-    const error = params.get('error');
-    const errorDescription = params.get('error_description');
-
-    if (error) {
-      throw new Error(`Authentication failed: ${errorDescription || error}`);
-    }
-
-    if (!accessToken) {
-      // If no direct token, try to exchange code
-      const code = params.get('code');
-      if (!code) {
-        throw new Error('No access token or authorization code received');
-      }
-
-      await this.exchangeCodeForToken(code, codeVerifier);
-      return;
-    }
-
-    // Store tokens
-    this.token = accessToken;
-    this.refreshToken = refreshToken || undefined;
-    this.expiresAt = expiresIn ? Date.now() + parseInt(expiresIn) * 1000 : undefined;
-
-    // Verify the token immediately after obtaining it
-    const isValid = await this.verifyToken(accessToken);
-    if (!isValid) {
-      throw new Error('Token verification failed after authentication');
-    }
-
-    // Get user info (this might be redundant now that verifyToken extracts it)
-    await this.fetchUserInfo();
-
-    // Save everything
-    await this.saveToSecretStorage();
-
-    vscode.window.showInformationMessage(
-      `✅ Signed in successfully as ${this.userEmail || 'user'}`
-    );
-  }
-
-  private async exchangeCodeForToken(code: string, codeVerifier: string): Promise<void> {
-    const redirectUri = await this.getRedirectUri();
-
-    const response = await fetch(`${this.supabaseUrl}/auth/v1/token?grant_type=pkce`, {
-      method: 'POST',
-      headers: {
-        apikey: this.supabaseAnonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        auth_code: code,
-        code_verifier: codeVerifier,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to exchange code for token: ${errorText}`);
-    }
-
-    const data = (await response.json()) as TokenResponse;
-
-    this.token = data.access_token;
-    this.refreshToken = data.refresh_token;
-    this.expiresAt = Date.now() + data.expires_in * 1000;
-
-    // Verify the token immediately after obtaining it
-    const isValid = await this.verifyToken(data.access_token);
-    if (!isValid) {
-      throw new Error('Token verification failed after code exchange');
-    }
-
-    // User info is now extracted by verifyToken, but keep fallback
-    if (data.user) {
-      this.userId = data.user.id;
-      this.userEmail = data.user.email;
-    }
-
-    await this.saveToSecretStorage();
-
-    vscode.window.showInformationMessage(
-      `✅ Signed in successfully as ${this.userEmail || 'user'}`
-    );
-  }
-
-  private async fetchUserInfo(): Promise<void> {
-    if (!this.token) return;
-
+    let initiateResponse: Response;
     try {
-      const response = await fetch(`${this.supabaseUrl}/auth/v1/user`, {
+      initiateResponse = await fetch(`${websiteUrl}/api/auth/device/initiate`, {
+        method: 'POST',
         headers: {
-          apikey: this.supabaseAnonKey,
-          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          'User-Agent': getUserAgent(),
         },
       });
-
-      if (response.ok) {
-        const data = (await response.json()) as UserResponse;
-        this.userId = data.id;
-        this.userEmail = data.email;
-      }
-    } catch (error) {
-      console.error('[AuthService] Failed to fetch user info:', error);
-    }
-  }
-
-  private async getRedirectUri(): Promise<string> {
-    const extensionId = `${this.publisher}.${this.extensionName}`;
-
-    // Detect editor type and use appropriate URI scheme
-    const uriScheme = this.detectEditorUriScheme();
-
-    console.log('[AuthService] Using extension ID for redirect:', extensionId);
-    console.log('[AuthService] Using URI scheme:', uriScheme);
-
-    return `${uriScheme}://${extensionId}/auth-callback`;
-  }
-
-  private detectEditorUriScheme(): string {
-    // PROPER SOLUTION: Use the official VS Code API to get URI scheme
-    // This works correctly in both VS Code and Cursor without system modifications
-    try {
-      if (vscode.env.uriScheme) {
-        console.log('[AuthService] Using official vscode.env.uriScheme:', vscode.env.uriScheme);
-        return vscode.env.uriScheme;
-      }
-    } catch (error) {
-      console.log('[AuthService] Could not access vscode.env.uriScheme:', error);
+    } catch (fetchError) {
+      // Network-level error (DNS, connection refused, etc.)
+      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      console.error('[AuthService] Network error during device flow initiation:', errorMessage);
+      throw new Error(`Failed to connect to authentication server: ${errorMessage}`);
     }
 
-    // Fallback: Check app name for debugging info, but still use vscode scheme
-    try {
-      if (vscode.env.appName) {
-        const appName = vscode.env.appName.toLowerCase();
-        console.log('[AuthService] Detected app name:', appName);
+    console.log(
+      `[AuthService] Response status: ${initiateResponse.status} ${initiateResponse.statusText}`
+    );
+
+    if (!initiateResponse.ok) {
+      // Handle rate limiting
+      if (initiateResponse.status === 429) {
+        const errorData = (await initiateResponse
+          .json()
+          .catch(() => ({}))) as DeviceFlowErrorResponse;
+        const retryAfter = errorData.retry_after || 600;
+        throw new Error(
+          `Too many authentication requests. Please wait ${Math.ceil(retryAfter / 60)} minutes and try again.`
+        );
       }
-    } catch (error) {
-      console.log('[AuthService] Could not access vscode.env.appName:', error);
+      const errorText = await initiateResponse.text();
+      console.error(
+        `[AuthService] Device flow initiation failed: status=${initiateResponse.status}, body=${errorText || '(empty)'}`
+      );
+      throw new Error(
+        `Failed to initiate device flow (HTTP ${initiateResponse.status}): ${errorText || 'No error details provided'}`
+      );
     }
 
-    // Safe fallback to vscode scheme
-    console.log('[AuthService] Falling back to vscode URI scheme');
-    return 'vscode';
+    const deviceData = (await initiateResponse.json()) as DeviceFlowInitResponse;
+    const { device_code, verification_url, expires_in, interval } = deviceData;
+
+    console.log('[AuthService] Device flow initiated, opening browser...');
+
+    // Step 2: Open browser to verification URL
+    const verificationUri = vscode.Uri.parse(verification_url);
+    await vscode.env.openExternal(verificationUri);
+
+    // Show user instructions
+    vscode.window.showInformationMessage(
+      'A browser window has opened. Please sign in with Google to connect your account.'
+    );
+
+    // Step 3: Poll for completion
+    return this.pollForDeviceFlowCompletion(websiteUrl, device_code, interval, expires_in);
   }
 
-  private generateCodeVerifier(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return this.base64UrlEncode(array);
-  }
+  /**
+   * Poll for device flow completion
+   *
+   * Continuously polls the device flow API until:
+   * - User completes authentication (returns access token)
+   * - Device code expires (throws error)
+   * - Maximum attempts exceeded (throws error)
+   *
+   * @param websiteUrl - Base URL for the website API
+   * @param deviceCode - Device code from initiate response
+   * @param interval - Server-specified polling interval in seconds
+   * @param expiresIn - Server-specified expiry time in seconds
+   * @returns Promise resolving to access token on success
+   */
+  private async pollForDeviceFlowCompletion(
+    websiteUrl: string,
+    deviceCode: string,
+    interval: number,
+    expiresIn: number
+  ): Promise<string> {
+    // Validate polling parameters to prevent malformed data issues
+    const rawInterval = typeof interval === 'number' ? interval : DEFAULT_POLL_INTERVAL_SECONDS;
+    const rawExpiresIn = typeof expiresIn === 'number' ? expiresIn : DEFAULT_EXPIRY_SECONDS;
+    const pollIntervalSeconds = Math.max(
+      MIN_POLL_INTERVAL_SECONDS,
+      Math.min(rawInterval, MAX_POLL_INTERVAL_SECONDS)
+    );
+    const expiresInSeconds = Math.max(
+      MIN_EXPIRY_SECONDS,
+      Math.min(rawExpiresIn, MAX_EXPIRY_SECONDS)
+    );
+    const pollIntervalMs = pollIntervalSeconds * 1000;
+    const maxAttempts = Math.floor(expiresInSeconds / pollIntervalSeconds);
+    let attempts = 0;
 
-  private async generateCodeChallenge(verifier: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return this.base64UrlEncode(new Uint8Array(hash));
-  }
+    console.log(
+      `[AuthService] Starting to poll (interval: ${pollIntervalSeconds}s, max attempts: ${maxAttempts})...`
+    );
 
-  private base64UrlEncode(array: Uint8Array): string {
-    return btoa(String.fromCharCode(...array))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '');
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        attempts++;
+
+        if (attempts > maxAttempts) {
+          reject(new Error('Authentication timeout. Please try again.'));
+          return;
+        }
+
+        try {
+          const pollResponse = await fetch(
+            `${websiteUrl}/api/auth/device/poll?device_code=${deviceCode}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': getUserAgent(),
+              },
+            }
+          );
+
+          const pollData = (await pollResponse.json()) as DeviceFlowPollResponse;
+
+          if (pollResponse.ok && pollData.access_token) {
+            // Authentication complete! Store tokens
+            console.log('[AuthService] Device flow completed successfully!');
+
+            this.token = pollData.access_token;
+            this.refreshToken = pollData.refresh_token;
+            this.expiresAt = Date.now() + (pollData.expires_in || 3600) * 1000;
+
+            // Verify the token
+            const isValid = await this.verifyToken(this.token);
+            if (!isValid) {
+              reject(new Error('Token verification failed after device flow'));
+              return;
+            }
+
+            // Save to storage
+            await this.saveToSecretStorage();
+
+            vscode.window.showInformationMessage(
+              `✅ Signed in successfully as ${this.userEmail || 'user'}`
+            );
+
+            resolve(this.token);
+            return;
+          }
+
+          // Check error type
+          if (pollData.error === 'authorization_pending') {
+            // User hasn't completed auth yet, keep polling
+            setTimeout(poll, pollIntervalMs);
+            return;
+          }
+
+          if (pollData.error === 'expired_token') {
+            reject(new Error('Authorization link expired. Please try again.'));
+            return;
+          }
+
+          // Unknown error
+          reject(
+            new Error(pollData.error_description || pollData.error || 'Authentication failed')
+          );
+        } catch (error) {
+          console.error('[AuthService] Poll error:', error);
+          // Network error, retry
+          setTimeout(poll, pollIntervalMs);
+        }
+      };
+
+      // Start polling
+      setTimeout(poll, pollIntervalMs);
+    });
   }
 
   // ────────────────────────────────────────────────────────────────────────────

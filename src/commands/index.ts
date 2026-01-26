@@ -208,7 +208,7 @@ export function registerCommands(
       try {
         const url = await vscode.window.showInputBox({
           prompt: 'Paste a Prompt Bank share link',
-          placeHolder: 'https://prestissimo.ai/share/<id>',
+          placeHolder: 'https://www.prompt-bank.io/share/<id>',
           ignoreFocusOut: true,
         });
         if (!url) return;

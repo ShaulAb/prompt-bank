@@ -119,7 +119,8 @@ Prompts are stored both locally and in the cloud:
 
 Sharing and sync features require Google OAuth authentication via Supabase Auth:
 
-- **First Time**: When you first share or sync, you'll be redirected to Google to authorize the extension
+- **Device Flow**: Uses OAuth 2.0 Device Authorization Grant (RFC 8628) for secure, reliable authentication from VS Code
+- **First Time**: When you first share or sync, a browser window opens for Google sign-in while the extension waits for completion
 - **Secure**: Modern JWKS-based JWT verification with ECC (P-256) asymmetric keys for enhanced security
 - **Automatic**: Once authorized, sharing and sync work seamlessly without further prompts
 - **Account Linking**: Same Google account is used for both sharing and sync features

@@ -29,7 +29,10 @@ export const SUPABASE_DEFAULTS = {
   publishableKey: 'sb_publishable_4YWhPqX2HleOm9-vCKVSEA_daIYTGwZ',
 
   /** Base URL for public share links */
-  publicShareBase: 'https://prestissimo.ai/share/',
+  publicShareBase: 'https://www.prompt-bank.io/share/',
+
+  /** Website URL for device flow authentication */
+  websiteUrl: 'https://www.prompt-bank.io',
 } as const;
 
 /**
@@ -51,5 +54,6 @@ export function getSupabaseConfig() {
     // with existing user configurations, but now uses publishable key
     publishableKey: cfg.get<string>('supabaseAnonKey', SUPABASE_DEFAULTS.publishableKey),
     publicShareBase: cfg.get<string>('publicShareBase', SUPABASE_DEFAULTS.publicShareBase),
+    websiteUrl: cfg.get<string>('websiteUrl', SUPABASE_DEFAULTS.websiteUrl),
   };
 }
