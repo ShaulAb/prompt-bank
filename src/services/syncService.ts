@@ -108,6 +108,15 @@ export class SyncService {
     const localMap = new Map(local.map((p) => [p.id, p]));
     const remoteMap = new Map<string, RemotePrompt>();
 
+    // Build reverse lookup map: cloudId -> localPromptId (O(n) once, enables O(1) lookups)
+    // This replaces multiple O(n) findLocalPromptId calls with O(1) map lookups
+    const cloudIdToLocalId = new Map<string, string>();
+    for (const [promptId, info] of Object.entries(promptSyncMap)) {
+      if (info.cloudId) {
+        cloudIdToLocalId.set(info.cloudId, promptId);
+      }
+    }
+
     // Map ACTIVE remote prompts only (exclude soft-deleted)
     for (const remotePrompt of remote) {
       if (!remotePrompt.deleted_at) {
@@ -230,7 +239,8 @@ export class SyncService {
         continue;
       }
 
-      const localPromptId = this.findLocalPromptId(remotePrompt.cloud_id, promptSyncMap);
+      // Use O(1) map lookup instead of O(n) findLocalPromptId
+      const localPromptId = cloudIdToLocalId.get(remotePrompt.cloud_id);
 
       if (localPromptId && localMap.has(localPromptId)) {
         const syncInfo = promptSyncMap[localPromptId];
@@ -259,7 +269,8 @@ export class SyncService {
     for (const remotePrompt of remote) {
       if (remotePrompt.deleted_at) continue; // Skip deleted remote prompts
 
-      const localPromptId = this.findLocalPromptId(remotePrompt.cloud_id, promptSyncMap);
+      // Use O(1) map lookup instead of O(n) findLocalPromptId
+      const localPromptId = cloudIdToLocalId.get(remotePrompt.cloud_id);
       if (!localPromptId || !localMap.has(localPromptId)) {
         // Check if this was deleted locally
         if (!deletedLocally.has(remotePrompt.cloud_id)) {
