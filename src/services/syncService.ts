@@ -158,13 +158,23 @@ export class SyncService {
           : undefined;
 
         if (remoteDeleted) {
-          // DELETE-MODIFY CONFLICT: Remote deleted, local still exists
-          // If syncInfo says already deleted (corrupted state), always re-upload
+          // DELETE-MODIFY CONFLICT: Remote was deleted, but local copy still exists.
+          //
+          // Design Decision: Always keep the local version.
+          // - This prevents accidental data loss from remote deletions
+          // - User's local work is preserved even if deleted on another device
+          // - The prompt will be re-uploaded as a new cloud prompt
+          // - If user truly wants to delete, they can delete locally after sync
+          //
+          // Alternative considered: Compare timestamps and delete locally if local
+          // wasn't modified after remote deletion. Rejected because it could cause
+          // unexpected data loss if clocks are out of sync or if the user made
+          // changes they haven't saved yet.
           if (syncInfo?.isDeleted) {
+            // Corrupted state: syncInfo says deleted but prompt exists locally
             plan.toUpload.push(prompt);
           } else {
-            // RESOLUTION: Always keep local version (user preference, prevents data loss)
-            // Phase 6 will NOT delete locally because local exists in toUpload
+            // Normal case: re-upload to create new cloud prompt
             plan.toUpload.push(prompt);
           }
         } else {
