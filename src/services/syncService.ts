@@ -26,6 +26,14 @@ import type {
 } from '../models/syncState';
 import { SyncConflictType } from '../models/syncState';
 import { SyncStateStorage } from '../storage/syncStateStorage';
+
+/**
+ * Internal error codes used for sync retry logic
+ */
+const SYNC_ERROR_CODES = {
+  /** Thrown when a sync conflict requires retrying the entire sync operation */
+  CONFLICT_RETRY: 'sync_conflict_retry',
+} as const;
 import { AuthService } from './authService';
 import { WorkspaceMetadataService } from './workspaceMetadataService';
 import { SupabaseClientManager } from './supabaseClient';
@@ -761,12 +769,12 @@ export class SyncService {
               `actual v${conflictError.details?.actualVersion}. ` +
               `This usually means another device modified the prompt. Retrying sync...`
           );
-          throw new Error('sync_conflict_retry');
+          throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
 
         default:
           // Unknown conflict type - fail safe by retrying entire sync
           console.error(`[SyncService] Unknown conflict type: ${conflictError.code}`);
-          throw new Error('sync_conflict_retry');
+          throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
       }
     }
   }
@@ -1211,10 +1219,13 @@ export class SyncService {
         throw new Error('Authentication expired - please sign in again');
       } else if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
         throw error; // Already user-friendly from checkQuotaBeforeSync
-      } else if (errorMessage.includes('conflict')) {
+      } else if (
+        errorMessage.includes('conflict') ||
+        errorMessage === SYNC_ERROR_CODES.CONFLICT_RETRY
+      ) {
         // Retry sync once if conflict detected (optimistic lock)
         void vscode.window.showInformationMessage('Sync conflict detected - retrying...');
-        throw new Error('sync_conflict_retry');
+        throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
       }
 
       // Unknown error - show generic message
