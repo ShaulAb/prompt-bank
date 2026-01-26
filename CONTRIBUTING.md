@@ -318,26 +318,59 @@ For feature requests, please describe:
 
 ### Authentication Architecture
 
-The extension uses **JWKS-based JWT verification** for secure authentication:
+The extension uses **Device Flow authentication** with **JWKS-based JWT verification** for secure authentication:
 
 **Overview:**
 
 - **OAuth Provider**: Google OAuth via Supabase Auth
+- **Auth Flow**: OAuth 2.0 Device Authorization Grant (RFC 8628)
 - **Token Type**: JWT (JSON Web Token) signed with ECC (P-256) asymmetric keys
 - **Verification**: Public-key cryptography using JWKS endpoint
 - **Library**: [`jose`](https://github.com/panva/jose) for industry-standard JWT verification
 
+**Why Device Flow?**
+
+Device Flow (RFC 8628) is ideal for VS Code extensions because:
+
+- ✅ Opens browser for authentication (familiar user experience)
+- ✅ Extension polls for completion (no callback handling needed)
+- ✅ Works reliably across all platforms (Windows, macOS, Linux)
+- ✅ No need for localhost servers or URI handlers
+- ✅ Secure - user authenticates in browser, not in extension
+
 **How It Works:**
 
-1. User authenticates via Google OAuth (PKCE flow)
-2. Supabase Auth issues JWT signed with **ECC P-256 private key**
-3. AuthService verifies JWT using **public key** from JWKS endpoint
-4. Tokens cached with 5-minute offline grace period
+1. Extension requests device code from website API (`/api/auth/device/initiate`)
+2. Browser opens to verification URL where user signs in with Google
+3. Extension polls for completion (`/api/auth/device/poll`)
+4. Once authenticated, Supabase Auth issues JWT signed with **ECC P-256 private key**
+5. AuthService verifies JWT using **public key** from JWKS endpoint
+6. Tokens cached with 5-minute offline grace period
+
+**Device Flow Sequence:**
+
+```
+VS Code Extension              Website API              Browser
+       │                           │                      │
+       │──POST /device/initiate───>│                      │
+       │<─device_code, url─────────│                      │
+       │                           │                      │
+       │──────────────────────────────────open URL───────>│
+       │                           │                      │
+       │                           │<─────user signs in───│
+       │                           │                      │
+       │──GET /device/poll────────>│                      │
+       │<─"pending"────────────────│                      │
+       │                           │                      │
+       │──GET /device/poll────────>│                      │
+       │<─access_token─────────────│                      │
+       │                           │                      │
+```
 
 **JWKS Endpoint:**
 
 ```
-https://xlqtowactrzmslpkzliq.supabase.co/auth/v1/.well-known/jwks.json
+https://ejolajleumgrgnmygxmz.supabase.co/auth/v1/.well-known/jwks.json
 ```
 
 **Testing Strategy:**
@@ -353,10 +386,12 @@ https://xlqtowactrzmslpkzliq.supabase.co/auth/v1/.well-known/jwks.json
 - ✅ No shared secrets exposed
 - ✅ Fast local JWT verification
 - ✅ Offline-capable with grace period
+- ✅ Reliable cross-platform authentication
 
 **For Developers:**
 
 - AuthService (`src/services/authService.ts`) handles all verification
+- Device flow implemented in `beginGoogleAuthFlow()` and `pollForDeviceFlowCompletion()`
 - JWKS keys cached for 10 minutes (Supabase Edge cache)
 - Tokens auto-refresh when expired
 - See `test/auth-jwks-verification.test.ts` for test examples

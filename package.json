@@ -255,11 +255,16 @@
         "promptBank.supabaseAnonKey": {
           "type": "string",
           "default": "sb_publishable_4YWhPqX2HleOm9-vCKVSEA_daIYTGwZ",
-          "description": "Supabase publishable API key"
+          "description": "Supabase publishable API key (safe to expose - security enforced via RLS policies)"
+        },
+        "promptBank.websiteUrl": {
+          "type": "string",
+          "default": "https://www.prompt-bank.io",
+          "description": "Website URL for device flow authentication and public features"
         },
         "promptBank.publicShareBase": {
           "type": "string",
-          "default": "https://prestissimo.ai/share/",
+          "default": "https://www.prompt-bank.io/share/",
           "description": "Base URL used to construct public share links"
         },
         "promptBank.sync.autoSync": {
