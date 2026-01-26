@@ -1142,6 +1142,11 @@ export class SyncService {
         await promptService.savePromptDirectly(localPrompt);
 
         // Upload back to set local_id in cloud
+        // Note: Between downloading and uploading, another device could:
+        // - Sync and assign a different local_id (VERSION_CONFLICT)
+        // - Modify the prompt (VERSION_CONFLICT)
+        // - Delete the prompt (PROMPT_DELETED)
+        // We handle these gracefully by keeping the local copy and retrying next sync.
         const syncInfo: PromptSyncInfo = {
           cloudId: remote.cloud_id,
           lastSyncedContentHash: remote.content_hash,
@@ -1159,11 +1164,24 @@ export class SyncService {
           });
           result.stats.downloaded++;
         } catch (error) {
-          // Keep local copy, will retry on next sync
-          console.warn(`[SyncService] Failed to update local_id for "${localPrompt.title}"`);
+          // Check if this is a specific sync conflict we can identify
+          const conflictError = this.parseSyncConflictError(error);
+          if (conflictError) {
+            console.warn(
+              `[SyncService] ${conflictError.code} while assigning local_id to "${localPrompt.title}". ` +
+                `Local copy preserved, will retry on next sync.`
+            );
+          } else {
+            console.warn(
+              `[SyncService] Failed to update local_id for "${localPrompt.title}": ` +
+                `${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+
+          // Keep local copy with empty content hash to force re-sync on next run
           await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
             cloudId: remote.cloud_id,
-            lastSyncedContentHash: '',
+            lastSyncedContentHash: '', // Empty hash forces re-upload on next sync
             lastSyncedAt: new Date(),
             version: remote.version,
           });
