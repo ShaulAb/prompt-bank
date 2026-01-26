@@ -306,21 +306,6 @@ export class SyncService {
     return plan;
   }
 
-  /**
-   * Find local prompt ID by cloud ID
-   */
-  private findLocalPromptId(
-    cloudId: string,
-    promptSyncMap: Readonly<Record<string, PromptSyncInfo>>
-  ): string | null {
-    for (const [promptId, syncInfo] of Object.entries(promptSyncMap)) {
-      if (syncInfo.cloudId === cloudId) {
-        return promptId;
-      }
-    }
-    return null;
-  }
-
   // ────────────────────────────────────────────────────────────────────────────
   // Conflict Resolution
   // ────────────────────────────────────────────────────────────────────────────
