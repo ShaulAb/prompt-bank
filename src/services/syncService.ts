@@ -435,6 +435,52 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Get the human-readable workspace name (folder name)
+   *
+   * @returns Workspace name from VS Code workspace folders, or 'Unnamed Workspace'
+   */
+  private getWorkspaceName(): string {
+    const folders = vscode.workspace.workspaceFolders;
+    return folders?.[0]?.name ?? 'Unnamed Workspace';
+  }
+
+  /**
+   * Register or update workspace in the cloud
+   *
+   * Called during sync to ensure the workspace is known to the cloud.
+   * This enables the web UI to show workspace selector when creating prompts.
+   *
+   * @returns void - failures are logged but don't block sync
+   */
+  private async registerWorkspace(): Promise<void> {
+    try {
+      const supabase = SupabaseClientManager.get();
+      const workspaceId = await this.getWorkspaceId();
+      const workspaceName = this.getWorkspaceName();
+      const deviceInfo = await getDeviceInfo(this.context);
+
+      const { error } = await supabase.functions.invoke('register-workspace', {
+        body: {
+          workspaceId,
+          workspaceName,
+          deviceName: deviceInfo.name,
+        },
+      });
+
+      if (error) {
+        // Log but don't fail sync - workspace registration is best-effort
+        console.warn('[SyncService] Failed to register workspace:', error.message);
+      }
+    } catch (error) {
+      // Log but don't fail sync
+      console.warn(
+        '[SyncService] Error registering workspace:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  /**
    * Soft-delete a prompt in the cloud
    *
    * @param cloudId - Cloud ID of prompt to delete
@@ -1040,13 +1086,16 @@ export class SyncService {
     // 1. Validate authentication and set session
     const { email } = await this.validateAuthenticationAndSetSession();
 
-    // 2. Get or create sync state
+    // 2. Register workspace in cloud (enables web UI workspace selector)
+    await this.registerWorkspace();
+
+    // 3. Get or create sync state
     const syncState = await this.getOrCreateSyncState(email);
 
-    // 3. Fetch remote prompts
+    // 4. Fetch remote prompts
     const remotePrompts = await this.fetchRemotePrompts();
 
-    // 4. Compute sync plan (three-way merge)
+    // 5. Compute sync plan (three-way merge)
     const plan = this.computeSyncPlan(
       localPrompts,
       remotePrompts,
@@ -1054,13 +1103,13 @@ export class SyncService {
       syncState.promptSyncMap
     );
 
-    // 5. Pre-flight quota check (CRITICAL)
+    // 6. Pre-flight quota check (CRITICAL)
     await this.checkQuotaBeforeSync(plan);
 
-    // 6. Execute sync plan
+    // 7. Execute sync plan
     const result = await this.executeSyncPlan(plan, promptService);
 
-    // 7. Update last synced timestamp
+    // 8. Update last synced timestamp
     await this.syncStateStorage!.updateLastSyncedAt();
     return result;
   }
