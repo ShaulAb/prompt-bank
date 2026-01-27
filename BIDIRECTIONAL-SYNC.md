@@ -515,27 +515,38 @@ WHERE workspace_id IS NOT NULL AND local_id IS NOT NULL;
 
 ---
 
+### Completed: Backend Infrastructure (Supabase)
+
+**Verified January 2025** - All backend components are deployed and working.
+
+#### Database (`workspaces` table)
+
+- [x] Table created with proper schema (`id`, `workspace_id`, `user_id`, `name`, `device_name`, `last_synced_at`)
+- [x] RLS policies: SELECT, INSERT, UPDATE, DELETE (all restricted to `auth.uid() = user_id`)
+- [x] Unique constraint on `(workspace_id, user_id)` for upsert support
+- [x] Foreign key to `auth.users(id)` with CASCADE delete
+
+#### Edge Functions
+
+- [x] `register-workspace` - Upserts workspace on sync (called by extension)
+- [x] `get-user-workspaces` - Lists user's workspaces for web UI
+- [x] `sync-prompt` - Includes `workspace_id` in UPDATE query (line ~162)
+
+#### Extension (`syncService.ts`)
+
+- [x] `getWorkspaceName()` - Returns workspace folder name
+- [x] `registerWorkspace()` - Calls `register-workspace` Edge Function
+- [x] `performSync()` - Calls `registerWorkspace()` before sync
+
+---
+
 ### Still Missing (Not Yet Implemented)
-
-#### Database (Supabase)
-
-- [ ] Create `workspaces` table migration
-- [ ] Add RLS policies for workspaces table
-
-#### Backend - New Edge Functions (promptbank-website)
-
-- [ ] `register-workspace/index.ts` - Upsert workspace on sync
-- [ ] `get-user-workspaces/index.ts` - List user's workspaces for web UI
-
-#### Backend - Existing Edge Functions
-
-- [ ] `sync-prompt/index.ts:162` - Add `workspace_id` to UPDATE query
 
 #### Website (promptbank-website)
 
 - [ ] `lib/validations/prompt.ts` - Add `workspaceId` to form schema
 - [ ] `components/prompts/prompt-form.tsx` - Add workspace selector dropdown
-- [ ] Prompt pages - Fetch and display workspaces
+- [ ] Prompt pages - Fetch workspaces via `get-user-workspaces` and pass to form
 
 ---
 
