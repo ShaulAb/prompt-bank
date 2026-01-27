@@ -538,15 +538,24 @@ WHERE workspace_id IS NOT NULL AND local_id IS NOT NULL;
 - [x] `registerWorkspace()` - Calls `register-workspace` Edge Function
 - [x] `performSync()` - Calls `registerWorkspace()` before sync
 
----
-
-### Still Missing (Not Yet Implemented)
-
 #### Website (promptbank-website)
 
-- [ ] `lib/validations/prompt.ts` - Add `workspaceId` to form schema
-- [ ] `components/prompts/prompt-form.tsx` - Add workspace selector dropdown
-- [ ] Prompt pages - Fetch workspaces via `get-user-workspaces` and pass to form
+- [x] `lib/validations/prompt.ts` - `workspaceId` field + `WorkspaceOption` interface
+- [x] `components/prompts/prompt-form.tsx` - Workspace selector dropdown with "None (web only)" option
+- [x] `components/prompts/create-prompt-dialog.tsx` - Fetches workspaces on dialog open
+- [x] `components/prompts/edit-prompt-form.tsx` - Fetches workspaces on mount, passes to form
+- [x] `actions/prompts.ts` - `getUserWorkspaces()` action fetches from database
+- [x] `types/database.ts` - Includes `Workspace` type
+
+---
+
+### All Implementation Complete ✅
+
+All phases of bi-directional sync are now implemented across:
+- Extension (Phases 5 & 6)
+- Database (workspaces table)
+- Edge Functions (register-workspace, get-user-workspaces, sync-prompt)
+- Website (workspace selector UI)
 
 ---
 
