@@ -168,21 +168,27 @@ export class SyncService {
         if (remoteDeleted) {
           // DELETE-MODIFY CONFLICT: Remote was deleted, but local copy still exists.
           //
-          // Phase 6 behavior: Check if local was modified AFTER the remote deletion.
-          // - If local was modified after deletion → re-upload (preserve local work)
-          // - If local was NOT modified after deletion → delete locally (honor remote deletion)
+          // Phase 6 behavior:
+          // 1. Corrupted state (syncInfo.isDeleted but local exists) → re-upload
+          // 2. Local modified AFTER remote deletion → re-upload (preserve local work)
+          // 3. Local NOT modified after deletion → delete locally (honor remote deletion)
           //
           // This prevents re-uploading stale local copies while preserving genuinely
           // modified local work that the user wants to keep.
-          const remoteDeletedAt = new Date(remoteDeleted.deleted_at!);
-          const localModifiedAt = prompt.metadata.modified;
-
-          if (localModifiedAt > remoteDeletedAt) {
-            // Local was modified AFTER remote deletion - keep local version
-            // Re-upload as a new cloud prompt to preserve user's work
+          if (syncInfo?.isDeleted) {
+            // Corrupted state: syncInfo says deleted but prompt still exists locally
+            // Re-upload to recover the local data
             plan.toUpload.push(prompt);
           } else {
-            // Local was NOT modified after remote deletion - honor the deletion
+            const remoteDeletedAt = new Date(remoteDeleted.deleted_at!);
+            const localModifiedAt = prompt.metadata.modified;
+
+            if (localModifiedAt > remoteDeletedAt) {
+              // Local was modified AFTER remote deletion - keep local version
+              // Re-upload as a new cloud prompt to preserve user's work
+              plan.toUpload.push(prompt);
+            }
+            // else: Local was NOT modified after remote deletion - honor the deletion
             // Will be added to toDeleteLocally in the remote deletion loop below
             // (Don't add to toUpload so it won't be skipped in the deletion loop)
           }
