@@ -65,7 +65,7 @@ export interface RemotePrompt {
   readonly user_id: string;
   readonly workspace_id: string;
   readonly cloud_id: string;
-  readonly local_id: string;
+  readonly local_id: string | null;
   readonly title: string;
   readonly content: string;
   readonly description: string | null;
@@ -109,6 +109,19 @@ export interface SyncPlan {
 
   /** Prompts with conflicts (modified both locally and remotely) */
   conflicts: SyncConflict[];
+
+  /** Web-created prompts needing local_id assignment (Phase 5) */
+  toAssignLocalId: Array<{
+    remote: RemotePrompt;
+    generatedLocalId: string;
+  }>;
+
+  /** Prompts deleted remotely that need local deletion (Phase 6) */
+  toDeleteLocally: Array<{
+    localPromptId: string;
+    cloudId: string;
+    deletedAt: string;
+  }>;
 }
 
 /**

@@ -305,13 +305,15 @@ export const syncTestHelpers = {
 
   /**
    * Soft-delete a cloud prompt
+   * @param cloudId - The cloud ID of the prompt to delete
+   * @param deletedAt - Optional deletion timestamp (defaults to now)
    */
-  deleteCloudPrompt(cloudId: string): boolean {
+  deleteCloudPrompt(cloudId: string, deletedAt?: Date): boolean {
     const prompt = cloudPrompts.get(cloudId);
     if (!prompt) {
       return false;
     }
-    prompt.deleted_at = new Date().toISOString();
+    prompt.deleted_at = (deletedAt ?? new Date()).toISOString();
     cloudPrompts.set(cloudId, prompt);
     updateQuota();
     return true;

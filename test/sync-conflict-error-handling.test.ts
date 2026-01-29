@@ -107,10 +107,11 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       expect(allCloudPrompts.length).toBe(1);
       const cloudId = allCloudPrompts[0].cloud_id;
 
-      // Soft-delete the cloud prompt
-      syncTestHelpers.deleteCloudPrompt(cloudId);
+      // Soft-delete the cloud prompt with a timestamp in the PAST
+      const deletionTime = new Date(Date.now() - 5000); // 5 seconds ago
+      syncTestHelpers.deleteCloudPrompt(cloudId, deletionTime);
 
-      // Modify local prompt (this should trigger conflict on next sync)
+      // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
       prompt.content = 'Modified content';
       await promptService.savePromptDirectly(prompt);
 
@@ -229,11 +230,13 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       const firstSyncResult = await syncService.performSync(await promptService.listPrompts(), promptService);
       expect(firstSyncResult.stats.uploaded).toBe(1);
       
-      // Get cloud ID and delete it
+      // Get cloud ID and delete it with a timestamp in the PAST
       const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
       const cloudId = allCloudPrompts[0].cloud_id;
-      syncTestHelpers.deleteCloudPrompt(cloudId);
+      const deletionTime = new Date(Date.now() - 5000); // 5 seconds ago
+      syncTestHelpers.deleteCloudPrompt(cloudId, deletionTime);
 
+      // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
       prompt.content = 'Modified';
       await promptService.savePromptDirectly(prompt);
 

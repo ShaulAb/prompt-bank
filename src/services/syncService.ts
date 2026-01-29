@@ -26,6 +26,14 @@ import type {
 } from '../models/syncState';
 import { SyncConflictType } from '../models/syncState';
 import { SyncStateStorage } from '../storage/syncStateStorage';
+
+/**
+ * Internal error codes used for sync retry logic
+ */
+const SYNC_ERROR_CODES = {
+  /** Thrown when a sync conflict requires retrying the entire sync operation */
+  CONFLICT_RETRY: 'sync_conflict_retry',
+} as const;
 import { AuthService } from './authService';
 import { WorkspaceMetadataService } from './workspaceMetadataService';
 import { SupabaseClientManager } from './supabaseClient';
@@ -100,11 +108,22 @@ export class SyncService {
       toDownload: [] as RemotePrompt[],
       toDelete: [] as Array<{ cloudId: string }>,
       conflicts: [] as SyncConflict[],
+      toAssignLocalId: [] as Array<{ remote: RemotePrompt; generatedLocalId: string }>,
+      toDeleteLocally: [] as Array<{ localPromptId: string; cloudId: string; deletedAt: string }>,
     };
 
     // Build lookup maps
     const localMap = new Map(local.map((p) => [p.id, p]));
     const remoteMap = new Map<string, RemotePrompt>();
+
+    // Build reverse lookup map: cloudId -> localPromptId (O(n) once, enables O(1) lookups)
+    // This replaces multiple O(n) findLocalPromptId calls with O(1) map lookups
+    const cloudIdToLocalId = new Map<string, string>();
+    for (const [promptId, info] of Object.entries(promptSyncMap)) {
+      if (info.cloudId) {
+        cloudIdToLocalId.set(info.cloudId, promptId);
+      }
+    }
 
     // Map ACTIVE remote prompts only (exclude soft-deleted)
     for (const remotePrompt of remote) {
@@ -147,9 +166,32 @@ export class SyncService {
           : undefined;
 
         if (remoteDeleted) {
-          // DELETE-MODIFY CONFLICT: Remote deleted, local modified
-          // RESOLUTION: Keep modified version (user preference)
-          plan.toUpload.push(prompt);
+          // DELETE-MODIFY CONFLICT: Remote was deleted, but local copy still exists.
+          //
+          // Phase 6 behavior:
+          // 1. Corrupted state (syncInfo.isDeleted but local exists) → re-upload
+          // 2. Local modified AFTER remote deletion → re-upload (preserve local work)
+          // 3. Local NOT modified after deletion → delete locally (honor remote deletion)
+          //
+          // This prevents re-uploading stale local copies while preserving genuinely
+          // modified local work that the user wants to keep.
+          if (syncInfo?.isDeleted) {
+            // Corrupted state: syncInfo says deleted but prompt still exists locally
+            // Re-upload to recover the local data
+            plan.toUpload.push(prompt);
+          } else {
+            const remoteDeletedAt = new Date(remoteDeleted.deleted_at!);
+            const localModifiedAt = prompt.metadata.modified;
+
+            if (localModifiedAt > remoteDeletedAt) {
+              // Local was modified AFTER remote deletion - keep local version
+              // Re-upload as a new cloud prompt to preserve user's work
+              plan.toUpload.push(prompt);
+            }
+            // else: Local was NOT modified after remote deletion - honor the deletion
+            // Will be added to toDeleteLocally in the remote deletion loop below
+            // (Don't add to toUpload so it won't be skipped in the deletion loop)
+          }
         } else {
           // New local prompt - upload
           plan.toUpload.push(prompt);
@@ -201,6 +243,48 @@ export class SyncService {
       }
     }
 
+    // Detect remote deletions (prompts deleted on web that exist locally) - Phase 6
+    // Build a set of cloud IDs that are already queued for upload
+    // (these are DELETE-MODIFY conflicts handled in the local prompts loop above)
+    // Using cloud IDs instead of local IDs ensures web-created prompts (with null local_id) are properly detected
+    const cloudIdsQueuedForUpload = new Set(
+      (plan.toUpload as Prompt[])
+        .map((p) => {
+          const syncInfo = promptSyncMap[p.id];
+          return syncInfo?.cloudId;
+        })
+        .filter((id): id is string => id !== undefined)
+    );
+
+    for (const remotePrompt of remote) {
+      if (!remotePrompt.deleted_at) continue;
+
+      // Skip if this prompt is already queued for upload (DELETE-MODIFY handled above)
+      if (cloudIdsQueuedForUpload.has(remotePrompt.cloud_id)) {
+        continue;
+      }
+
+      // Use O(1) map lookup instead of O(n) findLocalPromptId
+      const localPromptId = cloudIdToLocalId.get(remotePrompt.cloud_id);
+
+      if (localPromptId && localMap.has(localPromptId)) {
+        const syncInfo = promptSyncMap[localPromptId];
+
+        // Delete locally if sync state doesn't already mark it as deleted.
+        // Note: syncInfo may be undefined for prompts that exist locally but haven't
+        // been synced yet. In that case, isDeleted is falsy, and we should still
+        // delete the local copy since the authoritative cloud version was deleted.
+        if (!syncInfo?.isDeleted) {
+          plan.toDeleteLocally.push({
+            localPromptId,
+            cloudId: remotePrompt.cloud_id,
+            // Non-null assertion safe: we filter for deleted_at on line 225
+            deletedAt: remotePrompt.deleted_at!,
+          });
+        }
+      }
+    }
+
     // Process deletions
     for (const cloudId of deletedLocally) {
       plan.toDelete.push({ cloudId });
@@ -210,31 +294,23 @@ export class SyncService {
     for (const remotePrompt of remote) {
       if (remotePrompt.deleted_at) continue; // Skip deleted remote prompts
 
-      const localPromptId = this.findLocalPromptId(remotePrompt.cloud_id, promptSyncMap);
+      // Use O(1) map lookup instead of O(n) findLocalPromptId
+      const localPromptId = cloudIdToLocalId.get(remotePrompt.cloud_id);
       if (!localPromptId || !localMap.has(localPromptId)) {
         // Check if this was deleted locally
         if (!deletedLocally.has(remotePrompt.cloud_id)) {
-          plan.toDownload.push(remotePrompt);
+          // Phase 5: Check if web-created (no local_id)
+          if (!remotePrompt.local_id) {
+            const generatedLocalId = this.generateNewId();
+            plan.toAssignLocalId.push({ remote: remotePrompt, generatedLocalId });
+          } else {
+            plan.toDownload.push(remotePrompt);
+          }
         }
       }
     }
 
     return plan;
-  }
-
-  /**
-   * Find local prompt ID by cloud ID
-   */
-  private findLocalPromptId(
-    cloudId: string,
-    promptSyncMap: Readonly<Record<string, PromptSyncInfo>>
-  ): string | null {
-    for (const [promptId, syncInfo] of Object.entries(promptSyncMap)) {
-      if (syncInfo.cloudId === cloudId) {
-        return promptId;
-      }
-    }
-    return null;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -328,8 +404,11 @@ export class SyncService {
 
   /**
    * Convert remote prompt to local Prompt format
+   *
+   * @param remote - Remote prompt from Supabase
+   * @param generatedLocalId - Optional pre-generated local ID for web-created prompts
    */
-  private convertRemoteToLocal(remote: RemotePrompt): Prompt {
+  private convertRemoteToLocal(remote: RemotePrompt, generatedLocalId?: string): Prompt {
     // Type assertion for metadata from JSON
     interface MetadataJSON {
       created: string | number | Date;
@@ -341,8 +420,11 @@ export class SyncService {
     const metadata = remote.metadata as MetadataJSON;
     const variables = (remote.variables as TemplateVariable[]) || [];
 
+    // Use provided generatedLocalId, or remote.local_id, or generate new
+    const localId = generatedLocalId ?? remote.local_id ?? this.generateNewId();
+
     const prompt: Prompt = {
-      id: remote.local_id,
+      id: localId,
       title: remote.title,
       content: remote.content,
       category: remote.category || DEFAULT_CATEGORY,
@@ -433,6 +515,52 @@ export class SyncService {
   // ────────────────────────────────────────────────────────────────────────────
   // Supabase API Integration
   // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get the human-readable workspace name (folder name)
+   *
+   * @returns Workspace name from VS Code workspace folders, or 'Unnamed Workspace'
+   */
+  private getWorkspaceName(): string {
+    const folders = vscode.workspace.workspaceFolders;
+    return folders?.[0]?.name ?? 'Unnamed Workspace';
+  }
+
+  /**
+   * Register or update workspace in the cloud
+   *
+   * Called during sync to ensure the workspace is known to the cloud.
+   * This enables the web UI to show workspace selector when creating prompts.
+   *
+   * @returns void - failures are logged but don't block sync
+   */
+  private async registerWorkspace(): Promise<void> {
+    try {
+      const supabase = SupabaseClientManager.get();
+      const workspaceId = await this.getWorkspaceId();
+      const workspaceName = this.getWorkspaceName();
+      const deviceInfo = await getDeviceInfo(this.context);
+
+      const { error } = await supabase.functions.invoke('register-workspace', {
+        body: {
+          workspaceId,
+          workspaceName,
+          deviceName: deviceInfo.name,
+        },
+      });
+
+      if (error) {
+        // Log but don't fail sync - workspace registration is best-effort
+        console.warn('[SyncService] Failed to register workspace:', error.message);
+      }
+    } catch (error) {
+      // Log but don't fail sync
+      console.warn(
+        '[SyncService] Error registering workspace:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
 
   /**
    * Soft-delete a prompt in the cloud
@@ -633,12 +761,12 @@ export class SyncService {
               `actual v${conflictError.details?.actualVersion}. ` +
               `This usually means another device modified the prompt. Retrying sync...`
           );
-          throw new Error('sync_conflict_retry');
+          throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
 
         default:
           // Unknown conflict type - fail safe by retrying entire sync
           console.error(`[SyncService] Unknown conflict type: ${conflictError.code}`);
-          throw new Error('sync_conflict_retry');
+          throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
       }
     }
   }
@@ -926,7 +1054,28 @@ export class SyncService {
         result.stats.conflicts++;
       }
 
-      // 2. Process deletions (soft-delete cloud prompts that were deleted locally)
+      // 2. Handle remote deletions (prompts deleted on web UI) - Phase 6
+      for (const { localPromptId, cloudId, deletedAt } of plan.toDeleteLocally) {
+        try {
+          const deleted = await promptService.deletePromptById(localPromptId);
+
+          if (deleted) {
+            await this.syncStateStorage!.setPromptSyncInfo(localPromptId, {
+              cloudId,
+              lastSyncedContentHash: '',
+              lastSyncedAt: new Date(),
+              version: 0,
+              isDeleted: true,
+              deletedAt: new Date(deletedAt),
+            });
+            result.stats.deleted++;
+          }
+        } catch (error) {
+          console.error(`[SyncService] Failed to delete local prompt "${localPromptId}":`, error);
+        }
+      }
+
+      // 3. Process cloud deletions (soft-delete cloud prompts that were deleted locally)
       for (const { cloudId } of plan.toDelete) {
         await this.deletePrompt(cloudId);
 
@@ -938,7 +1087,7 @@ export class SyncService {
         result.stats.deleted++;
       }
 
-      // 3. Upload prompts (local changes -> cloud)
+      // 4. Upload prompts (local changes -> cloud)
       for (const promptUnknown of plan.toUpload) {
         const prompt = promptUnknown as Prompt;
         const syncInfo = await this.syncStateStorage!.getPromptSyncInfo(prompt.id);
@@ -981,7 +1130,7 @@ export class SyncService {
         result.stats.uploaded++;
       }
 
-      // 4. Download prompts (cloud changes -> local)
+      // 5. Download prompts (cloud changes -> local)
       for (const remotePrompt of plan.toDownload) {
         const localPrompt = this.convertRemoteToLocal(remotePrompt);
         await promptService.savePromptDirectly(localPrompt);
@@ -997,6 +1146,59 @@ export class SyncService {
         result.stats.downloaded++;
       }
 
+      // 6. Handle web-created prompts (download + upload local_id) - Phase 5
+      for (const { remote, generatedLocalId } of plan.toAssignLocalId) {
+        const localPrompt = this.convertRemoteToLocal(remote, generatedLocalId);
+        await promptService.savePromptDirectly(localPrompt);
+
+        // Upload back to set local_id in cloud
+        // Note: Between downloading and uploading, another device could:
+        // - Sync and assign a different local_id (VERSION_CONFLICT)
+        // - Modify the prompt (VERSION_CONFLICT)
+        // - Delete the prompt (PROMPT_DELETED)
+        // We handle these gracefully by keeping the local copy and retrying next sync.
+        const syncInfo: PromptSyncInfo = {
+          cloudId: remote.cloud_id,
+          lastSyncedContentHash: remote.content_hash,
+          lastSyncedAt: new Date(),
+          version: remote.version,
+        };
+
+        try {
+          const uploaded = await this.uploadPrompt(localPrompt, syncInfo);
+          await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
+            cloudId: uploaded.cloudId,
+            lastSyncedContentHash: computeContentHash(localPrompt),
+            lastSyncedAt: new Date(),
+            version: uploaded.version,
+          });
+          result.stats.downloaded++;
+        } catch (error) {
+          // Check if this is a specific sync conflict we can identify
+          const conflictError = this.parseSyncConflictError(error);
+          if (conflictError) {
+            console.warn(
+              `[SyncService] ${conflictError.code} while assigning local_id to "${localPrompt.title}". ` +
+                `Local copy preserved, will retry on next sync.`
+            );
+          } else {
+            console.warn(
+              `[SyncService] Failed to update local_id for "${localPrompt.title}": ` +
+                `${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+
+          // Keep local copy with empty content hash to force re-sync on next run
+          await this.syncStateStorage!.setPromptSyncInfo(localPrompt.id, {
+            cloudId: remote.cloud_id,
+            lastSyncedContentHash: '', // Empty hash forces re-upload on next sync
+            lastSyncedAt: new Date(),
+            version: remote.version,
+          });
+          result.stats.downloaded++;
+        }
+      }
+
       result.stats.duration = Date.now() - startTime;
       return result;
     } catch (error: unknown) {
@@ -1009,10 +1211,13 @@ export class SyncService {
         throw new Error('Authentication expired - please sign in again');
       } else if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
         throw error; // Already user-friendly from checkQuotaBeforeSync
-      } else if (errorMessage.includes('conflict')) {
+      } else if (
+        errorMessage.includes('conflict') ||
+        errorMessage === SYNC_ERROR_CODES.CONFLICT_RETRY
+      ) {
         // Retry sync once if conflict detected (optimistic lock)
         void vscode.window.showInformationMessage('Sync conflict detected - retrying...');
-        throw new Error('sync_conflict_retry');
+        throw new Error(SYNC_ERROR_CODES.CONFLICT_RETRY);
       }
 
       // Unknown error - show generic message
@@ -1040,13 +1245,17 @@ export class SyncService {
     // 1. Validate authentication and set session
     const { email } = await this.validateAuthenticationAndSetSession();
 
-    // 2. Get or create sync state
+    // 2. Register workspace in cloud (enables web UI workspace selector)
+    await this.registerWorkspace();
+
+    // 3. Get or create sync state
     const syncState = await this.getOrCreateSyncState(email);
 
-    // 3. Fetch remote prompts
-    const remotePrompts = await this.fetchRemotePrompts();
+    // 4. Fetch remote prompts
+    // Fetch remote prompts including soft-deleted ones (for Phase 6 remote deletion detection)
+    const remotePrompts = await this.fetchRemotePrompts(undefined, true);
 
-    // 4. Compute sync plan (three-way merge)
+    // 5. Compute sync plan (three-way merge)
     const plan = this.computeSyncPlan(
       localPrompts,
       remotePrompts,
@@ -1054,13 +1263,13 @@ export class SyncService {
       syncState.promptSyncMap
     );
 
-    // 5. Pre-flight quota check (CRITICAL)
+    // 6. Pre-flight quota check (CRITICAL)
     await this.checkQuotaBeforeSync(plan);
 
-    // 6. Execute sync plan
+    // 7. Execute sync plan
     const result = await this.executeSyncPlan(plan, promptService);
 
-    // 7. Update last synced timestamp
+    // 8. Update last synced timestamp
     await this.syncStateStorage!.updateLastSyncedAt();
     return result;
   }
