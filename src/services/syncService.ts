@@ -168,22 +168,23 @@ export class SyncService {
         if (remoteDeleted) {
           // DELETE-MODIFY CONFLICT: Remote was deleted, but local copy still exists.
           //
-          // Design Decision: Always keep the local version.
-          // - This prevents accidental data loss from remote deletions
-          // - User's local work is preserved even if deleted on another device
-          // - The prompt will be re-uploaded as a new cloud prompt
-          // - If user truly wants to delete, they can delete locally after sync
+          // Phase 6 behavior: Check if local was modified AFTER the remote deletion.
+          // - If local was modified after deletion → re-upload (preserve local work)
+          // - If local was NOT modified after deletion → delete locally (honor remote deletion)
           //
-          // Alternative considered: Compare timestamps and delete locally if local
-          // wasn't modified after remote deletion. Rejected because it could cause
-          // unexpected data loss if clocks are out of sync or if the user made
-          // changes they haven't saved yet.
-          if (syncInfo?.isDeleted) {
-            // Corrupted state: syncInfo says deleted but prompt exists locally
+          // This prevents re-uploading stale local copies while preserving genuinely
+          // modified local work that the user wants to keep.
+          const remoteDeletedAt = new Date(remoteDeleted.deleted_at!);
+          const localModifiedAt = prompt.metadata.modified;
+
+          if (localModifiedAt > remoteDeletedAt) {
+            // Local was modified AFTER remote deletion - keep local version
+            // Re-upload as a new cloud prompt to preserve user's work
             plan.toUpload.push(prompt);
           } else {
-            // Normal case: re-upload to create new cloud prompt
-            plan.toUpload.push(prompt);
+            // Local was NOT modified after remote deletion - honor the deletion
+            // Will be added to toDeleteLocally in the remote deletion loop below
+            // (Don't add to toUpload so it won't be skipped in the deletion loop)
           }
         } else {
           // New local prompt - upload
