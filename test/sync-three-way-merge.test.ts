@@ -727,13 +727,12 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
 
       syncService = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
-      // Modify local prompt
-      prompt.content = 'Modified Locally';
-      prompt.metadata.modified = new Date();
-      await promptService.savePromptDirectly(prompt);
+      // Delete cloud prompt with a timestamp in the PAST
+      syncTestHelpers.deleteCloudPromptInPast(cloudPrompt.cloud_id);
 
-      // Delete cloud prompt
-      syncTestHelpers.deleteCloudPrompt(cloudPrompt.cloud_id);
+      // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
+      prompt.content = 'Modified Locally';
+      await promptService.savePromptDirectly(prompt);
 
       // Act
       const localPrompts = await promptService.listPrompts();
