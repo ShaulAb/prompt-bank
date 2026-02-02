@@ -5,6 +5,13 @@ import type { RemotePrompt, UserQuota } from '../../../src/models/syncState';
 const cloudPrompts = new Map<string, RemotePrompt>();
 let currentCloudId = 1;
 
+/**
+ * Time offset (in milliseconds) used to create timestamps in the past for testing.
+ * This ensures that operations like "deletion before modification" work correctly
+ * when savePromptDirectly() automatically sets the current time as the modification timestamp.
+ */
+export const TEST_PAST_TIME_OFFSET_MS = 5000;
+
 // Quota tracking
 let userQuota: UserQuota = {
   promptCount: 0,
@@ -317,6 +324,17 @@ export const syncTestHelpers = {
     cloudPrompts.set(cloudId, prompt);
     updateQuota();
     return true;
+  },
+
+  /**
+   * Soft-delete a cloud prompt with a timestamp in the past.
+   * Use this when testing DELETE-MODIFY conflicts where local modifications
+   * (made via savePromptDirectly) should be detected as "after" the deletion.
+   * @param cloudId - The cloud ID of the prompt to delete
+   */
+  deleteCloudPromptInPast(cloudId: string): boolean {
+    const pastDeletionTime = new Date(Date.now() - TEST_PAST_TIME_OFFSET_MS);
+    return this.deleteCloudPrompt(cloudId, pastDeletionTime);
   },
 
   /**

@@ -728,8 +728,7 @@ describe('SyncService - Three-Way Merge Algorithm', () => {
       syncService = new SyncService(context, testStorageDir, authServiceFresh, syncStateStorage, workspaceMetadataService);
 
       // Delete cloud prompt with a timestamp in the PAST
-      const deletionTime = new Date(Date.now() - 5000); // 5 seconds ago
-      syncTestHelpers.deleteCloudPrompt(cloudPrompt.cloud_id, deletionTime);
+      syncTestHelpers.deleteCloudPromptInPast(cloudPrompt.cloud_id);
 
       // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
       prompt.content = 'Modified Locally';

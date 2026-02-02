@@ -21,3 +21,4 @@ supabase/.temp/
 # Internal implementation plans (not for version control)
 *_PLAN.md
 *_PLAN*.md
+PLAN-*.md

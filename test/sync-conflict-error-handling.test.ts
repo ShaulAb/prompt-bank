@@ -108,8 +108,7 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       const cloudId = allCloudPrompts[0].cloud_id;
 
       // Soft-delete the cloud prompt with a timestamp in the PAST
-      const deletionTime = new Date(Date.now() - 5000); // 5 seconds ago
-      syncTestHelpers.deleteCloudPrompt(cloudId, deletionTime);
+      syncTestHelpers.deleteCloudPromptInPast(cloudId);
 
       // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
       prompt.content = 'Modified content';
@@ -233,8 +232,7 @@ describe('SyncService - 409 Conflict Error Handling', () => {
       // Get cloud ID and delete it with a timestamp in the PAST
       const allCloudPrompts = syncTestHelpers.getAllCloudPrompts();
       const cloudId = allCloudPrompts[0].cloud_id;
-      const deletionTime = new Date(Date.now() - 5000); // 5 seconds ago
-      syncTestHelpers.deleteCloudPrompt(cloudId, deletionTime);
+      syncTestHelpers.deleteCloudPromptInPast(cloudId);
 
       // Modify local prompt (savePromptDirectly sets modified to NOW, which is after deletion)
       prompt.content = 'Modified';
