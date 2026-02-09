@@ -80,6 +80,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
       - **Restore Capability**: Recover accidentally deleted prompts within the retention period using Edge Functions.
     - **Device Tracking**: Each change tracks which device made it, helping you understand prompt history.
     - **Fresh Start**: Use "Prompt Bank: Clear Sync State" to reset sync metadata if needed.
+    - For a detailed walkthrough, see the [Sync Guide](docs/SYNC-GUIDE.md).
 
 
 ## 🔧 Commands & Keybindings
