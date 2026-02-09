@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.11.0](https://github.com/ShaulAb/prompt-bank/compare/v0.10.0...v0.11.0) (2026-02-09)
+
+### ♻️ Code Refactoring
+
+- migrate to unified Supabase backend with centralized config ([#69](https://github.com/ShaulAb/prompt-bank/issues/69)) ([b406e5a](https://github.com/ShaulAb/prompt-bank/commit/b406e5aaa5ae648d25d9cc1d42b647f0b445c227))
+
+### 🐛 Bug Fixes
+
+- **sync:** resolve hash mismatch and use latest-wins conflict strategy ([#71](https://github.com/ShaulAb/prompt-bank/issues/71)) ([e85417b](https://github.com/ShaulAb/prompt-bank/commit/e85417b8c2ed82644fb70264510f8b7d2481232b))
+
+### ✨ Features
+
+- Migrate to unified Supabase project with device flow auth ([#70](https://github.com/ShaulAb/prompt-bank/issues/70)) ([d122c2c](https://github.com/ShaulAb/prompt-bank/commit/d122c2c7faa6076cf4e96eb7be2dcdf71dd18d9a))
+- **sync:** implement bi-directional sync (Phases 5 & 6) ([#72](https://github.com/ShaulAb/prompt-bank/issues/72)) ([4aec5e8](https://github.com/ShaulAb/prompt-bank/commit/4aec5e89660484be8f8f9d9963c4c346be10c358))
+
+### 📝 Documentation
+
+- add user-facing sync guide ([#74](https://github.com/ShaulAb/prompt-bank/issues/74)) ([3b302b0](https://github.com/ShaulAb/prompt-bank/commit/3b302b081582a9a8ae952899283ee571e225a67f))
+
 ## [0.10.0](https://github.com/ShaulAb/prompt-bank/compare/v0.9.1...v0.10.0) (2026-01-05)
 
 ### 🐛 Bug Fixes
