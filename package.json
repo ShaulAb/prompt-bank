@@ -25,12 +25,6 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "uriHandler": {
-      "schemes": [
-        "vscode",
-        "cursor"
-      ]
-    },
     "views": {
       "explorer": [
         {
