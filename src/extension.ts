@@ -85,11 +85,20 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(treeView);
 
     // ── Team Mode (global, not workspace-scoped) ──
-    // Initialize team services if user is authenticated
-    if (workspaceServices) {
+    // Initialize team services regardless of workspace availability
+    {
+      // Use workspace auth if available, otherwise create a standalone AuthService
+      const teamAuthService = workspaceServices
+        ? workspaceServices.auth
+        : new (await import('./services/authService')).AuthService(
+            context,
+            context.extension.id.split('.')[0],
+            context.extension.id.split('.')[1]
+          );
+
       const { teamService, teamSyncService } = await servicesContainer.initializeTeamServices(
         context,
-        workspaceServices.auth
+        teamAuthService
       );
 
       // Create team tree view
