@@ -20,6 +20,7 @@ export const mswTestServer = {
     server.listen({ onUnhandledRequest: 'warn' });
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
+    teamSyncTestHelpers.clearAllTeamData();
   },
 
   /**
@@ -29,6 +30,7 @@ export const mswTestServer = {
     server.resetHandlers();
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
+    teamSyncTestHelpers.clearAllTeamData();
   },
 
   /**
