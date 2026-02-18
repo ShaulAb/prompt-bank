@@ -42,10 +42,14 @@ export class TeamService {
    */
   async refreshTeams(): Promise<Team[]> {
     const token = await this.authService.getValidAccessToken();
-    if (!token) {
+    const refreshToken = await this.authService.getRefreshToken();
+    if (!token || !refreshToken) {
       this.teams = [];
       return this.teams;
     }
+
+    // Set auth session before calling edge function (client uses persistSession: false)
+    await SupabaseClientManager.setSession(token, refreshToken);
 
     const supabase = SupabaseClientManager.get();
 
