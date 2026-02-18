@@ -355,10 +355,13 @@ async function deleteTeamPromptCommand(
   }
 
   try {
-    const { storage } = await teamService.getTeamStorage(item.team.id);
+    const { storage, syncState } = await teamService.getTeamStorage(item.team.id);
     await storage.delete(item.prompt.id);
 
-    // Re-sync to propagate the deletion
+    // Mark as deleted in sync state so the engine won't re-download it
+    await syncState.markPromptAsDeleted(item.prompt.id);
+
+    // Re-sync to update sync state
     await teamSyncService.syncTeam(item.team);
 
     // Update tree
