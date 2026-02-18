@@ -18,6 +18,8 @@ import { PromptService } from './promptService';
 import { WorkspaceMetadataService } from './workspaceMetadataService';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { SyncStateStorage } from '../storage/syncStateStorage';
+import { TeamService } from './teamService';
+import { TeamSyncService } from './teamSyncService';
 
 /**
  * Bundle of services for a specific workspace
@@ -50,6 +52,39 @@ export interface WorkspaceServices {
  */
 export class ServicesContainer {
   private readonly services = new Map<string, WorkspaceServices>();
+
+  /** Extension-level team service (global, not workspace-scoped) */
+  private _globalTeam: TeamService | undefined;
+
+  /** Extension-level team sync service (global, not workspace-scoped) */
+  private _globalTeamSync: TeamSyncService | undefined;
+
+  /** Get the global TeamService instance */
+  get globalTeam(): TeamService | undefined {
+    return this._globalTeam;
+  }
+
+  /** Get the global TeamSyncService instance */
+  get globalTeamSync(): TeamSyncService | undefined {
+    return this._globalTeamSync;
+  }
+
+  /**
+   * Initialize extension-level team services
+   *
+   * Called once during extension activation, independent of workspaces.
+   *
+   * @param context - VS Code extension context (provides globalStoragePath)
+   * @param authService - Shared auth service instance
+   */
+  async initializeTeamServices(
+    context: vscode.ExtensionContext,
+    authService: AuthService
+  ): Promise<{ teamService: TeamService; teamSyncService: TeamSyncService }> {
+    this._globalTeam = new TeamService(context.globalStorageUri.fsPath, authService);
+    this._globalTeamSync = new TeamSyncService(context, authService, this._globalTeam);
+    return { teamService: this._globalTeam, teamSyncService: this._globalTeamSync };
+  }
 
   /**
    * Get or create services for a workspace
@@ -116,9 +151,13 @@ export class ServicesContainer {
    * Should be called during extension deactivation
    */
   async disposeAll(): Promise<void> {
-    const allServices = Array.from(this.services.values());
+    // Dispose global team services
+    await Promise.allSettled([this._globalTeamSync?.dispose(), this._globalTeam?.dispose()]);
+    this._globalTeam = undefined;
+    this._globalTeamSync = undefined;
 
-    // Dispose all workspaces in parallel
+    // Dispose all workspace services in parallel
+    const allServices = Array.from(this.services.values());
     await Promise.all(allServices.map((services) => this.disposeServices(services)));
 
     this.services.clear();

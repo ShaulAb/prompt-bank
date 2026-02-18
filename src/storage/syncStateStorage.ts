@@ -36,9 +36,10 @@ export class SyncStateStorage {
    * Create a new sync state storage instance
    *
    * @param workspaceRoot - Absolute path to workspace root
+   * @param options - Optional config to override the default storage directory
    */
-  constructor(workspaceRoot: string) {
-    this.syncStateDir = path.join(workspaceRoot, '.vscode', 'prompt-bank');
+  constructor(workspaceRoot: string, options?: { storagePath?: string }) {
+    this.syncStateDir = options?.storagePath ?? path.join(workspaceRoot, '.vscode', 'prompt-bank');
     this.syncStateFile = path.join(this.syncStateDir, 'sync-state.json');
     this.workspaceMetaFile = path.join(this.syncStateDir, 'workspace-meta.json');
   }

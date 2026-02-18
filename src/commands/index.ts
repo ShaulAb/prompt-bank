@@ -273,14 +273,19 @@ export function registerCommands(
     }
   );
 
-  // Register new prompt command (tree view "+" button)
-  const newPromptCommand = vscode.commands.registerCommand('promptBank.newPrompt', async () => {
-    try {
-      await PromptEditorPanel.showForNewPrompt(context, '', promptService, treeProvider);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error creating new prompt: ${error}`);
+  // Register new prompt command (tree view "+" button, also used by copyToPersonal)
+  const newPromptCommand = vscode.commands.registerCommand(
+    'promptBank.newPrompt',
+    async (options?: { prefill?: { title?: string; content?: string; category?: string; description?: string } }) => {
+      try {
+        const content = options?.prefill?.content || '';
+        const category = options?.prefill?.category;
+        await PromptEditorPanel.showForNewPrompt(context, content, promptService, treeProvider, category);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error creating new prompt: ${error}`);
+      }
     }
-  });
+  );
 
   // Add all commands to context subscriptions
   context.subscriptions.push(
