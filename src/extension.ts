@@ -5,9 +5,11 @@ import { PromptTreeProvider, PromptDragAndDropController } from './views/promptT
 import { TreeCommands } from './commands/treeCommands';
 import { ContextMenuCommands } from './commands/contextMenuCommands';
 import { registerSyncCommands } from './commands/syncCommands';
+import { registerTeamCommands } from './commands/teamCommands';
 import { SupabaseClientManager } from './services/supabaseClient';
 import { WebViewCache } from './webview/WebViewCache';
 import { ServicesContainer, WorkspaceServices } from './services/servicesContainer';
+import { TeamTreeProvider } from './views/teamTreeProvider';
 
 // Global services container instance
 // Manages services per workspace with proper lifecycle
@@ -81,6 +83,70 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Refresh tree when prompts change
     context.subscriptions.push(treeView);
+
+    // ── Team Mode (global, not workspace-scoped) ──
+    // Initialize team services regardless of workspace availability
+    {
+      // Use workspace auth if available, otherwise create a standalone AuthService
+      const teamAuthService = workspaceServices
+        ? workspaceServices.auth
+        : new (await import('./services/authService')).AuthService(
+            context,
+            context.extension.id.split('.')[0],
+            context.extension.id.split('.')[1]
+          );
+
+      const { teamService, teamSyncService } = await servicesContainer.initializeTeamServices(
+        context,
+        teamAuthService
+      );
+
+      // Create team tree view
+      const teamTreeProvider = new TeamTreeProvider(teamService);
+      const teamTreeView = vscode.window.createTreeView('promptBank.teamPromptsView', {
+        treeDataProvider: teamTreeProvider,
+        showCollapseAll: true,
+      });
+      context.subscriptions.push(teamTreeView);
+
+      // Register team commands
+      const teamCmds = registerTeamCommands(
+        context,
+        teamService,
+        teamSyncService,
+        teamTreeProvider
+      );
+      context.subscriptions.push(...teamCmds);
+
+      // Background: fetch teams and set context for view visibility
+      teamService
+        .refreshTeams()
+        .then(async (teams) => {
+          await vscode.commands.executeCommand(
+            'setContext',
+            'promptBank.hasTeams',
+            teams.length > 0
+          );
+
+          // Auto-sync team prompts if user has teams
+          if (teams.length > 0) {
+            try {
+              await teamSyncService.syncAllTeams();
+              for (const team of teams) {
+                const { storage } = await teamService.getTeamStorage(team.id);
+                const prompts = await storage.list();
+                teamTreeProvider.setTeamPrompts(team.id, prompts);
+              }
+            } catch (err) {
+              console.warn('[Extension] Background team sync failed:', err);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[Extension] Failed to fetch teams:', err);
+          vscode.commands.executeCommand('setContext', 'promptBank.hasTeams', false);
+        });
+    }
 
     // Show activation message
     vscode.window.showInformationMessage('Prompt Bank is ready! 🚀');

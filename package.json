@@ -32,6 +32,12 @@
           "name": "Prompt Bank",
           "icon": "logo.svg",
           "when": "true"
+        },
+        {
+          "id": "promptBank.teamPromptsView",
+          "name": "Team Prompts",
+          "icon": "logo.svg",
+          "when": "promptBank.hasTeams"
         }
       ]
     },
@@ -149,6 +155,45 @@
         "command": "promptBank.restoreDeletedPrompts",
         "title": "♻️ Restore Deleted Prompts",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.syncTeamPrompts",
+        "title": "🔄 Sync Team Prompts",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.refreshTeamTreeView",
+        "title": "Refresh Team Prompts",
+        "icon": "$(refresh)",
+        "commandPalette": true
+      },
+      {
+        "command": "promptBank.newTeamPrompt",
+        "title": "New Team Prompt",
+        "icon": "$(add)",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.editTeamPromptFromTree",
+        "title": "Edit Team Prompt",
+        "commandPalette": false
+      },
+      {
+        "command": "promptBank.deleteTeamPromptFromTree",
+        "title": "Delete Team Prompt",
+        "icon": "$(trash)",
+        "commandPalette": false
+      },
+      {
+        "command": "promptBank.copyTeamPromptFromTree",
+        "title": "Copy Team Prompt",
+        "icon": "$(copy)",
+        "commandPalette": false
+      },
+      {
+        "command": "promptBank.copyTeamPromptToPersonal",
+        "title": "Copy to Personal Library",
+        "commandPalette": false
       }
     ],
     "menus": {
@@ -174,6 +219,16 @@
         {
           "command": "promptBank.newPrompt",
           "when": "view == promptBank.promptsView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "promptBank.refreshTeamTreeView",
+          "when": "view == promptBank.teamPromptsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "promptBank.newTeamPrompt",
+          "when": "view == promptBank.teamPromptsView",
           "group": "navigation@2"
         }
       ],
@@ -234,6 +289,36 @@
           "command": "promptBank.shareCollectionFromTree",
           "when": "view == promptBank.promptsView && viewItem == promptBankCategory",
           "group": "1_modification@0"
+        },
+        {
+          "command": "promptBank.copyTeamPromptFromTree",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^teamPrompt_/",
+          "group": "inline@1"
+        },
+        {
+          "command": "promptBank.copyTeamPromptFromTree",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^teamPrompt_/",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "promptBank.copyTeamPromptToPersonal",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^teamPrompt_/",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "promptBank.editTeamPromptFromTree",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^teamPrompt_(editor|admin|owner)$/",
+          "group": "2_modification@1"
+        },
+        {
+          "command": "promptBank.deleteTeamPromptFromTree",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^teamPrompt_(admin|owner)$/",
+          "group": "3_danger@1"
+        },
+        {
+          "command": "promptBank.newTeamPrompt",
+          "when": "view == promptBank.teamPromptsView && viewItem =~ /^team_(editor|admin|owner)$/",
+          "group": "0_create@1"
         }
       ]
     },

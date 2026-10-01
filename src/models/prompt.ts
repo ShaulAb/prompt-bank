@@ -44,6 +44,9 @@ export interface Prompt {
 
   /** Metadata for analytics and future features */
   metadata: PromptMetadata;
+
+  /** Team ID if this is a team prompt (null/undefined = personal) */
+  teamId?: string;
 }
 
 /**
