@@ -71,7 +71,12 @@ export async function activate(context: vscode.ExtensionContext) {
       registerCommands(context, treeProvider, workspaceServices.auth);
 
       // Register sync commands
-      const syncCommands = registerSyncCommands(context, promptService, workspaceServices.sync);
+      const syncCommands = registerSyncCommands(
+        context,
+        promptService,
+        workspaceServices.sync,
+        () => treeProvider.refresh()
+      );
       context.subscriptions.push(...syncCommands);
     } else {
       // Register commands without workspace-dependent features
