@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.11.1](https://github.com/ShaulAb/prompt-bank/compare/v0.11.0...v0.11.1) (2026-10-13)
+
+### 🔧 Chores
+
+- 🔧 remove unused uriHandler from package.json ([#75](https://github.com/ShaulAb/prompt-bank/issues/75)) ([aab2dc2](https://github.com/ShaulAb/prompt-bank/commit/aab2dc202b865a19d56bc2a3720911514874c4d5))
+
+### ✨ Features
+
+- **teams:** add team mode with global prompt sync ([#76](https://github.com/ShaulAb/prompt-bank/issues/76)) ([516cfe1](https://github.com/ShaulAb/prompt-bank/commit/516cfe17aef6e94bd4aa58e88156c4e21f3eb299))
+
+### 🐛 Bug Fixes
+
+- **sync:** reconcile permanently deleted personal prompts ([#77](https://github.com/ShaulAb/prompt-bank/issues/77)) ([bf9b97f](https://github.com/ShaulAb/prompt-bank/commit/bf9b97f29f6e685c173ad22e71978a639a4cda78))
+- **sync:** refresh prompt views and protect stale editor drafts ([#78](https://github.com/ShaulAb/prompt-bank/issues/78)) ([ec9fb20](https://github.com/ShaulAb/prompt-bank/commit/ec9fb20892fe2b7e6944c177a0d6825f6814ff07))
+
 ## [0.11.0](https://github.com/ShaulAb/prompt-bank/compare/v0.10.0...v0.11.0) (2026-02-09)
 
 ### ♻️ Code Refactoring
