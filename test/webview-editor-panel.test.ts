@@ -13,7 +13,7 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual('fs');
   return {
     ...actual,
-    readFileSync: vi.fn(() => '<html>Mock HTML Content</html>'),
+    readFileSync: vi.fn(() => '<html>/*__PROMPT_DATA_INJECTION__*/ null</html>'),
   };
 });
 
@@ -78,6 +78,36 @@ describe('PromptEditorPanel', () => {
   });
 
   describe('Edit Mode (existing prompt)', () => {
+    it('loads current storage data instead of a stale tree item', async () => {
+      const stale = createPrompt('Stale', 'old', 'Test');
+      await storageProvider.save(stale);
+      await storageProvider.save({ ...stale, content: 'downloaded content' });
+      await PromptEditorPanel.show(mockContext, stale, promptService, treeProvider);
+      expect(mockWebviewPanel.webview.html).toContain('downloaded content');
+    });
+
+    it('preserves a draft rather than overwriting a prompt changed after opening', async () => {
+      const original = createPrompt('Prompt', 'original', 'Test');
+      await storageProvider.save(original);
+      await PromptEditorPanel.show(mockContext, original, promptService, treeProvider);
+      await storageProvider.save({ ...original, content: 'new cloud content' });
+      const handler = mockWebviewPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+      await handler({
+        type: 'save',
+        data: { title: 'Prompt', content: 'stale draft', category: 'Test', description: '' },
+      });
+      expect((await storageProvider.load(original.id))?.content).toBe('new cloud content');
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Your draft')
+      );
+      expect(mockWebviewPanel.dispose).not.toHaveBeenCalled();
+    });
+
+    it('does not reopen an editor for a deleted tree item', async () => {
+      const deleted = createPrompt('Deleted', 'old', 'Test');
+      await PromptEditorPanel.show(mockContext, deleted, promptService, treeProvider);
+      expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
     // These tests are simplified because createOrShow is a static method that's hard to test
     it.skip('should create panel in edit mode with existing prompt data', async () => {
       // Skipped: requires more complex mocking of static methods

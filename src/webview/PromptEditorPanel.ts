@@ -82,6 +82,15 @@ export class PromptEditorPanel {
     promptService: PromptService,
     treeProvider: PromptTreeProvider
   ) {
+    if (promptData) {
+      const promptId = promptData.id;
+      const latest = (await promptService.listPrompts()).find((prompt) => prompt.id === promptId);
+      if (!latest) {
+        void vscode.window.showErrorMessage('This prompt was deleted. Refresh the prompt list.');
+        return;
+      }
+      promptData = latest;
+    }
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -191,14 +200,39 @@ export class PromptEditorPanel {
       const trimmedDescription = data.description.trim();
 
       if (this.promptData) {
+        const latest = (await this.promptService.listPrompts()).find(
+          (prompt) => prompt.id === this.promptData!.id
+        );
+        if (
+          !latest ||
+          JSON.stringify([
+            latest.title,
+            latest.content,
+            latest.description,
+            latest.category,
+            latest.variables,
+          ]) !==
+            JSON.stringify([
+              this.promptData.title,
+              this.promptData.content,
+              this.promptData.description,
+              this.promptData.category,
+              this.promptData.variables,
+            ])
+        ) {
+          void vscode.window.showErrorMessage(
+            'This prompt changed or was deleted while the editor was open. Reopen it before saving. Your draft is still in this editor.'
+          );
+          return;
+        }
         // Edit existing prompt
         const updatedPrompt: Prompt = {
-          ...this.promptData,
+          ...latest,
           title: data.title.trim(),
           content: data.content,
           category: data.category.trim(),
           metadata: {
-            ...this.promptData.metadata,
+            ...latest.metadata,
             modified: new Date(),
           },
           ...(trimmedDescription !== '' ? { description: trimmedDescription } : {}),
@@ -220,10 +254,9 @@ export class PromptEditorPanel {
         this.treeProvider.refresh();
         vscode.window.showInformationMessage(`Saved prompt: "${newPrompt.title}"`);
       }
+      this.panel.dispose();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
-    } finally {
-      this.panel.dispose();
     }
   }
 

@@ -7,6 +7,7 @@
 import * as vscode from 'vscode';
 import type { PromptService } from '../services/promptService';
 import { SyncService } from '../services/syncService';
+import { WebViewCache } from '../webview/WebViewCache';
 
 /**
  * Register sync commands with VS Code
@@ -14,14 +15,20 @@ import { SyncService } from '../services/syncService';
 export const registerSyncCommands = (
   _context: vscode.ExtensionContext,
   promptService: PromptService,
-  syncService: SyncService
+  syncService: SyncService,
+  onPromptsChanged: () => void = () => {}
 ): vscode.Disposable[] => {
   const service = syncService;
 
   return [
     // Command: Sync prompts now
     vscode.commands.registerCommand('promptBank.syncPrompts', async () => {
-      await syncPromptsCommand(promptService, service);
+      try {
+        await syncPromptsCommand(promptService, service);
+      } finally {
+        WebViewCache.clear();
+        onPromptsChanged();
+      }
     }),
 
     // Command: Enable/disable auto-sync
@@ -41,7 +48,12 @@ export const registerSyncCommands = (
 
     // Command: Restore deleted prompts
     vscode.commands.registerCommand('promptBank.restoreDeletedPrompts', async () => {
-      await restoreDeletedPromptsCommand(service, promptService);
+      try {
+        await restoreDeletedPromptsCommand(service, promptService);
+      } finally {
+        WebViewCache.clear();
+        onPromptsChanged();
+      }
     }),
   ];
 };
