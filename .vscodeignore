@@ -8,6 +8,9 @@ src/
 test/
 test-workspace/
 test-cursor-workspace/
+.test-drive/
+scripts/
+.github/
 
 # Build and config files
 tsconfig.json

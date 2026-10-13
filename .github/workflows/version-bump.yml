@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version_type:
-        description: 'Select version bump type (auto = detect from commits)'
+        description: 'Version type (existing resumes the version already on dev)'
         required: true
         default: 'auto'
         type: choice
@@ -13,9 +13,14 @@ on:
           - patch
           - minor
           - major
+          - existing
 
 permissions:
   contents: write
+
+concurrency:
+  group: prompt-bank-release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -43,6 +48,7 @@ jobs:
 
       - name: Run all quality checks
         run: |
+          node --test scripts/release-tag.test.cjs
           npx tsc --noEmit
           npm run lint
           npm test
@@ -55,63 +61,61 @@ jobs:
 
       - name: Bump version and generate changelog
         id: version
+        env:
+          VERSION_TYPE: ${{ inputs.version_type }}
         run: |
           echo "OLD_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-          if [ "${{ github.event.inputs.version_type }}" = "auto" ]; then
+          if [ "$VERSION_TYPE" = "auto" ]; then
             echo "Running automatic version detection based on commits..."
             npm run release
+          elif [ "$VERSION_TYPE" = "existing" ]; then
+            echo "Resuming the existing version without a bump."
           else
-            echo "Bumping ${{ github.event.inputs.version_type }} version..."
-            npm run release:${{ github.event.inputs.version_type }}
+            case "$VERSION_TYPE" in
+              patch|minor|major) npm run "release:$VERSION_TYPE" ;;
+              *) echo "Unsupported version type"; exit 1 ;;
+            esac
           fi
 
           echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          node scripts/release-tag.cjs
 
       - name: Package extension
         run: npm run package
 
+      - name: Retain VSIX artifact before publishing
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-bank-${{ steps.version.outputs.NEW_VERSION }}
+          path: prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Push changes to dev
+        env:
+          VERSION: ${{ steps.version.outputs.NEW_VERSION }}
         run: |
-          git push origin HEAD:dev
-          git push origin v${{ steps.version.outputs.NEW_VERSION }}
+          git push --atomic origin HEAD:refs/heads/dev "refs/tags/v$VERSION:refs/tags/v$VERSION"
 
-      - name: Create GitHub release
-        uses: actions/create-release@v1
-        id: create_release
+      - name: Create release and attach VSIX
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.version.outputs.NEW_VERSION }}
-          release_name: Release v${{ steps.version.outputs.NEW_VERSION }}
-          body: |
-            ## 📦 Manual Testing Required
-
-            This release has been packaged and is ready for testing. The VSIX file is attached to this release.
-
-            ### 🧪 Testing Steps:
-            1. Download the VSIX file from this release
-            2. Install locally: `code --install-extension prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix`
-            3. Test the extension functionality
-            4. If everything works: merge dev → main and publish manually with `vsce publish`
-
-            ### 📋 Changes:
-            See CHANGELOG.md for detailed changes in this release.
-
-            ---
-            *This release was created automatically from dev branch but requires manual publishing to marketplace.*
-          draft: false
-          prerelease: false
-
-      - name: Upload VSIX to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
-          asset_name: prompt-bank-${{ steps.version.outputs.NEW_VERSION }}.vsix
-          asset_content_type: application/zip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.NEW_VERSION }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPOSITORY/releases" --paginate --jq '.[].tag_name' > release-tags.txt
+          if ! grep -Fxq "v$VERSION" release-tags.txt; then
+            cat > release-notes.md <<EOF
+          ## Manual testing required
+          Download and install prompt-bank-$VERSION.vsix, then verify authentication and sync.
+          After testing, promote dev to main for automated marketplace publishing.
+          See CHANGELOG.md for the included changes.
+          EOF
+            gh release create "v$VERSION" --verify-tag --title "Release v$VERSION" --notes-file release-notes.md
+          fi
+          gh release upload "v$VERSION" "prompt-bank-$VERSION.vsix" --clobber
 
       - name: Summary
         run: |
@@ -129,4 +133,4 @@ jobs:
           echo "### 🧪 Next steps:" >> $GITHUB_STEP_SUMMARY
           echo "1. Download and test the VSIX package locally" >> $GITHUB_STEP_SUMMARY
           echo "2. If testing passes, merge dev → main" >> $GITHUB_STEP_SUMMARY
-          echo "3. Publish to marketplace with \`vsce publish\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify the automated marketplace publishing workflow" >> $GITHUB_STEP_SUMMARY

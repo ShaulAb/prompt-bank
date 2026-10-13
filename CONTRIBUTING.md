@@ -929,7 +929,7 @@ Our release workflow uses **conventional commits** to automatically determine ve
    - Updates `package.json` and generates `CHANGELOG.md` automatically
    - Creates Git tag and GitHub release with VSIX package
 4. **Testing**: Download and test the VSIX locally from the GitHub release
-5. **Publishing**: Merge `dev` → `main` and manually publish to marketplace
+5. **Publishing**: Merge `dev` → `main` for the automated marketplace publishing workflow
 
 ### Version Bump Rules
 
@@ -957,11 +957,11 @@ npm run release:dry-run  # Preview version bump and changelog
 Maintainers can trigger releases via GitHub Actions:
 
 1. Go to **Actions** → **"Version Bump and Release"**
-2. Select version type (auto/patch/minor/major)
+2. Select version type (auto/patch/minor/major), or `existing` to resume a partial release without another bump
 3. Workflow automatically creates version bump, VSIX, and GitHub release
 4. Test VSIX locally: `code --install-extension prompt-bank-x.x.x.vsix`
 5. If tests pass, merge `dev` → `main`
-6. Publish to marketplace: `vsce publish`
+6. Verify the automated marketplace publishing workflow
 
 **Key Point**: Contributors should focus on writing good conventional commits - the CI/CD handles versioning!
 

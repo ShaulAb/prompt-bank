@@ -51,6 +51,15 @@ Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → 
 
 **Branch enforcement:** Only runs from `dev` branch (`if: github.ref == 'refs/heads/dev'`)
 
+**Resume a partial release:** Choose `existing` to package the version already in
+`package.json` without another bump or changelog commit. The workflow refuses to
+move an existing tag to a different commit. Branch and tag pushes are atomic,
+and the VSIX is retained as an Actions artifact before publishing. Release
+creation and asset upload can be retried for the same tagged commit.
+
+Do not rerun `auto` after a version commit has already reached `dev`: it can bump
+the version again. Marketplace publishing remains a separate post-testing step.
+
 ### 3. Publish Workflow (`publish.yml`)
 
 **Name:** "Publish to Marketplaces"

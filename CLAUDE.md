@@ -200,7 +200,7 @@ These won't trigger version bumps or appear prominently in release notes.
 4. VSIX created and attached to GitHub release
 5. Download and test VSIX locally
 6. Merge dev → main
-7. Publish to marketplace: `vsce publish`
+7. Verify the automated marketplace publishing workflow
 
 **Version is determined automatically** from commit types since last release!
 
