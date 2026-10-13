@@ -13,12 +13,7 @@
 
 import type { Prompt, TemplateVariable, FileContext } from '../../models/prompt';
 import { DEFAULT_CATEGORY } from '../../models/prompt';
-import type {
-  SyncPlan,
-  SyncResult,
-  RemotePrompt,
-  PromptSyncInfo,
-} from '../../models/syncState';
+import type { SyncPlan, SyncResult, RemotePrompt, PromptSyncInfo } from '../../models/syncState';
 import { SyncConflictType } from '../../models/syncState';
 import type { SyncStateStorage } from '../../storage/syncStateStorage';
 import { computeContentHash, matchesHash } from '../../utils/contentHash';
@@ -137,6 +132,23 @@ export class SyncEngine {
               plan.toUpload.push(prompt);
             }
             // else: Local was NOT modified after remote deletion - honor the deletion
+          }
+        } else if (cloudId && syncInfo && this.config.handleCloudDeletion) {
+          // Older website versions physically deleted rows, leaving no tombstone.
+          // An unchanged personal copy honors deletion; preserve local edits as
+          // a new cloud row rather than updating a missing ID forever.
+          if (
+            syncInfo.lastSyncedContentHash &&
+            matchesHash(prompt, syncInfo.lastSyncedContentHash)
+          ) {
+            plan.toDeleteLocally.push({
+              localPromptId: prompt.id,
+              cloudId,
+              deletedAt: new Date().toISOString(),
+            });
+          } else {
+            plan.toUpload.push(prompt);
+            (plan.recreateCloudFor ??= []).push(prompt.id);
           }
         } else {
           // New local prompt - upload
@@ -267,10 +279,7 @@ export class SyncEngine {
    * 4. remoteCopy is linked to EXISTING cloud prompt (avoids 409 conflicts)
    * 5. Strips existing conflict suffixes to prevent nesting
    */
-  async resolveConflict(
-    local: Prompt,
-    remote: RemotePrompt
-  ): Promise<readonly [Prompt, Prompt]> {
+  async resolveConflict(local: Prompt, remote: RemotePrompt): Promise<readonly [Prompt, Prompt]> {
     // Strip existing conflict suffixes to prevent nesting
     const suffixPattern = / \(from .+ - \w{3} \d{1,2}\)$/;
     const baseTitle = local.title.replace(suffixPattern, '');
@@ -283,8 +292,18 @@ export class SyncEngine {
 
     const formatDateTime = (date: Date): string => {
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -564,7 +583,10 @@ export class SyncEngine {
           }
 
           // Normal upload with conflict handling (optimistic locking)
-          const uploaded = await this.uploadWithConflictHandling(prompt, syncInfo ?? undefined);
+          const uploaded = await this.uploadWithConflictHandling(
+            prompt,
+            plan.recreateCloudFor?.includes(prompt.id) ? undefined : (syncInfo ?? undefined)
+          );
           const contentHash = computeContentHash(prompt);
           await this.syncStateStorage.setPromptSyncInfo(prompt.id, {
             cloudId: uploaded.cloudId,
