@@ -66,12 +66,12 @@ the version again. Marketplace publishing remains a separate post-testing step.
 **Triggers:** Push to `main` branch
 
 **What it does:**
-- ✅ **Version detection** - Compares current version with latest git tag
+- ✅ **Version detection** - Queries the exact version in each marketplace independently
 - ✅ **Quality gates** - Full CI pipeline before publishing
 - ✅ **VS Code Marketplace** - Automatic publishing via vsce
 - ✅ **Open VSX Registry** - Automatic publishing via ovsx
-- ✅ **GitHub Release** - Creates release with VSIX artifact
-- ✅ **Idempotent** - Skips if version already published
+- ✅ **Tested artifact** - Publishes the GitHub release VSIX tested locally, without repackaging
+- ✅ **Idempotent** - Skips each registry independently; retries publish only missing registries
 
 **Branch enforcement:** Only runs on `main` branch pushes
 
