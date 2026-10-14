@@ -101,6 +101,9 @@ export interface SyncPlan {
   /** Prompts to upload to cloud */
   toUpload: unknown[]; // Array<Prompt> - mutable for building plan
 
+  /** Modified personal prompts whose old cloud row was permanently removed. */
+  recreateCloudFor?: string[];
+
   /** Prompts to download from cloud */
   toDownload: RemotePrompt[];
 

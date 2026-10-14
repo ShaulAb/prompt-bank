@@ -2,9 +2,10 @@ import { setupServer } from 'msw/node';
 import { oauthHandlers, oauthTestHelpers } from './oauth-handlers';
 import { jwksHandler, jwksTestHelpers } from './jwks-handlers';
 import { syncHandlers, syncTestHelpers, TEST_PAST_TIME_OFFSET_MS } from './sync-handlers';
+import { teamSyncHandlers, teamSyncTestHelpers } from './team-sync-handlers';
 
-// Create MSW server with OAuth, JWKS, and Sync handlers
-export const server = setupServer(...oauthHandlers, jwksHandler, ...syncHandlers);
+// Create MSW server with OAuth, JWKS, Sync, and Team Sync handlers
+export const server = setupServer(...oauthHandlers, jwksHandler, ...syncHandlers, ...teamSyncHandlers);
 
 // Enhanced server with helper methods
 export const mswTestServer = {
@@ -19,6 +20,7 @@ export const mswTestServer = {
     server.listen({ onUnhandledRequest: 'warn' });
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
+    teamSyncTestHelpers.clearAllTeamData();
   },
 
   /**
@@ -28,6 +30,7 @@ export const mswTestServer = {
     server.resetHandlers();
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
+    teamSyncTestHelpers.clearAllTeamData();
   },
 
   /**
@@ -63,8 +66,9 @@ export const mswTestServer = {
     oauth: oauthTestHelpers,
     jwks: jwksTestHelpers,
     sync: syncTestHelpers,
+    teamSync: teamSyncTestHelpers,
   },
 };
 
 // Export individual helpers for direct import
-export { oauthTestHelpers, jwksTestHelpers, syncTestHelpers, TEST_PAST_TIME_OFFSET_MS };
+export { oauthTestHelpers, jwksTestHelpers, syncTestHelpers, teamSyncTestHelpers, TEST_PAST_TIME_OFFSET_MS };
