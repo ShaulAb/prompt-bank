@@ -19,7 +19,7 @@ Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → 
 - **Feature branches**: Individual feature development
 - **dev branch**: Integration branch where all features are merged and tested
 - **main branch**: Stable/released code only, represents what users have
-- **Automation**: When dev merges to main, automatic publishing to VS Code Marketplace and Open VSX
+- **Automation**: When dev merges to main, automatic publishing to Open VSX
 
 ## 🔄 Workflows
 
@@ -62,21 +62,19 @@ the version again. Marketplace publishing remains a separate post-testing step.
 
 ### 3. Publish Workflow (`publish.yml`)
 
-**Name:** "Publish to Marketplaces"
+**Name:** "Publish to Open VSX"
 **Triggers:** Push to `main` branch
 
 **What it does:**
-- ✅ **Version detection** - Queries the exact version in each marketplace independently
+- ✅ **Version detection** - Queries the exact version in Open VSX
 - ✅ **Quality gates** - Full CI pipeline before publishing
-- ✅ **VS Code Marketplace** - Automatic publishing via vsce
 - ✅ **Open VSX Registry** - Automatic publishing via ovsx
 - ✅ **Tested artifact** - Publishes the GitHub release VSIX tested locally, without repackaging
-- ✅ **Idempotent** - Skips each registry independently; retries publish only missing registries
+- ✅ **Idempotent** - Skips a version already published to Open VSX
 
 **Branch enforcement:** Only runs on `main` branch pushes
 
 **Required Secrets:**
-- `VSCE_TOKEN` - VS Code Marketplace Personal Access Token
 - `OVSX_TOKEN` - Open VSX Registry Access Token
 
 ### 4. Dependabot
@@ -151,7 +149,6 @@ gh pr create --base main --head dev --title "Release vX.X.X"
 
 # After merge to main:
 # 🤖 Automatic publishing happens via GitHub Actions!
-# - Publishes to VS Code Marketplace
 # - Publishes to Open VSX Registry
 # - Creates GitHub Release with VSIX
 ```
@@ -200,3 +197,7 @@ Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-b
 - Check [CLAUDE.md](../CLAUDE.md) for comprehensive development guide
 - Review workflow logs in GitHub Actions
 - Ensure conventional commit format for version detection
+
+### Distribution policy
+
+Publish registry updates to Open VSX only. VS Code Marketplace publishing is disabled and does not require a Microsoft publishing account or VSCE_TOKEN. GitHub releases retain downloadable VSIX files, which users can install manually in VS Code through Extensions: Install from VSIX. The existing VS Code Marketplace listing is left in place.
