@@ -13,7 +13,7 @@ Our streamlined CI/CD pipeline consists of **3 core workflows** that ensure code
 ## 🌳 Dev-Centered Branching Strategy
 
 ```
-Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [🤖 AUTO: Marketplaces]
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [🤖 AUTO: Open VSX]
 ```
 
 - **Feature branches**: Individual feature development
