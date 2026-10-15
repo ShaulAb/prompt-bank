@@ -8,7 +8,7 @@ Our streamlined CI/CD pipeline consists of **3 core workflows** that ensure code
 
 1. **CI Workflow** (`main.yml`) - Automated testing and validation
 2. **Release Workflow** (`version-bump.yml`) - Version management and packaging
-3. **Publish Workflow** (`publish.yml`) - Automated marketplace publishing
+3. **Publish Workflow** (`publish.yml`) - Automated Open VSX publishing
 
 ## 🌳 Dev-Centered Branching Strategy
 
@@ -25,16 +25,17 @@ Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → 
 
 ### 1. CI Pipeline (`main.yml`)
 
-**Triggers:** Push to `dev`/`main`, Pull Requests to `dev`
+**Triggers:** Push to `dev`/`main`, Pull Requests to `dev`/`main`
 
 **What it does:**
 - ✅ **TypeScript compilation** - Ensures type safety
 - ✅ **ESLint validation** - Code quality and consistency
-- ✅ **Vitest testing** - 67 tests with comprehensive coverage
+- ✅ **Vitest testing** - Unit and MSW integration tests
+- ✅ **Release helper tests** - Tag recovery, registry status, and source verification
 - ✅ **Extension build** - Creates production bundle
-- ✅ **Multi-Node support** - Tests on Node.js 18.x and 20.x
+- ✅ **Node.js 20** - Runtime used by all three workflows
 
-**Runtime:** ~30 seconds (optimized for speed)
+Runtime varies; check the Actions run for current timings.
 
 ### 2. Release Workflow (`version-bump.yml`)
 
@@ -55,10 +56,12 @@ Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → 
 `package.json` without another bump or changelog commit. The workflow refuses to
 move an existing tag to a different commit. Branch and tag pushes are atomic,
 and the VSIX is retained as an Actions artifact before publishing. Release
-creation and asset upload can be retried for the same tagged commit.
+creation and asset upload can be retried for the same tagged commit. An existing
+VSIX is downloaded and reused rather than rebuilt or overwritten. If an asset
+appears during upload, the upload fails safely instead of replacing it.
 
 Do not rerun `auto` after a version commit has already reached `dev`: it can bump
-the version again. Marketplace publishing remains a separate post-testing step.
+the version again. Open VSX publishing remains a separate post-testing step.
 
 ### 3. Publish Workflow (`publish.yml`)
 
@@ -70,28 +73,19 @@ the version again. Marketplace publishing remains a separate post-testing step.
 - ✅ **Quality gates** - Full CI pipeline before publishing
 - ✅ **Open VSX Registry** - Automatic publishing via ovsx
 - ✅ **Tested artifact** - Publishes the GitHub release VSIX tested locally, without repackaging
+- ✅ **Source verification** - Requires the release tag and rejects tracked source changes between the tag and `main`. Release workflows, helper scripts, and Markdown documentation may differ; all other changes require a new version and tested VSIX.
 - ✅ **Idempotent** - Skips a version already published to Open VSX
 
-**Branch enforcement:** Only runs on `main` branch pushes
+**Branch enforcement:** Only runs on `main`, via push or manual dispatch
 
 **Required Secrets:**
 - `OVSX_TOKEN` - Open VSX Registry Access Token
-
-### 4. Dependabot
-
-**Configuration:** `.github/dependabot.yml`
-
-**What it does:**
-- Automatically opens PRs for dependency updates
-- Handles both npm and GitHub Actions updates
-- Runs weekly security audits
-- Automatically assigns to maintainers
 
 ## 📊 Quality Gates
 
 All PRs to `dev` must pass these automated quality gates:
 
-✅ **Tests** - All 67 tests must pass (Vitest)
+✅ **Tests** - Vitest and release helper tests must pass
 ✅ **Linting** - Code must pass ESLint rules
 ✅ **Type Checking** - TypeScript compilation must succeed
 ✅ **Build** - Extension must build successfully
@@ -105,13 +99,14 @@ All PRs to `dev` must pass these automated quality gates:
 ### Quick Quality Check
 ```bash
 # Run all quality checks (same as CI)
-npm run lint && npx tsc --noEmit && npm test && npm run build
+npm run test:release && npm run lint && npx tsc --noEmit && npm test && npm run build
 ```
 
 ### Individual Commands
 ```bash
 # Testing
 npm test                 # Run tests once
+npm run test:release     # Release workflow helper tests
 npm run test:watch       # Run tests in watch mode
 npm run test:ui          # Run tests with UI
 
@@ -131,7 +126,7 @@ npm run release:dry-run  # Preview version changes
 ```bash
 # Via GitHub Actions (Recommended)
 # 1. Go to Actions → "Version Bump and Release"
-# 2. Select version type (auto/patch/minor/major)
+# 2. Select dev and version type (auto/patch/minor/major/existing)
 # 3. Workflow creates VSIX and GitHub release
 ```
 
@@ -150,7 +145,7 @@ gh pr create --base main --head dev --title "Release vX.X.X"
 # After merge to main:
 # 🤖 Automatic publishing happens via GitHub Actions!
 # - Publishes to Open VSX Registry
-# - Creates GitHub Release with VSIX
+# - Updates the existing GitHub Release notes
 ```
 
 ### 4. Monitor Publishing
@@ -168,13 +163,12 @@ gh run view [run-id]
 Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-bank/actions).
 
 ### Key Metrics
-- **CI Runtime**: ~30 seconds (optimized)
-- **Test Coverage**: 67 tests with comprehensive scenarios
-- **Bundle Size**: ~40KB (minified)
+- **CI Runtime**: Check the latest Actions run
+- **Test Results**: Check the Vitest and release helper output
+- **Package Size**: Check the uploaded VSIX asset
 
 ### Dependency Management
-- **Dependabot**: Creates weekly PRs for updates
-- **Security**: Automatic vulnerability scanning
+- **Dependency Updates**: No Dependabot configuration is currently checked in
 - **Review Process**: All dependency updates reviewed before merge
 
 ## 🔧 Troubleshooting
@@ -201,3 +195,9 @@ Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-b
 ### Distribution policy
 
 Publish registry updates to Open VSX only. VS Code Marketplace publishing is disabled and does not require a Microsoft publishing account or VSCE_TOKEN. GitHub releases retain downloadable VSIX files, which users can install manually in VS Code through Extensions: Install from VSIX. The existing VS Code Marketplace listing is left in place.
+
+The legacy `npm run deploy` command has been removed. Publish through the main
+branch workflow so registry uploads use the tested release asset.
+
+Keep `dev` and `main` as permanent branches. Delete merged feature/fix branches
+after checking for unique commits and uncommitted work in their worktrees.
