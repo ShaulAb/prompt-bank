@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/prestissimo.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
+  <a href="https://open-vsx.org/extension/prestissimo/prompt-bank"><img src="https://img.shields.io/open-vsx/v/prestissimo/prompt-bank?style=for-the-badge&label=Open%20VSX" alt="Open VSX"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/ShaulAb/prompt-bank/main.yml?style=for-the-badge&label=Tests" alt="Tests"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ShaulAb/prompt-bank?style=for-the-badge&color=green" alt="License"></a>
 </p>
@@ -143,3 +143,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and new features.
+
+## Installation channels
+
+Get registry updates from [Open VSX](https://open-vsx.org/extension/prestissimo/prompt-bank), or download the VSIX from [GitHub Releases](https://github.com/ShaulAb/prompt-bank/releases). In VS Code, run **Extensions: Install from VSIX** and choose the downloaded file. New releases are no longer published to VS Code Marketplace.
