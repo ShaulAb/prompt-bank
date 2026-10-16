@@ -230,8 +230,50 @@ export class FileStorageProvider implements IStorageProvider {
   }
 
   async getAllCategories(): Promise<string[]> {
-    const prompts = await this.list();
-    return [...new Set(prompts.map((p) => p.category))];
+    await this.ensureInitialized();
+    const prompts = await this.loadAllPrompts();
+    const categories = await this.loadCategories();
+    return [...new Set([...categories, ...prompts.map((p) => p.category)])];
+  }
+
+  async createCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    const categories = await this.loadCategories();
+    if (!categories.includes(name)) {
+      categories.push(name);
+      await this.saveCategories(categories);
+    }
+  }
+
+  async deleteCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    const categories = (await this.loadCategories()).filter((category) => category !== name);
+    await this.saveCategories(categories);
+  }
+
+  async renameStoredCategory(oldName: string, newName: string): Promise<void> {
+    await this.ensureInitialized();
+    const categories = (await this.loadCategories()).map((category) =>
+      category === oldName ? newName : category
+    );
+    await this.saveCategories([...new Set(categories)]);
+  }
+
+  private async loadCategories(): Promise<string[]> {
+    const categoriesFile = path.join(this.storagePath, 'categories.json');
+    try {
+      const data = await fs.readFile(categoriesFile, 'utf-8');
+      const categories = JSON.parse(data);
+      return Array.isArray(categories) ? categories.filter((item) => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async saveCategories(categories: string[]): Promise<void> {
+    const categoriesFile = path.join(this.storagePath, 'categories.json');
+    await fs.mkdir(this.storagePath, { recursive: true });
+    await fs.writeFile(categoriesFile, JSON.stringify(categories, null, 2));
   }
 
   /**

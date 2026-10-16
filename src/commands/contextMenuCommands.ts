@@ -217,6 +217,8 @@ export class ContextMenuCommands {
         await Promise.all(deletePromises);
       }
 
+      await this.promptService.deleteCategory(category);
+
       // Refresh the tree view
       this.treeProvider.refresh();
 

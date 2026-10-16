@@ -65,7 +65,13 @@
       {
         "command": "promptBank.newPrompt",
         "title": "New Prompt",
-        "icon": "$(add)",
+        "icon": "$(new-file)",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.newCategory",
+        "title": "New Category",
+        "icon": "$(new-folder)",
         "category": "Prompt Bank"
       },
       {
@@ -222,6 +228,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "promptBank.newCategory",
+          "when": "view == promptBank.promptsView",
+          "group": "navigation@3"
+        },
+        {
           "command": "promptBank.refreshTeamTreeView",
           "when": "view == promptBank.teamPromptsView",
           "group": "navigation@1"
@@ -235,6 +246,11 @@
       "view/title/context": [
         {
           "command": "promptBank.newPrompt",
+          "when": "view == promptBank.promptsView",
+          "group": "1_add"
+        },
+        {
+          "command": "promptBank.newCategory",
           "when": "view == promptBank.promptsView",
           "group": "1_add"
         }

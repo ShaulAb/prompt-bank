@@ -243,6 +243,11 @@ export class PromptService {
     return this.storage.list(filter);
   }
 
+  async getCategories(): Promise<string[]> {
+    await this.ensureInitialized();
+    return this.storage.getAllCategories();
+  }
+
   /**
    * Delete a prompt
    */
@@ -639,6 +644,7 @@ export class PromptService {
    */
   async renameCategory(oldName: string, newName: string): Promise<number> {
     await this.ensureInitialized();
+    await this.storage.renameStoredCategory(oldName, newName);
     // Load all prompts in the old category
     const prompts = await this.storage.list({ category: oldName });
     if (prompts.length === 0) {
@@ -654,6 +660,22 @@ export class PromptService {
       await this.storage.update(prompt);
     }
     return prompts.length;
+  }
+
+  async createCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error('Category name cannot be empty');
+    const existing = await this.storage.getAllCategories();
+    if (existing.some((category) => category.toLowerCase() === trimmedName.toLowerCase())) {
+      throw new Error(`Category "${trimmedName}" already exists`);
+    }
+    await this.storage.createCategory(trimmedName);
+  }
+
+  async deleteCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.storage.deleteCategory(name);
   }
 
   // ────────────────────────────────────────────────────────────────────────────

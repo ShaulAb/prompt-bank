@@ -49,6 +49,15 @@ export interface IStorageProvider {
    * Get all categories
    */
   getAllCategories(): Promise<string[]>;
+
+  /** Create a category, including categories that do not yet contain prompts */
+  createCategory(name: string): Promise<void>;
+
+  /** Remove an empty or fully deleted category */
+  deleteCategory(name: string): Promise<void>;
+
+  /** Rename a category independently of its prompts */
+  renameStoredCategory(oldName: string, newName: string): Promise<void>;
 }
 
 /**
