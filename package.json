@@ -374,7 +374,7 @@
     "lint": "eslint src --ext ts",
     "format": "prettier --write src",
     "package": "vsce package",
-    "deploy": "vsce publish",
+    "test:release": "node --test scripts/release-tag.test.cjs scripts/marketplace-status.test.cjs scripts/release-source.test.cjs",
     "release": "standard-version",
     "release:patch": "standard-version --release-as patch",
     "release:minor": "standard-version --release-as minor",
