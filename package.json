@@ -43,16 +43,6 @@
     },
     "commands": [
       {
-        "command": "promptBank.savePrompt",
-        "title": "💾 Save Prompt",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.savePromptFromSelection",
-        "title": "Save Selection as Prompt",
-        "category": "Prompt Bank"
-      },
-      {
         "command": "promptBank.insertPrompt",
         "title": "💬 Copy Prompt",
         "category": "Prompt Bank"
@@ -197,19 +187,6 @@
       }
     ],
     "menus": {
-      "commandPalette": [
-        {
-          "command": "promptBank.savePromptFromSelection",
-          "when": "false"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "promptBank.savePromptFromSelection",
-          "when": "editorHasSelection",
-          "group": "1_modification@5"
-        }
-      ],
       "view/title": [
         {
           "command": "promptBank.refreshTreeView",

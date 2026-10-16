@@ -71,7 +71,6 @@ npm test
 - **Storage**: File operations (`init-storage.test.ts`, `persistence.test.ts` - 4 tests)
 - **List & Search**: List and search functionality (`list-prompts.test.ts` - 7 tests)
 - **Sharing**: Share prompts and collections (2 files, 15 tests)
-- **Save Selection**: Save from editor selection (`save-selection-prompt.test.ts` - 9 tests)
 - **WebView**: Editor panel (`webview-editor-panel.test.ts` - 10 tests, 7 skipped)
 - **Sync Features**: Three-way merge, edge cases, integration, conflict resolution, state migration (5 files, 51 tests)
 - **Versioning**: Version creation, pruning, restoration, sync integration, helper functions (5 files, 18 tests)
@@ -87,14 +86,10 @@ npm run test
 ```typescript
 describe('PromptService - Create Prompt', () => {
   it('should create a new prompt successfully', async () => {
-    const prompt = createPrompt({
-      title: 'Test Prompt',
-      content: 'Test content',
-    });
-    await promptService.savePrompt(prompt);
+    const prompt = createPrompt('Test Prompt', 'Test content', 'General');
+    const saved = await promptService.savePromptDirectly(prompt);
 
-    const retrieved = await promptService.getPrompt(prompt.id);
-    expect(retrieved?.title).toBe('Test Prompt');
+    expect(saved.title).toBe('Test Prompt');
   });
 });
 ```
@@ -362,7 +357,6 @@ process.env.DEBUG = 'true';
 | **Sync** | ✅ 46 tests | - | - | ✅ Passing |
 | **Conflict Resolution** | ✅ 5 tests | - | - | ✅ Passing |
 | **WebView** | ✅ 10 tests (3 pass, 7 skip) | - | - | ✅ Passing |
-| **Save Selection** | ✅ 9 tests | - | - | ✅ Passing |
 
 ---
 

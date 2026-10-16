@@ -13,55 +13,6 @@ export function registerCommands(
   treeProvider: PromptTreeProvider,
   authService?: AuthService
 ): void {
-  // Register save prompt command
-  const savePromptCommand = vscode.commands.registerCommand('promptBank.savePrompt', async () => {
-    try {
-      await promptService.savePrompt();
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error saving prompt: ${error}`);
-    }
-  });
-
-  // Register save prompt from selection command (context menu)
-  const savePromptFromSelectionCommand = vscode.commands.registerCommand(
-    'promptBank.savePromptFromSelection',
-    async () => {
-      try {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-          vscode.window.showErrorMessage('No active editor found');
-          return;
-        }
-
-        // Handle multiple selections - take the first one
-        const selection = editor.selection;
-        const selectedText = editor.document.getText(selection);
-
-        if (!selectedText.trim()) {
-          vscode.window.showErrorMessage('No text selected');
-          return;
-        }
-
-        // Warn if there are multiple selections
-        if (editor.selections.length > 1) {
-          vscode.window.showInformationMessage(
-            'Multiple selections detected. Using the first selection.'
-          );
-        }
-
-        // Open the prompt editor panel with the selected text as initial content
-        await PromptEditorPanel.showForNewPrompt(
-          context,
-          selectedText,
-          promptService,
-          treeProvider
-        );
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error saving prompt from selection: ${error}`);
-      }
-    }
-  );
-
   // Register insert prompt command
   const insertPromptCommand = vscode.commands.registerCommand(
     'promptBank.insertPrompt',
@@ -289,8 +240,6 @@ export function registerCommands(
 
   // Add all commands to context subscriptions
   context.subscriptions.push(
-    savePromptCommand,
-    savePromptFromSelectionCommand,
     insertPromptCommand,
     listPromptsCommand,
     showStatsCommand,
