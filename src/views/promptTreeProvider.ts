@@ -53,14 +53,15 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   private async getCategoryItems(): Promise<CategoryTreeItem[] | [EmptyStateTreeItem]> {
     try {
       const prompts = await this.promptService.listPrompts();
+      const categoryNames = await this.promptService.getCategories();
 
-      if (prompts.length === 0) {
+      if (prompts.length === 0 && categoryNames.length === 0) {
         // Show empty state item if no prompts exist
         return [new EmptyStateTreeItem()];
       }
 
       // Group prompts by category
-      const categoryMap = new Map<string, number>();
+      const categoryMap = new Map<string, number>(categoryNames.map((name) => [name, 0]));
       prompts.forEach((prompt) => {
         const count = categoryMap.get(prompt.category) || 0;
         categoryMap.set(prompt.category, count + 1);
@@ -143,8 +144,7 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<TreeItem> {
   async showRenameCategoryInput(categoryName: string): Promise<void> {
     try {
       // Get existing categories for validation
-      const existingPrompts = await this.promptService.listPrompts();
-      const existingCategories = [...new Set(existingPrompts.map((p) => p.category))];
+      const existingCategories = await this.promptService.getCategories();
 
       const newCategoryName = await vscode.window.showInputBox({
         title: `Rename Category: ${categoryName}`,
