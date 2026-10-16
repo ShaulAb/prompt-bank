@@ -59,6 +59,11 @@
         "category": "Prompt Bank"
       },
       {
+        "command": "promptBank.savePromptFromSelection",
+        "title": "Save Selection as Prompt",
+        "commandPalette": false
+      },
+      {
         "command": "promptBank.newPromptInCategory",
         "title": "New Prompt in Category",
         "icon": "$(add)",
@@ -187,6 +192,13 @@
       }
     ],
     "menus": {
+      "editor/context": [
+        {
+          "command": "promptBank.savePromptFromSelection",
+          "when": "editorHasSelection",
+          "group": "1_modification@5"
+        }
+      ],
       "view/title": [
         {
           "command": "promptBank.refreshTreeView",

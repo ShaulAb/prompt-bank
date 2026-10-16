@@ -13,6 +13,41 @@ export function registerCommands(
   treeProvider: PromptTreeProvider,
   authService?: AuthService
 ): void {
+  // Save selected editor text as the initial content of a new prompt.
+  const savePromptFromSelectionCommand = vscode.commands.registerCommand(
+    'promptBank.savePromptFromSelection',
+    async () => {
+      try {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage('No active editor found');
+          return;
+        }
+
+        const selectedText = editor.document.getText(editor.selection);
+        if (!selectedText.trim()) {
+          vscode.window.showErrorMessage('No text selected');
+          return;
+        }
+
+        if (editor.selections.length > 1) {
+          vscode.window.showInformationMessage(
+            'Multiple selections detected. Using the first selection.'
+          );
+        }
+
+        await PromptEditorPanel.showForNewPrompt(
+          context,
+          selectedText,
+          promptService,
+          treeProvider
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error saving prompt from selection: ${error}`);
+      }
+    }
+  );
+
   // Register insert prompt command
   const insertPromptCommand = vscode.commands.registerCommand(
     'promptBank.insertPrompt',
@@ -240,6 +275,7 @@ export function registerCommands(
 
   // Add all commands to context subscriptions
   context.subscriptions.push(
+    savePromptFromSelectionCommand,
     insertPromptCommand,
     listPromptsCommand,
     showStatsCommand,

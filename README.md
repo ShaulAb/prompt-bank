@@ -27,7 +27,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 ## 🚀 Key Features
 
-- **Create Prompts**: Use the New Prompt action in the Prompt Bank tree to create a prompt with a title, description, category, and content.
+- **Create Prompts**: Use the New Prompt action in the Prompt Bank tree, or right-click selected editor text and choose **Save Selection as Prompt** to start with that text as content.
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
 - **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
@@ -45,6 +45,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 1.  **Create a Prompt**:
     - In the Prompt Bank tree, choose **New Prompt**.
+    - To use selected editor text as the starting content, right-click the selection and choose **Save Selection as Prompt**.
     - Fill in the prompt details and save.
 
 2.  **Copy a Prompt**:
@@ -86,6 +87,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
 | `promptBank.newPrompt` | Prompt Bank tree | Open the prompt editor to create a prompt. |
+| `promptBank.savePromptFromSelection` | Editor right-click | Create a prompt with the selected text prefilled. |
 | `promptBank.insertPrompt`  | -              | Copy prompt from the collection.                                  |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |
