@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PromptEditorPanel } from '../src/webview/PromptEditorPanel';
+import { WebViewCache } from '../src/webview/WebViewCache';
 import { PromptService } from '../src/services/promptService';
 import { PromptTreeProvider } from '../src/views/promptTreeProvider';
 import { FileStorageProvider } from '../src/storage/fileStorage';
@@ -13,7 +14,9 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual('fs');
   return {
     ...actual,
-    readFileSync: vi.fn(() => '<html>/*__PROMPT_DATA_INJECTION__*/ null</html>'),
+    readFileSync: vi.fn(
+      () => '<html>/*__PROMPT_DATA_INJECTION__*/ null; /*__PROMPT_CATEGORIES__*/ null</html>'
+    ),
   };
 });
 
@@ -29,6 +32,7 @@ describe('PromptEditorPanel', () => {
   beforeEach(async () => {
     // Reset mocks
     vi.clearAllMocks();
+    WebViewCache.clear();
 
     // Get vscode mock
     vscode = await import('vscode');
@@ -75,6 +79,38 @@ describe('PromptEditorPanel', () => {
     // Clean up
     await fs.rm(testStorageDir, { recursive: true, force: true }).catch(() => {});
     vi.clearAllMocks();
+  });
+
+  describe.each(['show', 'showForNewPrompt'] as const)('%s category choices', (entryPoint) => {
+    async function openEditor() {
+      if (entryPoint === 'show') {
+        await PromptEditorPanel.show(mockContext, undefined, promptService, treeProvider);
+      } else {
+        await PromptEditorPanel.showForNewPrompt(mockContext, '', promptService, treeProvider);
+      }
+    }
+
+    it('offers stored empty categories in the editor', async () => {
+      await promptService.createCategory('Empty category');
+      await openEditor();
+      expect(mockWebviewPanel.webview.html).toContain('["Empty category"]');
+    });
+
+    it('refreshes category choices after creating, renaming, and deleting categories', async () => {
+      await openEditor();
+      await promptService.createCategory('Drafts');
+      await openEditor();
+      expect(mockWebviewPanel.webview.html).toContain('["Drafts"]');
+
+      await promptService.renameCategory('Drafts', 'Reviews');
+      await openEditor();
+      expect(mockWebviewPanel.webview.html).toContain('["Reviews"]');
+      expect(mockWebviewPanel.webview.html).not.toContain('Drafts');
+
+      await promptService.deleteCategory('Reviews');
+      await openEditor();
+      expect(mockWebviewPanel.webview.html).not.toContain('Reviews');
+    });
   });
 
   describe('Edit Mode (existing prompt)', () => {
