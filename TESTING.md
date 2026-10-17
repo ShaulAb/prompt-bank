@@ -17,6 +17,18 @@ npm test
 
 **CI Runtime**: ~30 seconds (optimized from 10-15 minutes)
 
+### Category regression checks
+
+Run `npm test -- test/category-lifecycle.test.ts test/webview-editor-panel.test.ts` for
+category persistence and editor coverage. These tests cover empty categories across
+service restarts, rename/delete behavior, existing prompt categories, duplicate
+names, and current category choices in both prompt editor entry points.
+
+For a manual check in an Extension Development Host, create an empty category using
+**New Category**, reload the window, and confirm it remains in the tree with zero
+prompts. Open **New Prompt** and confirm that category is available in the dropdown.
+After renaming the category, reopen the editor and check that it offers the new name.
+
 ---
 
 ## 🏗️ Test Architecture
