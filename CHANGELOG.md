@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.1](https://github.com/ShaulAb/prompt-bank/compare/v0.12.0...v0.12.1) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+- correct license metadata and registry badge ([16105eb](https://github.com/ShaulAb/prompt-bank/commit/16105ebe5b7ff41c2e5b7eedeec965878b2b4825))
+
 ## [0.12.0](https://github.com/ShaulAb/prompt-bank/compare/v0.11.1...v0.12.0) (2026-10-17)
 
 ### ✨ Features
