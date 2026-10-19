@@ -2,7 +2,8 @@
   "name": "prompt-bank",
   "displayName": "Prompt Bank",
   "description": "Save and manage your frequent prompts for AI assistants and development workflows",
-  "version": "0.11.1",
+  "version": "0.12.1",
+  "license": "MIT",
   "icon": "assets/logo.png",
   "publisher": "prestissimo",
   "repository": {
@@ -43,16 +44,6 @@
     },
     "commands": [
       {
-        "command": "promptBank.savePrompt",
-        "title": "💾 Save Prompt",
-        "category": "Prompt Bank"
-      },
-      {
-        "command": "promptBank.savePromptFromSelection",
-        "title": "Save Selection as Prompt",
-        "category": "Prompt Bank"
-      },
-      {
         "command": "promptBank.insertPrompt",
         "title": "💬 Copy Prompt",
         "category": "Prompt Bank"
@@ -65,8 +56,19 @@
       {
         "command": "promptBank.newPrompt",
         "title": "New Prompt",
-        "icon": "$(add)",
+        "icon": "$(new-file)",
         "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.newCategory",
+        "title": "New Category",
+        "icon": "$(new-folder)",
+        "category": "Prompt Bank"
+      },
+      {
+        "command": "promptBank.savePromptFromSelection",
+        "title": "Save Selection as Prompt",
+        "commandPalette": false
       },
       {
         "command": "promptBank.newPromptInCategory",
@@ -197,12 +199,6 @@
       }
     ],
     "menus": {
-      "commandPalette": [
-        {
-          "command": "promptBank.savePromptFromSelection",
-          "when": "false"
-        }
-      ],
       "editor/context": [
         {
           "command": "promptBank.savePromptFromSelection",
@@ -222,6 +218,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "promptBank.newCategory",
+          "when": "view == promptBank.promptsView",
+          "group": "navigation@3"
+        },
+        {
           "command": "promptBank.refreshTeamTreeView",
           "when": "view == promptBank.teamPromptsView",
           "group": "navigation@1"
@@ -235,6 +236,11 @@
       "view/title/context": [
         {
           "command": "promptBank.newPrompt",
+          "when": "view == promptBank.promptsView",
+          "group": "1_add"
+        },
+        {
+          "command": "promptBank.newCategory",
           "when": "view == promptBank.promptsView",
           "group": "1_add"
         }
@@ -374,7 +380,7 @@
     "lint": "eslint src --ext ts",
     "format": "prettier --write src",
     "package": "vsce package",
-    "deploy": "vsce publish",
+    "test:release": "node --test scripts/release-tag.test.cjs scripts/marketplace-status.test.cjs scripts/release-source.test.cjs",
     "release": "standard-version",
     "release:patch": "standard-version --release-as patch",
     "release:minor": "standard-version --release-as minor",

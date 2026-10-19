@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,10 +40,13 @@ jobs:
       - name: Check Open VSX for this version
         id: check_version
         run: node scripts/marketplace-status.cjs
+      - name: Verify source matches the tested release tag
+        if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
+        run: node scripts/release-source.cjs
       - name: Run quality checks
         if: steps.check_version.outputs.SHOULD_PUBLISH == 'true'
         run: |
-          node --test scripts/release-tag.test.cjs scripts/marketplace-status.test.cjs
+          npm run test:release
           npx tsc --noEmit
           npm run lint
           npm test
@@ -76,6 +81,11 @@ jobs:
       - name: Summary
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
+          ALREADY_PUBLISHED: ${{ steps.check_version.outputs.OPENVSX_PUBLISHED }}
         run: |
           echo "## v$VERSION available on Open VSX and GitHub Releases" >> "$GITHUB_STEP_SUMMARY"
-          echo "An already-published Open VSX version was skipped." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ALREADY_PUBLISHED" = "true" ]; then
+            echo "This version was already published to Open VSX; publishing was skipped." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Published the tested release VSIX to Open VSX." >> "$GITHUB_STEP_SUMMARY"
+          fi

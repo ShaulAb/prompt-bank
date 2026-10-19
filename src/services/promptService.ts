@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Prompt, createPrompt, PREDEFINED_CATEGORIES } from '../models/prompt';
+import { Prompt, createPrompt } from '../models/prompt';
 import { IStorageProvider, PromptFilter } from '../storage/interfaces';
 import { FileStorageProvider } from '../storage/fileStorage';
 import { createShareMulti } from './shareService';
@@ -29,131 +29,6 @@ export class PromptService {
       this.isInitialized = true;
     } catch (error) {
       throw new Error(`Failed to initialize prompt service: ${error}`);
-    }
-  }
-
-  /**
-   * Get prompt content from editor selection or clipboard
-   * Returns an object with content source and the actual text
-   */
-  private async getPromptContent(): Promise<{
-    content: string;
-    source: 'selection' | 'clipboard';
-  } | null> {
-    // First, try to get content from active editor selection
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-      const selection = editor.selection;
-      const selectedText = editor.document.getText(selection);
-
-      if (selectedText.trim()) {
-        return {
-          content: selectedText,
-          source: 'selection',
-        };
-      }
-    }
-
-    // If no selection, try clipboard
-    try {
-      const clipboardText = await vscode.env.clipboard.readText();
-      if (clipboardText.trim()) {
-        return {
-          content: clipboardText,
-          source: 'clipboard',
-        };
-      }
-    } catch (error) {
-      // Clipboard access failed, fall through to show error message
-    }
-
-    // Neither source has content
-    return null;
-  }
-
-  /**
-   * Save a new prompt from current editor selection or clipboard
-   */
-  async savePrompt(): Promise<Prompt | null> {
-    await this.ensureInitialized();
-
-    const contentSource = await this.getPromptContent();
-    if (!contentSource) {
-      vscode.window.showErrorMessage(
-        'No text selected or available in clipboard to save as a prompt.'
-      );
-      return null;
-    }
-
-    const selectedText = contentSource.content;
-
-    if (!selectedText.trim()) {
-      vscode.window.showErrorMessage('Please select some text to save as a prompt');
-      return null;
-    }
-
-    // Get prompt details from user
-    const title = await vscode.window.showInputBox({
-      prompt: 'Enter a title for this prompt',
-      placeHolder: 'e.g., "Code Review Template"',
-      validateInput: (value: string) => {
-        if (!value.trim()) {
-          return 'Title is required';
-        }
-        if (value.length > 100) {
-          return 'Title must be less than 100 characters';
-        }
-        return null;
-      },
-    });
-
-    if (!title) {
-      return null; // User cancelled
-    }
-
-    const description = await vscode.window.showInputBox({
-      prompt: 'Enter a description (optional)',
-      placeHolder: 'Describe what this prompt is used for...',
-    });
-
-    const category = await this.selectCategory();
-    if (!category) {
-      return null; // User cancelled
-    }
-    const categoryName = category;
-
-    // Create prompt with file context
-    const prompt = createPrompt(title.trim(), selectedText, categoryName);
-    if (description?.trim()) {
-      prompt.description = description.trim();
-    }
-
-    // Assign order: place at end of category
-    const promptsInCategory = (await this.storage.list({ category: categoryName })) || [];
-    const maxOrder = promptsInCategory.reduce(
-      (max, p) => (p.order !== undefined ? Math.max(max, p.order) : max),
-      -1
-    );
-    prompt.order = maxOrder + 1;
-
-    // Add file context for future smart suggestions
-    const document = vscode.window.activeTextEditor?.document;
-    const projectType = document ? this.detectProjectType(document.fileName) : undefined;
-    if (projectType && document) {
-      prompt.metadata.context = {
-        fileExtension: path.extname(document.fileName).slice(1),
-        language: document.languageId,
-        projectType: projectType,
-      };
-    }
-
-    try {
-      await this.storage.save(prompt);
-      vscode.window.showInformationMessage(`Prompt "${title}" saved successfully!`);
-      return prompt;
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
-      return null;
     }
   }
 
@@ -241,6 +116,11 @@ export class PromptService {
   async listPrompts(filter?: PromptFilter): Promise<Prompt[]> {
     await this.ensureInitialized();
     return this.storage.list(filter);
+  }
+
+  async getCategories(): Promise<string[]> {
+    await this.ensureInitialized();
+    return this.storage.getAllCategories();
   }
 
   /**
@@ -577,51 +457,6 @@ export class PromptService {
     }
   }
 
-  private async selectCategory(): Promise<string | null> {
-    // Get existing categories from saved prompts
-    const prompts = await this.storage.list();
-    const existingCategories = [...new Set(prompts.map((p) => p.category))];
-
-    const predefinedCategories = PREDEFINED_CATEGORIES;
-
-    // Combine and deduplicate categories
-    const allCategories = [...new Set([...predefinedCategories, ...existingCategories])];
-
-    const items = [
-      ...allCategories.map((cat) => ({ label: cat, description: 'Existing category' })),
-      { label: '$(plus) Create New Category', description: 'Create a new category' },
-    ];
-
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: 'Select or create a category',
-      matchOnDescription: false,
-    });
-
-    if (!selected) {
-      return null; // User cancelled
-    }
-
-    if (selected.label.startsWith('$(plus)')) {
-      // Create new category
-      const newCategory = await vscode.window.showInputBox({
-        prompt: 'Enter new category name',
-        placeHolder: 'e.g., "API Documentation"',
-        validateInput: (value: string) => {
-          if (!value.trim()) {
-            return 'Category name is required';
-          }
-          if (value.length > 50) {
-            return 'Category name must be less than 50 characters';
-          }
-          return null;
-        },
-      });
-      return newCategory?.trim() || null;
-    }
-
-    return selected.label;
-  }
-
   private detectProjectType(fileName: string): string | undefined {
     // Simple project type detection based on file patterns
     if (fileName.includes('package.json')) return 'Node.js';
@@ -639,6 +474,7 @@ export class PromptService {
    */
   async renameCategory(oldName: string, newName: string): Promise<number> {
     await this.ensureInitialized();
+    await this.storage.renameStoredCategory(oldName, newName);
     // Load all prompts in the old category
     const prompts = await this.storage.list({ category: oldName });
     if (prompts.length === 0) {
@@ -654,6 +490,22 @@ export class PromptService {
       await this.storage.update(prompt);
     }
     return prompts.length;
+  }
+
+  async createCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error('Category name cannot be empty');
+    const existing = await this.storage.getAllCategories();
+    if (existing.some((category) => category.toLowerCase() === trimmedName.toLowerCase())) {
+      throw new Error(`Category "${trimmedName}" already exists`);
+    }
+    await this.storage.createCategory(trimmedName);
+  }
+
+  async deleteCategory(name: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.storage.deleteCategory(name);
   }
 
   // ────────────────────────────────────────────────────────────────────────────

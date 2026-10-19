@@ -94,16 +94,10 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Try to use cached categories first, otherwise load from service
-    let categories = WebViewCache.getCachedCategories();
-    if (!categories) {
-      const prompts = await promptService.listPrompts();
-      categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
-      // Ensure we always have at least one category
-      if (categories.length === 0) {
-        categories = [DEFAULT_CATEGORY];
-      }
-      WebViewCache.setCategoriesCache(categories);
+    // Read current stored categories, including empty categories created from the tree.
+    let categories = (await promptService.getCategories()).sort();
+    if (categories.length === 0) {
+      categories = [DEFAULT_CATEGORY];
     }
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
@@ -134,16 +128,10 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Try to use cached categories first, otherwise load from service
-    let categories = WebViewCache.getCachedCategories();
-    if (!categories) {
-      const prompts = await promptService.listPrompts();
-      categories = Array.from(new Set(prompts.map((p) => p.category))).sort();
-      // Ensure we always have at least one category
-      if (categories.length === 0) {
-        categories = [DEFAULT_CATEGORY];
-      }
-      WebViewCache.setCategoriesCache(categories);
+    // Read current stored categories, including empty categories created from the tree.
+    let categories = (await promptService.getCategories()).sort();
+    if (categories.length === 0) {
+      categories = [DEFAULT_CATEGORY];
     }
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',

@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://open-vsx.org/extension/prestissimo/prompt-bank"><img src="https://img.shields.io/open-vsx/v/prestissimo/prompt-bank?style=for-the-badge&label=Open%20VSX" alt="Open VSX"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/ShaulAb/prompt-bank/main.yml?style=for-the-badge&label=Tests" alt="Tests"></a>
-  <a href="https://github.com/ShaulAb/prompt-bank/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ShaulAb/prompt-bank?style=for-the-badge&color=green" alt="License"></a>
+  <a href="https://github.com/ShaulAb/prompt-bank/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
 ---
@@ -27,8 +27,7 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 ## 🚀 Key Features
 
-- **Save Prompts Instantly**: Select any text and save it as a prompt with a title, description, and category via the context menu or Command Palette.
-- **Save from Selection**: Right-click selected text in the editor and choose "Save Selection as Prompt" to quickly save with prefilled content.
+- **Create Prompts**: Use the New Prompt action in the Prompt Bank tree, or right-click selected editor text and choose **Save Selection as Prompt** to start with that text as content.
 - **Tree View**: Browse and manage all your prompts in a hierarchical tree view organized by categories. Click any prompt to insert it instantly.
 - **Modern Editor**: Create and edit prompts in a clean, two-column webview editor with dynamic category dropdown and inline category creation.
 - **Share & Import**: Share individual prompts or entire collections via public links. Import prompts and collections from others with automatic conflict resolution.
@@ -44,10 +43,10 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 ## 🎯 Quick Start
 
-1.  **Save a Prompt**:
-    - **Option 1**: Select text in the editor, right-click, and choose "Save Selection as Prompt" from the context menu.
-    - **Option 2**: Use Command Palette (`Ctrl+Shift+P`) → "Prompt Bank: Save Prompt" to save from clipboard.
-    - Fill in the details in the prompt editor and save.
+1.  **Create a Prompt**:
+    - In the Prompt Bank tree, choose **New Prompt**.
+    - To use selected editor text as the starting content, right-click the selection and choose **Save Selection as Prompt**.
+    - Fill in the prompt details and save.
 
 2.  **Copy a Prompt**:
     - **From the Sidebar**: Find your prompt in the "Prompt Bank" tree and click the copy icon.
@@ -87,8 +86,8 @@ A powerful VS Code extension to save and manage your frequent prompts for AI ass
 
 | Command                    | Keybinding     | Description                                                       |
 | -------------------------- | -------------- | ----------------------------------------------------------------- |
-| `promptBank.savePrompt`    | -            | Save text from selection or clipboard as a new prompt.            |
-| `promptBank.savePromptFromSelection` | Right-click | Save selected text as prompt (editor context menu only).  |
+| `promptBank.newPrompt` | Prompt Bank tree | Open the prompt editor to create a prompt. |
+| `promptBank.savePromptFromSelection` | Editor right-click | Create a prompt with the selected text prefilled. |
 | `promptBank.insertPrompt`  | -              | Copy prompt from the collection.                                  |
 | `promptBank.listPrompts`   | -              | List all prompts with search and action options.                  |
 | `promptBank.importPrompt`  | -              | Import a prompt or collection from a share link.                  |

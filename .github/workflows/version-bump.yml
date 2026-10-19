@@ -48,7 +48,7 @@ jobs:
 
       - name: Run all quality checks
         run: |
-          node --test scripts/release-tag.test.cjs
+          npm run test:release
           npx tsc --noEmit
           npm run lint
           npm test
@@ -81,7 +81,26 @@ jobs:
           echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           node scripts/release-tag.cjs
 
+      - name: Reuse an existing release package
+        id: existing_package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.NEW_VERSION }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPOSITORY/releases" --paginate --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags.txt"
+          echo "EXISTS=false" >> "$GITHUB_OUTPUT"
+          if grep -Fxq "v$VERSION" "$RUNNER_TEMP/release-tags.txt"; then
+            gh release view "v$VERSION" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/release-assets.txt"
+            if grep -Fxq "prompt-bank-$VERSION.vsix" "$RUNNER_TEMP/release-assets.txt"; then
+              gh release download "v$VERSION" --pattern "prompt-bank-$VERSION.vsix" --dir .
+              echo "EXISTS=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - name: Package extension
+        if: steps.existing_package.outputs.EXISTS != 'true'
         run: npm run package
 
       - name: Retain VSIX artifact before publishing
@@ -105,17 +124,19 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh api "repos/$REPOSITORY/releases" --paginate --jq '.[].tag_name' > release-tags.txt
-          if ! grep -Fxq "v$VERSION" release-tags.txt; then
+          gh api "repos/$REPOSITORY/releases" --paginate --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags.txt"
+          if ! grep -Fxq "v$VERSION" "$RUNNER_TEMP/release-tags.txt"; then
             cat > release-notes.md <<EOF
           ## Manual testing required
           Download and install prompt-bank-$VERSION.vsix, then verify authentication and sync.
-          After testing, promote dev to main for automated marketplace publishing.
+          After testing, promote dev to main for automated Open VSX publishing.
           See CHANGELOG.md for the included changes.
           EOF
             gh release create "v$VERSION" --verify-tag --title "Release v$VERSION" --notes-file release-notes.md
           fi
-          gh release upload "v$VERSION" "prompt-bank-$VERSION.vsix" --clobber
+          if [ "${{ steps.existing_package.outputs.EXISTS }}" != "true" ]; then
+            gh release upload "v$VERSION" "prompt-bank-$VERSION.vsix"
+          fi
 
       - name: Summary
         run: |
@@ -133,4 +154,4 @@ jobs:
           echo "### 🧪 Next steps:" >> $GITHUB_STEP_SUMMARY
           echo "1. Download and test the VSIX package locally" >> $GITHUB_STEP_SUMMARY
           echo "2. If testing passes, merge dev → main" >> $GITHUB_STEP_SUMMARY
-          echo "3. Verify the automated marketplace publishing workflow" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify the automated Open VSX publishing workflow" >> $GITHUB_STEP_SUMMARY

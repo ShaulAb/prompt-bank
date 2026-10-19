@@ -9,6 +9,7 @@ test/
 test-workspace/
 test-cursor-workspace/
 .test-drive/
+graphify-out/
 scripts/
 .github/
 
@@ -41,6 +42,7 @@ memory_update.md
 SUGGESTIONS.md
 
 # Temporary files
+loaded
 *.log
 *.tmp
 .DS_Store

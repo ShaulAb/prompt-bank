@@ -47,6 +47,34 @@ export class TreeCommands {
       }
     );
 
+    const newCategoryCommand = vscode.commands.registerCommand(
+      'promptBank.newCategory',
+      async () => {
+        const name = await vscode.window.showInputBox({
+          title: 'New Prompt Category',
+          prompt: 'Enter a name for the new category',
+          placeHolder: 'e.g. Code Review',
+          validateInput: (value) => {
+            const trimmed = value.trim();
+            if (!trimmed) return 'Category name cannot be empty';
+            if (trimmed.includes('/') || trimmed.includes('\\')) {
+              return 'Category name cannot contain / or \\ characters';
+            }
+            return null;
+          },
+        });
+        if (name === undefined) return;
+        try {
+          await this.promptService.createCategory(name);
+          this.treeProvider.refresh();
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            error instanceof Error ? error.message : 'Failed to create category'
+          );
+        }
+      }
+    );
+
     // Insert prompt from tree (when prompt is selected)
     const insertFromTreeCommand = vscode.commands.registerCommand(
       'promptBank.insertPromptFromTree',
@@ -62,7 +90,12 @@ export class TreeCommands {
       }
     );
 
-    context.subscriptions.push(refreshCommand, newPromptInCategoryCommand, insertFromTreeCommand);
+    context.subscriptions.push(
+      refreshCommand,
+      newPromptInCategoryCommand,
+      newCategoryCommand,
+      insertFromTreeCommand
+    );
   }
 
   /**

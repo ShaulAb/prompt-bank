@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.1](https://github.com/ShaulAb/prompt-bank/compare/v0.12.0...v0.12.1) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+- correct license metadata and registry badge ([16105eb](https://github.com/ShaulAb/prompt-bank/commit/16105ebe5b7ff41c2e5b7eedeec965878b2b4825))
+
+## [0.12.0](https://github.com/ShaulAb/prompt-bank/compare/v0.11.1...v0.12.0) (2026-10-17)
+
+### ✨ Features
+
+- add prompt bank create actions ([b9405ad](https://github.com/ShaulAb/prompt-bank/commit/b9405ad8b21a62b164e25cda33ab0d4a09b01013))
+
+### ♻️ Code Refactoring
+
+- remove legacy save prompt commands ([4724344](https://github.com/ShaulAb/prompt-bank/commit/4724344b896800122eb79b32fe8935c91b8d591f))
+
+### 🐛 Bug Fixes
+
+- **ci:** check marketplace versions independently ([#80](https://github.com/ShaulAb/prompt-bank/issues/80)) ([3f494cd](https://github.com/ShaulAb/prompt-bank/commit/3f494cdeac06f62d77c75bb7da9b4b3dbfca1e5d))
+- **ci:** preserve tested release assets and verify release source ([2cacca7](https://github.com/ShaulAb/prompt-bank/commit/2cacca747b02a4713860db08de87c0aca27fcb2d))
+- **ci:** publish only to Open VSX ([#82](https://github.com/ShaulAb/prompt-bank/issues/82)) ([e8ede66](https://github.com/ShaulAb/prompt-bank/commit/e8ede66666ad2fbe90523faf375407ea77571aec))
+- keep prompt editor category choices current ([ef5e980](https://github.com/ShaulAb/prompt-bank/commit/ef5e980ac10300c0d5a5978711e917a712c46795))
+- retain save selection context action ([dfa45e3](https://github.com/ShaulAb/prompt-bank/commit/dfa45e3b1c6a6519a3e7c85408f87f6af726ad5c))
+
 ### [0.11.1](https://github.com/ShaulAb/prompt-bank/compare/v0.11.0...v0.11.1) (2026-10-13)
 
 ### 🔧 Chores
