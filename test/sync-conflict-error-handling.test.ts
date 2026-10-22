@@ -19,7 +19,7 @@ import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { computeContentHash } from '../src/utils/contentHash';
 import { createPrompt } from './helpers/prompt-factory';
-import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
+import { server, syncTestHelpers, onUnhandledRequest } from './e2e/helpers/msw-setup';
 
 describe('SyncService - 409 Conflict Error Handling', () => {
   let context: vscode.ExtensionContext;
@@ -31,7 +31,7 @@ describe('SyncService - 409 Conflict Error Handling', () => {
   let testStorageDir: string;
 
   beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
+    server.listen({ onUnhandledRequest });
     SupabaseClientManager.initialize();
   });
 
