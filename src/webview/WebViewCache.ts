@@ -18,7 +18,13 @@ export class WebViewCache {
     if (!this.htmlCache) {
       // Use optimized HTML with better loading performance
       const htmlPath = path.join(extensionUri.fsPath, 'media', 'promptEditorOptimized.html');
-      this.htmlCache = fs.readFileSync(htmlPath, 'utf-8');
+      const editorScript = fs.readFileSync(
+        path.join(extensionUri.fsPath, 'dist', 'promptEditor.js'),
+        'utf-8'
+      );
+      this.htmlCache = fs
+        .readFileSync(htmlPath, 'utf-8')
+        .replace('/*__EDITOR_SCRIPT__*/', () => editorScript.replace(/<\/script/gi, '<\\/script'));
     }
     return this.htmlCache;
   }
