@@ -15,6 +15,7 @@ export class PromptEditorPanel {
   private disposables: vscode.Disposable[] = [];
   private categories: string[];
   private readonly initialCategory: string | undefined;
+  private disposed = false;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -42,6 +43,9 @@ export class PromptEditorPanel {
     this.panel.webview.onDidReceiveMessage(
       async (message) => {
         switch (message.type) {
+          case 'ready':
+            this.updateCategories(this.categories);
+            break;
           case 'save':
             await this.handleSave(message.data);
             break;
@@ -94,11 +98,9 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Read current stored categories, including empty categories created from the tree.
-    let categories = (await promptService.getCategories()).sort();
-    if (categories.length === 0) {
-      categories = [DEFAULT_CATEGORY];
-    }
+    const categories = [
+      ...new Set([DEFAULT_CATEGORY, ...(promptData ? [promptData.category] : [])]),
+    ];
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
       promptData ? 'Edit Prompt' : 'New Prompt',
@@ -108,7 +110,7 @@ export class PromptEditorPanel {
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')],
       }
     );
-    PromptEditorPanel.currentPanel = new PromptEditorPanel(
+    const editorPanel = new PromptEditorPanel(
       panel,
       context.extensionUri,
       promptData,
@@ -116,6 +118,11 @@ export class PromptEditorPanel {
       treeProvider,
       categories
     );
+    PromptEditorPanel.currentPanel = editorPanel;
+    void promptService
+      .getCategories()
+      .then((loadedCategories) => editorPanel.updateCategories(loadedCategories))
+      .catch((error) => console.error('Failed to load prompt categories:', error));
   }
 
   public static async showForNewPrompt(
@@ -128,11 +135,9 @@ export class PromptEditorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
-    // Read current stored categories, including empty categories created from the tree.
-    let categories = (await promptService.getCategories()).sort();
-    if (categories.length === 0) {
-      categories = [DEFAULT_CATEGORY];
-    }
+    const categories = [
+      ...new Set([DEFAULT_CATEGORY, ...(initialCategory ? [initialCategory] : [])]),
+    ];
     const panel = vscode.window.createWebviewPanel(
       'promptEditor',
       'New Prompt',
@@ -142,7 +147,7 @@ export class PromptEditorPanel {
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')],
       }
     );
-    PromptEditorPanel.currentPanel = new PromptEditorPanel(
+    const editorPanel = new PromptEditorPanel(
       panel,
       context.extensionUri,
       undefined, // No existing prompt data
@@ -152,6 +157,27 @@ export class PromptEditorPanel {
       initialContent,
       initialCategory
     );
+    PromptEditorPanel.currentPanel = editorPanel;
+    void promptService
+      .getCategories()
+      .then((loadedCategories) => editorPanel.updateCategories(loadedCategories))
+      .catch((error) => console.error('Failed to load prompt categories:', error));
+  }
+
+  private updateCategories(categories: string[]): void {
+    if (this.disposed) return;
+    const uniqueCategories = [
+      ...new Set([DEFAULT_CATEGORY, ...categories, ...this.categories]),
+    ].sort();
+    this.categories = uniqueCategories;
+    if (this.initialCategory && !uniqueCategories.includes(this.initialCategory)) {
+      uniqueCategories.push(this.initialCategory);
+      uniqueCategories.sort();
+    }
+    this.panel.webview.postMessage({
+      type: 'categories',
+      data: uniqueCategories,
+    });
   }
 
   private getHtmlForWebview(): string {
@@ -249,7 +275,11 @@ export class PromptEditorPanel {
   }
 
   public dispose() {
-    PromptEditorPanel.currentPanel = undefined;
+    if (this.disposed) return;
+    this.disposed = true;
+    if (PromptEditorPanel.currentPanel === this) {
+      PromptEditorPanel.currentPanel = undefined;
+    }
     this.panel.dispose();
     while (this.disposables.length) {
       const d = this.disposables.pop();
