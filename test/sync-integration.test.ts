@@ -7,7 +7,7 @@ import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { WorkspaceMetadataService } from '../src/services/workspaceMetadataService';
 import { createPrompt } from './helpers/prompt-factory';
-import { server, syncTestHelpers } from './e2e/helpers/msw-setup';
+import { server, syncTestHelpers, onUnhandledRequest } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -24,7 +24,7 @@ describe('SyncService - Integration', () => {
   let context: vscode.ExtensionContext;
 
   beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
+    server.listen({ onUnhandledRequest });
     // Initialize Supabase client once for all tests (still uses singleton pattern)
     SupabaseClientManager.initialize();
   });

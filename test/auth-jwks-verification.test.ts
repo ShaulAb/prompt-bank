@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
-import { server as mswServer } from './e2e/helpers/msw-setup';
+import { server as mswServer, onUnhandledRequest } from './e2e/helpers/msw-setup';
 import { jwksTestHelpers, jwksNetworkFailureHandler } from './e2e/helpers/jwks-handlers';
 import { AuthService } from '../src/services/authService';
 import * as vscode from 'vscode';
@@ -22,7 +22,7 @@ describe('AuthService - JWKS Verification', () => {
     await jwksTestHelpers.initialize();
 
     // Start MSW server
-    mswServer.listen({ onUnhandledRequest: 'warn' });
+    mswServer.listen({ onUnhandledRequest });
   });
 
   beforeEach(() => {

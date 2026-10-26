@@ -7,6 +7,22 @@ import { teamSyncHandlers, teamSyncTestHelpers } from './team-sync-handlers';
 // Create MSW server with OAuth, JWKS, Sync, and Team Sync handlers
 export const server = setupServer(...oauthHandlers, jwksHandler, ...syncHandlers, ...teamSyncHandlers);
 
+/**
+ * Unhandled request strategy for all MSW servers in tests.
+ * Requests to a real Supabase project fail instead of passing through,
+ * so a missing handler can never hit the live backend.
+ */
+export const onUnhandledRequest = (
+  request: Request,
+  print: { warning(): void; error(): void }
+): void => {
+  if (new URL(request.url).hostname.endsWith('.supabase.co')) {
+    print.error();
+    return;
+  }
+  print.warning();
+};
+
 // Enhanced server with helper methods
 export const mswTestServer = {
   ...server,
@@ -17,7 +33,7 @@ export const mswTestServer = {
   async startClean() {
     // Initialize JWKS test keys before starting server
     await jwksTestHelpers.initialize();
-    server.listen({ onUnhandledRequest: 'warn' });
+    server.listen({ onUnhandledRequest });
     oauthTestHelpers.resetTokens();
     oauthTestHelpers.clearAuthCodes();
     teamSyncTestHelpers.clearAllTeamData();
