@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank"><img src="https://img.shields.io/visual-studio-marketplace/v/prestissimo.prompt-bank?style=for-the-badge&label=VS%20Marketplace&color=blue" alt="VS Marketplace"></a>
   <a href="https://open-vsx.org/extension/prestissimo/prompt-bank"><img src="https://img.shields.io/open-vsx/v/prestissimo/prompt-bank?style=for-the-badge&label=Open%20VSX" alt="Open VSX"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/ShaulAb/prompt-bank/main.yml?style=for-the-badge&label=Tests" alt="Tests"></a>
   <a href="https://github.com/ShaulAb/prompt-bank/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
@@ -145,4 +146,4 @@ See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and new featu
 
 ## Installation channels
 
-Get registry updates from [Open VSX](https://open-vsx.org/extension/prestissimo/prompt-bank), or download the VSIX from [GitHub Releases](https://github.com/ShaulAb/prompt-bank/releases). In VS Code, run **Extensions: Install from VSIX** and choose the downloaded file. New releases are no longer published to VS Code Marketplace.
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank) or [Open VSX](https://open-vsx.org/extension/prestissimo/prompt-bank). Every release is also on [GitHub Releases](https://github.com/ShaulAb/prompt-bank/releases) as a VSIX; in VS Code, run **Extensions: Install from VSIX** and choose the downloaded file.
