@@ -6,7 +6,7 @@ import { SupabaseClientManager } from '../src/services/supabaseClient';
 import { FileStorageProvider } from '../src/storage/fileStorage';
 import { SyncStateStorage } from '../src/storage/syncStateStorage';
 import { createPrompt } from './helpers/prompt-factory';
-import { server, teamSyncTestHelpers } from './e2e/helpers/msw-setup';
+import { server, teamSyncTestHelpers, onUnhandledRequest } from './e2e/helpers/msw-setup';
 import { computeContentHash } from '../src/utils/contentHash';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -34,7 +34,7 @@ describe('TeamSyncService - Integration (Three-Way Merge)', () => {
   };
 
   beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
+    server.listen({ onUnhandledRequest });
     SupabaseClientManager.initialize();
   });
 

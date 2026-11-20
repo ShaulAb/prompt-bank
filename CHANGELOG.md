@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.2](https://github.com/ShaulAb/prompt-bank/compare/v0.12.1...v0.12.2) (2026-11-04)
+
+### 🐛 Bug Fixes
+
+- bundle prompt editor locally and clarify button states ([f6a08f8](https://github.com/ShaulAb/prompt-bank/commit/f6a08f8d783b0a09cddecac1b932f1c715534dbb))
+- **ci:** restore VS Code Marketplace publishing ([1344dfb](https://github.com/ShaulAb/prompt-bank/commit/1344dfb932ef1c235f259161fe42cc25b559d303))
+- **sync:** 🐛 skip register-workspace without a session and block live calls in tests ([52b8305](https://github.com/ShaulAb/prompt-bank/commit/52b8305212ad0a294a97ffa7aa1d3cf7d60f980f))
+
 ### [0.12.1](https://github.com/ShaulAb/prompt-bank/compare/v0.12.0...v0.12.1) (2026-10-18)
 
 ### 🐛 Bug Fixes

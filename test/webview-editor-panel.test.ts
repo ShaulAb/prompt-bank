@@ -93,23 +93,46 @@ describe('PromptEditorPanel', () => {
     it('offers stored empty categories in the editor', async () => {
       await promptService.createCategory('Empty category');
       await openEditor();
-      expect(mockWebviewPanel.webview.html).toContain('["Empty category"]');
+      await vi.waitFor(() =>
+        expect(mockWebviewPanel.webview.postMessage).toHaveBeenCalledWith({
+          type: 'categories',
+          data: ['Empty category', 'General'],
+          selected: undefined,
+        })
+      );
     });
 
     it('refreshes category choices after creating, renaming, and deleting categories', async () => {
       await openEditor();
       await promptService.createCategory('Drafts');
       await openEditor();
-      expect(mockWebviewPanel.webview.html).toContain('["Drafts"]');
+      await vi.waitFor(() =>
+        expect(mockWebviewPanel.webview.postMessage).toHaveBeenCalledWith({
+          type: 'categories',
+          data: ['Drafts', 'General'],
+          selected: undefined,
+        })
+      );
 
       await promptService.renameCategory('Drafts', 'Reviews');
       await openEditor();
-      expect(mockWebviewPanel.webview.html).toContain('["Reviews"]');
-      expect(mockWebviewPanel.webview.html).not.toContain('Drafts');
+      await vi.waitFor(() =>
+        expect(mockWebviewPanel.webview.postMessage).toHaveBeenCalledWith({
+          type: 'categories',
+          data: ['General', 'Reviews'],
+          selected: undefined,
+        })
+      );
 
       await promptService.deleteCategory('Reviews');
       await openEditor();
-      expect(mockWebviewPanel.webview.html).not.toContain('Reviews');
+      await vi.waitFor(() =>
+        expect(mockWebviewPanel.webview.postMessage).toHaveBeenCalledWith({
+          type: 'categories',
+          data: ['General'],
+          selected: undefined,
+        })
+      );
     });
   });
 

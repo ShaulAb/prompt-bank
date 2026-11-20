@@ -1,4 +1,4 @@
-name: Publish to Open VSX
+name: Publish to Marketplaces
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
       - name: Get version
         id: version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Check Open VSX for this version
+      - name: Check each marketplace for this version
         id: check_version
         run: node scripts/marketplace-status.cjs
       - name: Verify source matches the tested release tag
@@ -60,6 +60,11 @@ jobs:
           gh release download "v$VERSION" --pattern "prompt-bank-$VERSION.vsix" --dir release-package
           unzip -p "release-package/prompt-bank-$VERSION.vsix" extension/package.json > release-package/manifest.json
           node -e "const p=require('./package.json'),r=require('./release-package/manifest.json'); if(p.name!==r.name||p.publisher!==r.publisher||p.version!==r.version) throw Error('Release package identity mismatch')"
+      - name: Publish to VS Code Marketplace
+        if: steps.check_version.outputs.VSCODE_PUBLISHED == 'false'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+        run: npx @vscode/vsce publish --packagePath release-package/*.vsix --pat "$VSCE_PAT"
       - name: Publish to Open VSX Registry
         if: steps.check_version.outputs.OPENVSX_PUBLISHED == 'false'
         env:
@@ -73,7 +78,7 @@ jobs:
           cat > release-notes.md <<EOF
           ## Release v$VERSION
 
-          Published to [Open VSX](https://open-vsx.org/extension/prestissimo/prompt-bank). The tested VSIX is available in the assets below and can also be installed manually in VS Code.
+          Published to [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=prestissimo.prompt-bank) and [Open VSX](https://open-vsx.org/extension/prestissimo/prompt-bank). The tested VSIX is available in the assets below and can also be installed manually in VS Code.
 
           See [CHANGELOG.md](https://github.com/ShaulAb/prompt-bank/blob/main/CHANGELOG.md) for changes.
           EOF
@@ -81,11 +86,14 @@ jobs:
       - name: Summary
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
-          ALREADY_PUBLISHED: ${{ steps.check_version.outputs.OPENVSX_PUBLISHED }}
+          VSCODE_PUBLISHED: ${{ steps.check_version.outputs.VSCODE_PUBLISHED }}
+          OPENVSX_PUBLISHED: ${{ steps.check_version.outputs.OPENVSX_PUBLISHED }}
         run: |
-          echo "## v$VERSION available on Open VSX and GitHub Releases" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$ALREADY_PUBLISHED" = "true" ]; then
-            echo "This version was already published to Open VSX; publishing was skipped." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Published the tested release VSIX to Open VSX." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "## v$VERSION available on VS Code Marketplace, Open VSX and GitHub Releases" >> "$GITHUB_STEP_SUMMARY"
+          for registry in "VS Code Marketplace:$VSCODE_PUBLISHED" "Open VSX:$OPENVSX_PUBLISHED"; do
+            if [ "${registry##*:}" = "true" ]; then
+              echo "- ${registry%:*}: already published, skipped" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- ${registry%:*}: published the tested release VSIX" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

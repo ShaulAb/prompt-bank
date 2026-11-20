@@ -8,18 +8,18 @@ Our streamlined CI/CD pipeline consists of **3 core workflows** that ensure code
 
 1. **CI Workflow** (`main.yml`) - Automated testing and validation
 2. **Release Workflow** (`version-bump.yml`) - Version management and packaging
-3. **Publish Workflow** (`publish.yml`) - Automated Open VSX publishing
+3. **Publish Workflow** (`publish.yml`) - Automated VS Code Marketplace and Open VSX publishing
 
 ## 🌳 Dev-Centered Branching Strategy
 
 ```
-Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [🤖 AUTO: Open VSX]
+Feature Branches → dev → [Version Bump + VSIX] → [Local Test] → dev → main → [🤖 AUTO: VS Code Marketplace + Open VSX]
 ```
 
 - **Feature branches**: Individual feature development
 - **dev branch**: Integration branch where all features are merged and tested
 - **main branch**: Stable/released code only, represents what users have
-- **Automation**: When dev merges to main, automatic publishing to Open VSX
+- **Automation**: When dev merges to main, automatic publishing to VS Code Marketplace and Open VSX
 
 ## 🔄 Workflows
 
@@ -61,24 +61,26 @@ VSIX is downloaded and reused rather than rebuilt or overwritten. If an asset
 appears during upload, the upload fails safely instead of replacing it.
 
 Do not rerun `auto` after a version commit has already reached `dev`: it can bump
-the version again. Open VSX publishing remains a separate post-testing step.
+the version again. Marketplace publishing remains a separate post-testing step.
 
 ### 3. Publish Workflow (`publish.yml`)
 
-**Name:** "Publish to Open VSX"
+**Name:** "Publish to Marketplaces"
 **Triggers:** Push to `main` branch
 
 **What it does:**
-- ✅ **Version detection** - Queries the exact version in Open VSX
+- ✅ **Version detection** - Queries the exact version in each marketplace independently
 - ✅ **Quality gates** - Full CI pipeline before publishing
+- ✅ **VS Code Marketplace** - Automatic publishing via vsce
 - ✅ **Open VSX Registry** - Automatic publishing via ovsx
 - ✅ **Tested artifact** - Publishes the GitHub release VSIX tested locally, without repackaging
 - ✅ **Source verification** - Requires the release tag and rejects tracked source changes between the tag and `main`. Release workflows, helper scripts, and Markdown documentation may differ; all other changes require a new version and tested VSIX.
-- ✅ **Idempotent** - Skips a version already published to Open VSX
+- ✅ **Idempotent** - Skips each registry independently; retries publish only to registries still missing the version
 
 **Branch enforcement:** Only runs on `main`, via push or manual dispatch
 
 **Required Secrets:**
+- `VSCE_TOKEN` - VS Code Marketplace Personal Access Token (Azure DevOps PAT, all organizations, Marketplace → Manage)
 - `OVSX_TOKEN` - Open VSX Registry Access Token
 
 ## 📊 Quality Gates
@@ -144,6 +146,7 @@ gh pr create --base main --head dev --title "Release vX.X.X"
 
 # After merge to main:
 # 🤖 Automatic publishing happens via GitHub Actions!
+# - Publishes to VS Code Marketplace
 # - Publishes to Open VSX Registry
 # - Updates the existing GitHub Release notes
 ```
@@ -194,7 +197,7 @@ Monitor workflow status in the [Actions tab](https://github.com/ShaulAb/prompt-b
 
 ### Distribution policy
 
-Publish registry updates to Open VSX only. VS Code Marketplace publishing is disabled and does not require a Microsoft publishing account or VSCE_TOKEN. GitHub releases retain downloadable VSIX files, which users can install manually in VS Code through Extensions: Install from VSIX. The existing VS Code Marketplace listing is left in place.
+Publish every release to both VS Code Marketplace (publisher `prestissimo`) and Open VSX. GitHub releases also keep the tested VSIX, which users can install manually in VS Code through Extensions: Install from VSIX. Keep at least two owners on the `prestissimo` Marketplace publisher so losing one account cannot lock out publishing.
 
 The legacy `npm run deploy` command has been removed. Publish through the main
 branch workflow so registry uploads use the tested release asset.

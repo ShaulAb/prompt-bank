@@ -265,6 +265,11 @@ export const syncHandlers = [
       );
     }
   }),
+
+  // Register workspace (upsert; nothing to track for sync tests)
+  http.post('*/functions/v1/register-workspace', async () => {
+    return HttpResponse.json({ success: true });
+  }),
 ];
 
 /**

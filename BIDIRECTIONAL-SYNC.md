@@ -535,7 +535,7 @@ WHERE workspace_id IS NOT NULL AND local_id IS NOT NULL;
 #### Extension (`syncService.ts`)
 
 - [x] `getWorkspaceName()` - Returns workspace folder name
-- [x] `registerWorkspace()` - Calls `register-workspace` Edge Function
+- [x] `registerWorkspace()` - Calls `register-workspace` Edge Function (now in `PersonalTransport`; skipped when the Supabase client has no session, so it never sends the publishable key as a bearer token)
 - [x] `performSync()` - Calls `registerWorkspace()` before sync
 
 #### Website (promptbank-website)

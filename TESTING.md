@@ -312,6 +312,20 @@ export default defineConfig({
 - `/auth/v1/token` - Token exchange and refresh
 - `/auth/v1/user` - User info retrieval
 - `/auth/v1/.well-known/jwks.json` - JWKS endpoint
+- `/functions/v1/*` - Personal sync Edge Functions (`get-user-prompts`, `sync-prompt`, `delete-prompt`, `restore-prompt`, `get-user-quota`, `register-workspace`) in `sync-handlers.ts`
+- `/functions/v1/*` - Team sync Edge Functions (`get-team-prompts`, `sync-team-prompt`) in `team-sync-handlers.ts`
+
+**Unhandled Requests**:
+
+Tests must never reach the live Supabase project. Start every MSW server with the shared strategy exported from `msw-setup.ts`:
+
+```typescript
+import { server, onUnhandledRequest } from './e2e/helpers/msw-setup';
+
+server.listen({ onUnhandledRequest });
+```
+
+Any request to a `*.supabase.co` host without a matching handler fails instead of passing through to the network. Other unhandled requests only log a warning. If a test fails with an MSW "Cannot bypass a request" error, add a handler for that endpoint.
 
 ### Test User Management
 

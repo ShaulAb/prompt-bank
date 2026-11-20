@@ -288,6 +288,16 @@ export class PersonalTransport implements SyncTransport {
   async registerWorkspace(): Promise<void> {
     try {
       const supabase = SupabaseClientManager.get();
+
+      // Without a session the client would send the publishable key as the bearer
+      // token, which the function rejects with a 401. Skip the call instead.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        return;
+      }
+
       const workspaceId = await this.getWorkspaceId();
       const workspaceName = this.getWorkspaceName();
       const deviceInfo = await getDeviceInfo(this.context);
